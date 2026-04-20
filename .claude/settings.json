@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git switch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git rebase:*)",
+      "Bash(git stash:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(git remote:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(git show-ref:*)",
+      "Bash(git config:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh repo:*)",
+      "Bash(gh run:*)",
+      "Bash(gh api:*)",
+      "Bash(./gradlew tasks:*)",
+      "Bash(./gradlew build:*)",
+      "Bash(./gradlew assemble:*)",
+      "Bash(./gradlew assembleDebug:*)",
+      "Bash(./gradlew test:*)",
+      "Bash(./gradlew allTests:*)",
+      "Bash(./gradlew check:*)",
+      "Bash(./gradlew lint:*)",
+      "Bash(./gradlew ktlintCheck:*)",
+      "Bash(./gradlew detekt:*)",
+      "Bash(./gradlew :shared:*)",
+      "Bash(./gradlew :composeApp:*)",
+      "Bash(./gradlew linkDebugFrameworkIosSimulatorArm64:*)"
+    ]
+  }
+}
