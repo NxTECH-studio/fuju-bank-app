@@ -38,11 +38,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.example.fuju_bank_app"
+    namespace = "studio.nxtech.fujubank"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.example.fuju_bank_app"
+        applicationId = "studio.nxtech.fujubank"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1

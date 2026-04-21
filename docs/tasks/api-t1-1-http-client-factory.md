@@ -17,13 +17,13 @@ API クライアント（T3-*）が共通の HttpClient を使えるようにす
 
 ## 実装ステップ
 
-1. `shared/src/commonMain/kotlin/com/example/fuju_bank_app/network/HttpClientFactory.kt`（expect）:
+1. `shared/src/commonMain/kotlin/studio/nxtech/fujubank/network/HttpClientFactory.kt`（expect）:
    - `expect fun createHttpClient(config: HttpClientConfig): HttpClient`（もしくは `expect class HttpClientEngineFactory` 的な最小 expect）
    - `data class HttpClientConfig(val baseUrl: String, val enableLogging: Boolean, val authTokenProvider: suspend () -> String?)`
    - `fun HttpClientConfig.install(client: HttpClient)` でプラグインを install する共通関数も commonMain に用意。
-2. `shared/src/androidMain/kotlin/com/example/fuju_bank_app/network/HttpClientFactory.android.kt`（actual）:
+2. `shared/src/androidMain/kotlin/studio/nxtech/fujubank/network/HttpClientFactory.android.kt`（actual）:
    - `actual fun createHttpClient(config: HttpClientConfig): HttpClient = HttpClient(OkHttp) { ... }`
-3. `shared/src/iosMain/kotlin/com/example/fuju_bank_app/network/HttpClientFactory.ios.kt`（actual）:
+3. `shared/src/iosMain/kotlin/studio/nxtech/fujubank/network/HttpClientFactory.ios.kt`（actual）:
    - `actual fun createHttpClient(config: HttpClientConfig): HttpClient = HttpClient(Darwin) { ... }`
 4. 共通 install 内容:
    - `ContentNegotiation` + `Json { ignoreUnknownKeys = true; explicitNulls = false }`

@@ -17,7 +17,7 @@ composeApp の Android エントリ（Application クラス新設 or `MainActivi
 
 ## 実装ステップ
 
-1. `composeApp/src/androidMain/kotlin/com/example/fuju_bank_app/FujuBankApp.kt` を新設:
+1. `composeApp/src/androidMain/kotlin/studio/nxtech/fujubank/FujuBankApp.kt` を新設:
    - `class FujuBankApp : Application() { override fun onCreate() { super.onCreate(); initKoin { androidContext(this@FujuBankApp) } } }`
 2. `composeApp/src/androidMain/AndroidManifest.xml` の `<application android:name=".FujuBankApp">` を追加。
 3. 既存 `App.kt` か `MainActivity.kt` に **デバッグ用** の「`UserApi.get()` を 1 回叩いて結果をログに出す」ボタンを一時的に追加。リリース前に削除する想定でコメント `// TODO: remove after smoke test` を付ける。
@@ -35,5 +35,5 @@ composeApp の Android エントリ（Application クラス新設 or `MainActivi
 
 ## 技術的な補足
 
-- AndroidManifest が無ければ `composeApp/src/androidMain/AndroidManifest.xml` を新設。パッケージ指定は `com.example.fuju_bank_app`。
+- AndroidManifest が無ければ `composeApp/src/androidMain/AndroidManifest.xml` を新設。パッケージ指定は `studio.nxtech.fujubank`。
 - `FujuBankApp` にせずに `MainActivity.onCreate` で `initKoin` を呼ぶ簡易版も可（Application を作らない軽量パス）。既存コード優先。
