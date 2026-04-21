@@ -66,3 +66,10 @@ Ktor / kotlinx.serialization / kotlinx.coroutines / kotlinx.datetime / Koin / an
 - Ktor 3.x 系は Kotlin 2.0+ 対応。バージョン確認は [ktor リリース](https://github.com/ktorio/ktor/releases)で行う。
 - `kotlinx.serialization` プラグインは Kotlin バージョンと同期する必要あり（`version.ref = "kotlin"`）。
 - iOS の Darwin engine は `linkDebugFrameworkIosSimulatorArm64` 時にリンクされる。
+
+## フィードバック
+
+- **T3-1 (2026-04-21)**: API クライアントのユニットテストに `io.ktor:ktor-client-mock` が必要。`commonTest` 向けに以下を追加したい:
+  - `[libraries]` に `ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }`
+  - `shared/build.gradle.kts` の `commonTest.dependencies` に `implementation(libs.ktor.client.mock)`
+  - 未追加のため T3-1 では MockEngine テストを見送り、DTO ラウンドトリップ・AuthApi の URL/HTTP メソッド検証は別手段（または追加後に）対応する。
