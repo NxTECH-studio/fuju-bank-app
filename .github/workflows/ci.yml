@@ -40,7 +40,7 @@ jobs:
         run: ./gradlew :composeApp:lintDebug
 
   build-ios-framework:
-    name: Build iOS shared framework
+    name: Build & test iOS shared framework
     runs-on: macos-latest
     timeout-minutes: 45
     steps:
@@ -66,6 +66,9 @@ jobs:
 
       - name: Link Debug framework (iosSimulatorArm64)
         run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
+
+      - name: Run iOS shared tests (iosSimulatorArm64)
+        run: ./gradlew :shared:iosSimulatorArm64Test
 
   build-ios-app:
     name: Build iOS app (Xcode)
