@@ -1,4 +1,4 @@
-package com.example.fuju_bank_app
+package studio.nxtech.fujubank
 
 class Greeting {
     private val platform = getPlatform()

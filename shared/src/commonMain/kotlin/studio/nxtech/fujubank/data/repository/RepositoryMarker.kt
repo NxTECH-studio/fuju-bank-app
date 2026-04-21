@@ -1,3 +1,3 @@
-package com.example.fuju_bank_app.data.repository
+package studio.nxtech.fujubank.data.repository
 
 internal object RepositoryMarker

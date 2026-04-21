@@ -1,3 +1,3 @@
-package com.example.fuju_bank_app.di
+package studio.nxtech.fujubank.di
 
 internal object DiMarker

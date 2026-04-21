@@ -1,3 +1,3 @@
-package com.example.fuju_bank_app.data.remote
+package studio.nxtech.fujubank.data.remote
 
 internal object RemoteMarker

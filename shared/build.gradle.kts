@@ -51,7 +51,7 @@ kotlin {
 }
 
 android {
-    namespace = "com.example.fuju_bank_app.shared"
+    namespace = "studio.nxtech.fujubank.shared"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

@@ -1,4 +1,4 @@
-package com.example.fuju_bank_app
+package studio.nxtech.fujubank
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity

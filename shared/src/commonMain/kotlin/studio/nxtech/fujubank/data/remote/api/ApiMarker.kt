@@ -1,3 +1,3 @@
-package com.example.fuju_bank_app.data.remote.api
+package studio.nxtech.fujubank.data.remote.api
 
 internal object ApiMarker

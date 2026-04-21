@@ -1,3 +1,3 @@
-package com.example.fuju_bank_app.domain.model
+package studio.nxtech.fujubank.domain.model
 
 internal object DomainModelMarker

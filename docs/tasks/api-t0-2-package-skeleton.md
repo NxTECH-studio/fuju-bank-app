@@ -18,14 +18,14 @@ Phase 1 以降の複数タスクが `shared/commonMain` 下に新規ファイル
 ## 実装ステップ
 
 1. 以下のディレクトリを新設:
-   - `shared/src/commonMain/kotlin/com/example/fuju_bank_app/network/`
-   - `shared/src/commonMain/kotlin/com/example/fuju_bank_app/auth/`
-   - `shared/src/commonMain/kotlin/com/example/fuju_bank_app/data/remote/`
-   - `shared/src/commonMain/kotlin/com/example/fuju_bank_app/data/remote/dto/`
-   - `shared/src/commonMain/kotlin/com/example/fuju_bank_app/data/remote/api/`
-   - `shared/src/commonMain/kotlin/com/example/fuju_bank_app/data/repository/`
-   - `shared/src/commonMain/kotlin/com/example/fuju_bank_app/domain/model/`
-   - `shared/src/commonMain/kotlin/com/example/fuju_bank_app/di/`
+   - `shared/src/commonMain/kotlin/studio/nxtech/fujubank/network/`
+   - `shared/src/commonMain/kotlin/studio/nxtech/fujubank/auth/`
+   - `shared/src/commonMain/kotlin/studio/nxtech/fujubank/data/remote/`
+   - `shared/src/commonMain/kotlin/studio/nxtech/fujubank/data/remote/dto/`
+   - `shared/src/commonMain/kotlin/studio/nxtech/fujubank/data/remote/api/`
+   - `shared/src/commonMain/kotlin/studio/nxtech/fujubank/data/repository/`
+   - `shared/src/commonMain/kotlin/studio/nxtech/fujubank/domain/model/`
+   - `shared/src/commonMain/kotlin/studio/nxtech/fujubank/di/`
 2. 各ディレクトリに最小のプレースホルダを配置（後続タスクで置換される想定）:
    - 例: `network/NetworkMarker.kt` に `internal object NetworkMarker`
    - 他ディレクトリも同様の marker を置く

@@ -17,16 +17,16 @@ AuthCore から取得した JWT を、プラットフォーム推奨のセキュ
 
 ## 実装ステップ
 
-1. `shared/src/commonMain/kotlin/com/example/fuju_bank_app/auth/TokenStorage.kt`:
+1. `shared/src/commonMain/kotlin/studio/nxtech/fujubank/auth/TokenStorage.kt`:
    - `interface TokenStorage { suspend fun getAccessToken(): String?; suspend fun getRefreshToken(): String?; suspend fun getSubject(): String?; suspend fun save(access: String, refresh: String, subject: String); suspend fun clear() }`
-2. `shared/src/commonMain/kotlin/com/example/fuju_bank_app/auth/TokenStorageFactory.kt`:
+2. `shared/src/commonMain/kotlin/studio/nxtech/fujubank/auth/TokenStorageFactory.kt`:
    - `expect class TokenStorageFactory { fun create(): TokenStorage }`
 3. `shared/src/androidMain/.../auth/TokenStorageFactory.android.kt`:
    - `actual class TokenStorageFactory(private val context: Context)`
    - 実装: `EncryptedSharedPreferences.create(context, "fuju_tokens", MasterKey.Builder(context).setKeyScheme(AES256_GCM).build(), AES256_SIV, AES256_GCM)` を利用。suspend 関数は `withContext(Dispatchers.IO)` で包む。
 4. `shared/src/iosMain/.../auth/TokenStorageFactory.ios.kt`:
    - `actual class TokenStorageFactory`
-   - 実装: `Security` framework の `SecItemAdd` / `SecItemCopyMatching` / `SecItemDelete` を `kSecClassGenericPassword` 用に薄くラップ。`service = "com.example.fuju_bank_app"`, `account = "access"/"refresh"/"subject"`。
+   - 実装: `Security` framework の `SecItemAdd` / `SecItemCopyMatching` / `SecItemDelete` を `kSecClassGenericPassword` 用に薄くラップ。`service = "studio.nxtech.fujubank"`, `account = "access"/"refresh"/"subject"`。
 5. `auth/` の marker ファイルは削除。
 
 ## 検証

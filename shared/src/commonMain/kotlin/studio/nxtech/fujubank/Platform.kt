@@ -1,4 +1,4 @@
-package com.example.fuju_bank_app
+package studio.nxtech.fujubank
 
 interface Platform {
     val name: String

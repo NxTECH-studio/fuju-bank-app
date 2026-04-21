@@ -1,3 +1,3 @@
-package com.example.fuju_bank_app.network
+package studio.nxtech.fujubank.network
 
 internal object NetworkMarker

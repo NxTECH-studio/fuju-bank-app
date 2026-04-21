@@ -1,4 +1,4 @@
-package com.example.fuju_bank_app
+package studio.nxtech.fujubank
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

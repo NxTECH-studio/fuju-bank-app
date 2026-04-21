@@ -1,3 +1,3 @@
-package com.example.fuju_bank_app.auth
+package studio.nxtech.fujubank.auth
 
 internal object AuthMarker
