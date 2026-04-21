@@ -44,8 +44,15 @@ kotlin {
             implementation(libs.koin.android)
             implementation(libs.androidx.security.crypto)
         }
+        androidUnitTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlin.testJunit)
+        }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
+        }
+        iosTest.dependencies {
+            implementation(libs.kotlin.test)
         }
     }
 }
