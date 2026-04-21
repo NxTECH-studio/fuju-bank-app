@@ -23,7 +23,12 @@ class ArtifactApiTest {
     private fun buildClient(handler: MockRequestHandler): HttpClient = HttpClient(MockEngine(handler)) {
         expectSuccess = true
         install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true; explicitNulls = false })
+            json(
+                Json {
+                    ignoreUnknownKeys = true
+                    explicitNulls = false
+                },
+            )
         }
         defaultRequest {
             url("https://api.example.com/")
