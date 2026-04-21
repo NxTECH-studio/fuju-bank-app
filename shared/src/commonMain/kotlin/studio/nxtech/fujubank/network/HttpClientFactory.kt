@@ -47,12 +47,14 @@ internal fun KtorClientConfig<*>.applyCommon(config: HttpClientConfig) {
         bearer {
             loadTokens {
                 config.authTokenProvider()?.let { access ->
-                    BearerTokens(access, config.refreshTokenProvider() ?: "")
+                    BearerTokens(access, config.refreshTokenProvider())
                 }
             }
             config.tokenRefresher?.let { refresher ->
                 refreshTokens {
-                    val rt = config.refreshTokenProvider() ?: return@refreshTokens null
+                    val rt = oldTokens?.refreshToken
+                        ?: config.refreshTokenProvider()
+                        ?: return@refreshTokens null
                     val refreshed = refresher.refresh(rt) ?: return@refreshTokens null
                     config.onTokensRefreshed(refreshed)
                     BearerTokens(refreshed.accessToken, refreshed.refreshToken)
