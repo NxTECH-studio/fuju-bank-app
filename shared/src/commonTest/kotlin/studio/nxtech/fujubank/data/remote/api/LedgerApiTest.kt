@@ -20,6 +20,7 @@ import studio.nxtech.fujubank.data.remote.dto.TransferResponse
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 class LedgerApiTest {
 
@@ -79,11 +80,11 @@ class LedgerApiTest {
         val request = checkNotNull(capturedRequest)
         assertEquals("idem_fixed_key", request.headers["Idempotency-Key"])
         val body = request.bodyText()
-        assertEquals(true, body.contains("\"idempotency_key\":\"idem_fixed_key\""))
-        assertEquals(true, body.contains("\"from_user_id\":\"usr_from\""))
-        assertEquals(true, body.contains("\"to_user_id\":\"usr_to\""))
-        assertEquals(true, body.contains("\"amount\":500"))
-        assertEquals(true, body.contains("\"memo\":\"gift\""))
+        assertTrue(body.contains("\"idempotency_key\":\"idem_fixed_key\""))
+        assertTrue(body.contains("\"from_user_id\":\"usr_from\""))
+        assertTrue(body.contains("\"to_user_id\":\"usr_to\""))
+        assertTrue(body.contains("\"amount\":500"))
+        assertTrue(body.contains("\"memo\":\"gift\""))
     }
 
     @Test
