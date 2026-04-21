@@ -26,6 +26,7 @@ data class HttpClientConfig(
 expect fun createHttpClient(config: HttpClientConfig): HttpClient
 
 internal fun KtorClientConfig<*>.applyCommon(config: HttpClientConfig) {
+    expectSuccess = true
     install(ContentNegotiation) {
         json(
             Json {
