@@ -39,6 +39,8 @@ private suspend fun ResponseException.toApiError(): ApiError {
             message = envelope.error.message,
             httpStatus = status,
         )
+    } catch (e: CancellationException) {
+        throw e
     } catch (_: Throwable) {
         ApiError(
             code = ApiErrorCode.UNKNOWN,
