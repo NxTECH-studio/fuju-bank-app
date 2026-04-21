@@ -1,6 +1,7 @@
 package studio.nxtech.fujubank.auth
 
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.MemScope
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.convert
@@ -10,6 +11,8 @@ import kotlinx.cinterop.ptr
 import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.usePinned
 import kotlinx.cinterop.value
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import platform.CoreFoundation.CFDataCreate
 import platform.CoreFoundation.CFDataGetBytePtr
 import platform.CoreFoundation.CFDataGetLength
@@ -29,6 +32,8 @@ import platform.Security.SecItemAdd
 import platform.Security.SecItemCopyMatching
 import platform.Security.SecItemDelete
 import platform.Security.errSecSuccess
+import platform.Security.kSecAttrAccessible
+import platform.Security.kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
 import platform.Security.kSecAttrAccount
 import platform.Security.kSecAttrService
 import platform.Security.kSecClass
@@ -44,23 +49,23 @@ actual class TokenStorageFactory {
 
 @OptIn(ExperimentalForeignApi::class)
 private class KeychainTokenStorage : TokenStorage {
-    override suspend fun getAccessToken(): String? = read(ACCOUNT_ACCESS)
+    override suspend fun getAccessToken(): String? = withContext(Dispatchers.Default) { read(ACCOUNT_ACCESS) }
 
-    override suspend fun getRefreshToken(): String? = read(ACCOUNT_REFRESH)
+    override suspend fun getRefreshToken(): String? = withContext(Dispatchers.Default) { read(ACCOUNT_REFRESH) }
 
-    override suspend fun getSubject(): String? = read(ACCOUNT_SUBJECT)
+    override suspend fun getSubject(): String? = withContext(Dispatchers.Default) { read(ACCOUNT_SUBJECT) }
 
     override suspend fun save(
         access: String,
         refresh: String,
         subject: String,
-    ) {
+    ) = withContext(Dispatchers.Default) {
         write(ACCOUNT_ACCESS, access)
         write(ACCOUNT_REFRESH, refresh)
         write(ACCOUNT_SUBJECT, subject)
     }
 
-    override suspend fun clear() {
+    override suspend fun clear() = withContext(Dispatchers.Default) {
         delete(ACCOUNT_ACCESS)
         delete(ACCOUNT_REFRESH)
         delete(ACCOUNT_SUBJECT)
@@ -120,7 +125,7 @@ private class KeychainTokenStorage : TokenStorage {
         }
     }
 
-    private fun kotlinx.cinterop.MemScope.buildBaseQuery(account: String): CFMutableDictionaryRef? {
+    private fun MemScope.buildBaseQuery(account: String): CFMutableDictionaryRef? {
         val query = CFDictionaryCreateMutable(
             kCFAllocatorDefault,
             0,
@@ -128,6 +133,7 @@ private class KeychainTokenStorage : TokenStorage {
             kCFTypeDictionaryValueCallBacks.ptr,
         ) ?: return null
         CFDictionaryAddValue(query, kSecClass, kSecClassGenericPassword)
+        CFDictionaryAddValue(query, kSecAttrAccessible, kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly)
         val serviceRef = CFStringCreateWithCString(kCFAllocatorDefault, SERVICE, kCFStringEncodingUTF8)
         val accountRef = CFStringCreateWithCString(kCFAllocatorDefault, account, kCFStringEncodingUTF8)
         if (serviceRef == null || accountRef == null) {
