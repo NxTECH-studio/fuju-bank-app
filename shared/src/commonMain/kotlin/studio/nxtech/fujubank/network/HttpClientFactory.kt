@@ -18,6 +18,9 @@ data class HttpClientConfig(
     val baseUrl: String,
     val enableLogging: Boolean,
     val authTokenProvider: suspend () -> String?,
+    val refreshTokenProvider: suspend () -> String? = { null },
+    val tokenRefresher: AuthTokenRefresher? = null,
+    val onTokensRefreshed: suspend (RefreshedTokens) -> Unit = {},
 )
 
 expect fun createHttpClient(config: HttpClientConfig): HttpClient
@@ -43,7 +46,17 @@ internal fun KtorClientConfig<*>.applyCommon(config: HttpClientConfig) {
     install(Auth) {
         bearer {
             loadTokens {
-                config.authTokenProvider()?.let { token -> BearerTokens(token, null) }
+                config.authTokenProvider()?.let { access ->
+                    BearerTokens(access, config.refreshTokenProvider() ?: "")
+                }
+            }
+            config.tokenRefresher?.let { refresher ->
+                refreshTokens {
+                    val rt = config.refreshTokenProvider() ?: return@refreshTokens null
+                    val refreshed = refresher.refresh(rt) ?: return@refreshTokens null
+                    config.onTokensRefreshed(refreshed)
+                    BearerTokens(refreshed.accessToken, refreshed.refreshToken)
+                }
             }
         }
     }
