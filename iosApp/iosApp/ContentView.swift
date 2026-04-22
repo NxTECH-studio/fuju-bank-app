@@ -11,6 +11,11 @@ struct ContentView: View {
                 }
             }
 
+            // TODO: remove after smoke test
+            Button("Smoke test: UserApi.get") {
+                Task { await runUserApiSmokeTest() }
+            }
+
             if showContent {
                 VStack(spacing: 16) {
                     Image(systemName: "swift")
@@ -23,6 +28,23 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .padding()
+    }
+}
+
+// TODO: remove after smoke test
+private let smokeTestTag = "FujuBankSmoke"
+
+// TODO: remove after smoke test
+private let smokeTestUserId = "00000000-0000-0000-0000-000000000000"
+
+// TODO: remove after smoke test
+private func runUserApiSmokeTest() async {
+    let api = KoinIosKt.userApi()
+    do {
+        let result = try await api.get(userId: smokeTestUserId)
+        print("[\(smokeTestTag)] result=\(result)")
+    } catch {
+        print("[\(smokeTestTag)] threw: \(error)")
     }
 }
 
