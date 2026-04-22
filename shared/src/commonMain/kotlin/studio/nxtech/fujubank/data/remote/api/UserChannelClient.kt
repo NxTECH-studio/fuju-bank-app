@@ -29,6 +29,9 @@ class UserChannelClient(
 ) {
 
     fun subscribe(userId: String): Flow<CreditEventDto> = channelFlow {
+        // WebSocket セッション内では send(Frame) と外側 ProducerScope.send(CreditEventDto)
+        // が名前衝突するため、Flow への送出は this@channelFlow 経由で明示する。
+        val downstream = this
         client.webSocket(cableUrl) {
             val identifier = json.encodeToString(
                 CableIdentifier.serializer(),
@@ -43,7 +46,7 @@ class UserChannelClient(
             for (frame in incoming) {
                 if (frame !is Frame.Text) continue
                 val credit = parseCreditEvent(frame.readText()) ?: continue
-                send(credit)
+                downstream.send(credit)
             }
         }
     }
