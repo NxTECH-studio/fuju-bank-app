@@ -7,7 +7,7 @@ import studio.nxtech.fujubank.data.remote.api.UserApi
 private const val CABLE_URL = "ws://localhost:3000/cable"
 
 /**
- * Swift 側から呼び出す Koin 起動関数。Obj-C 経由で `SharedKt.doInitKoin()` として公開される。
+ * Swift 側から呼び出す Koin 起動関数。Obj-C 経由で `KoinIosKt.doInitKoin()` として公開される。
  *
  * プロセス内で 1 度だけ呼び出すこと。
  */
