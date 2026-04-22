@@ -15,12 +15,26 @@ fun sharedModules(cableUrl: String): List<Module> = listOf(
     artifactModule,
 )
 
-// プラットフォーム側（Android / iOS）から呼び出す Koin 起動関数。
-// appDeclaration で androidContext(...) など追加の設定を渡せる。
+/**
+ * プラットフォーム側（Android / iOS）から呼び出す Koin 起動関数。
+ *
+ * プロセス内で 1 度だけ呼び出すこと。2 度目以降は Koin が
+ * `KoinApplicationAlreadyStartedException` を投げるため、Application / MainActivity
+ * のライフサイクルに合わせて単一の起点から呼ぶ。テストでは `Module.verify` を使い
+ * 本関数は使わない。
+ *
+ * @param cableUrl ActionCable の WebSocket エンドポイント。`ws://` / `wss://` のみ許可。
+ * @param appDeclaration `androidContext(...)` など platform 固有の追加設定。
+ */
 fun initKoin(
     cableUrl: String,
     appDeclaration: KoinAppDeclaration = {},
-): KoinApplication = startKoin {
-    appDeclaration()
-    modules(sharedModules(cableUrl))
+): KoinApplication {
+    require(cableUrl.startsWith("ws://") || cableUrl.startsWith("wss://")) {
+        "cableUrl must use ws:// or wss:// scheme, but was: $cableUrl"
+    }
+    return startKoin {
+        appDeclaration()
+        modules(sharedModules(cableUrl))
+    }
 }

@@ -1,13 +1,33 @@
 package studio.nxtech.fujubank.di
 
 import kotlin.test.Test
-import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class SharedModuleTest {
 
+    private val cableUrl = "wss://example.test/cable"
+
     @Test
-    fun sharedModulesAggregatesAllFeatureModules() {
-        val modules = sharedModules(cableUrl = "wss://example.test/cable")
-        assertEquals(5, modules.size)
+    fun sharedModulesIncludesAllFeatureModules() {
+        val modules = sharedModules(cableUrl)
+        // realtimeModule は毎回新しいインスタンスになるため、authModule など val の
+        // feature module は identity で、realtimeModule は存在数で確認する。
+        assertTrue(authModule in modules)
+        assertTrue(userModule in modules)
+        assertTrue(ledgerModule in modules)
+        assertTrue(artifactModule in modules)
+        val staticModules = setOf(authModule, userModule, ledgerModule, artifactModule)
+        assertTrue(
+            modules.any { it !in staticModules },
+            "realtimeModule (dynamic) should also be included",
+        )
+    }
+
+    @Test
+    fun initKoinRejectsNonWebSocketCableUrl() {
+        assertFailsWith<IllegalArgumentException> {
+            initKoin(cableUrl = "https://example.test/cable")
+        }
     }
 }
