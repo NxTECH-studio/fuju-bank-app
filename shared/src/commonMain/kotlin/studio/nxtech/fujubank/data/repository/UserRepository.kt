@@ -1,6 +1,5 @@
 package studio.nxtech.fujubank.data.repository
 
-import kotlin.time.Instant
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.remote.api.UserApi
 import studio.nxtech.fujubank.data.remote.dto.CreateUserRequest
@@ -10,6 +9,7 @@ import studio.nxtech.fujubank.data.remote.map
 import studio.nxtech.fujubank.domain.model.Transaction
 import studio.nxtech.fujubank.domain.model.TransactionKind
 import studio.nxtech.fujubank.domain.model.User
+import kotlin.time.Instant
 import studio.nxtech.fujubank.data.remote.dto.TransactionKind as TransactionKindDto
 
 class UserRepository(private val userApi: UserApi) {
@@ -20,6 +20,9 @@ class UserRepository(private val userApi: UserApi) {
     suspend fun get(userId: String): NetworkResult<User> =
         userApi.get(userId).map { it.toDomain() }
 
+    // `userId` は API のパスパラメータであると同時に、`Transaction.counterpartyUserId`
+    // を決定する際の「自分」としても使われる。サーバーは JWT 認証により自身の取引
+    // しか返さない前提。
     suspend fun transactions(userId: String): NetworkResult<List<Transaction>> =
         userApi.transactions(userId).map { response ->
             response.transactions.map { it.toDomain(myUserId = userId) }
