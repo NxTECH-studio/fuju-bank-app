@@ -15,9 +15,9 @@ import kotlinx.serialization.json.Json
 import studio.nxtech.fujubank.data.remote.ApiErrorCode
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.remote.dto.CreateUserRequest
-import studio.nxtech.fujubank.data.remote.dto.TransactionKind
 import studio.nxtech.fujubank.data.remote.dto.TransactionListResponse
 import studio.nxtech.fujubank.data.remote.dto.UserResponse
+import studio.nxtech.fujubank.domain.model.TransactionKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs

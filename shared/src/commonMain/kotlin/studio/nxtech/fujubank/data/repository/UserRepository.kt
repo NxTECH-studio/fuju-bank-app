@@ -10,7 +10,6 @@ import studio.nxtech.fujubank.domain.model.Transaction
 import studio.nxtech.fujubank.domain.model.TransactionKind
 import studio.nxtech.fujubank.domain.model.User
 import kotlin.time.Instant
-import studio.nxtech.fujubank.data.remote.dto.TransactionKind as TransactionKindDto
 
 class UserRepository(private val userApi: UserApi) {
 
@@ -37,21 +36,16 @@ private fun UserResponse.toDomain(): User = User(
 
 private fun TransactionDto.toDomain(myUserId: String): Transaction = Transaction(
     id = id,
-    kind = kind.toDomain(),
+    kind = kind,
     amount = amount,
     counterpartyUserId = counterpartyUserId(myUserId),
     artifactId = artifactId,
     occurredAt = Instant.parse(occurredAt),
 )
 
-private fun TransactionKindDto.toDomain(): TransactionKind = when (this) {
-    TransactionKindDto.MINT -> TransactionKind.MINT
-    TransactionKindDto.TRANSFER -> TransactionKind.TRANSFER
-}
-
 // mint: 常に null（相手なし）。
 // transfer: 自分が from なら to、自分が to なら from を返す。
 private fun TransactionDto.counterpartyUserId(myUserId: String): String? = when (kind) {
-    TransactionKindDto.MINT -> null
-    TransactionKindDto.TRANSFER -> if (fromUserId == myUserId) toUserId else fromUserId
+    TransactionKind.MINT -> null
+    TransactionKind.TRANSFER -> if (fromUserId == myUserId) toUserId else fromUserId
 }

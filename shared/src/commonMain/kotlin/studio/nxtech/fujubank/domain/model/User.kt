@@ -16,8 +16,3 @@ data class Transaction(
     val artifactId: String?,
     val occurredAt: Instant,
 )
-
-enum class TransactionKind {
-    MINT,
-    TRANSFER,
-}

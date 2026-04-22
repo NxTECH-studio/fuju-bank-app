@@ -1,6 +1,7 @@
 package studio.nxtech.fujubank.data.remote.dto
 
 import kotlinx.serialization.json.Json
+import studio.nxtech.fujubank.domain.model.TransactionKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
