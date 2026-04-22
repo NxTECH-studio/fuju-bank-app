@@ -2,6 +2,7 @@ package studio.nxtech.fujubank.data.remote.dto
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import studio.nxtech.fujubank.domain.model.TransactionKind
 
 @Serializable
 data class TransactionListResponse(
@@ -27,12 +28,3 @@ data class TransactionDto(
     @SerialName("occurred_at")
     val occurredAt: String,
 )
-
-@Serializable
-enum class TransactionKind {
-    @SerialName("mint")
-    MINT,
-
-    @SerialName("transfer")
-    TRANSFER,
-}

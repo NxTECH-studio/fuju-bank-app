@@ -1,6 +1,7 @@
 package studio.nxtech.fujubank.data.remote.dto
 
 import kotlin.time.Instant
+import studio.nxtech.fujubank.domain.model.TransactionKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
