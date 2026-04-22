@@ -5,6 +5,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import studio.nxtech.fujubank.data.remote.api.UserChannelClient
 import studio.nxtech.fujubank.data.remote.dto.toDomain
 import studio.nxtech.fujubank.domain.model.CreditEvent
@@ -17,11 +19,16 @@ class RealtimeRepository(
     private val appScope: CoroutineScope,
 ) {
     private val cache = mutableMapOf<String, SharedFlow<CreditEvent>>()
+    private val cacheMutex = Mutex()
 
-    fun creditEvents(userId: String): SharedFlow<CreditEvent> = cache.getOrPut(userId) {
-        client.subscribe(userId)
-            .mapNotNull { it.toDomain() }
-            .shareIn(appScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), replay = 0)
+    // 複数スレッドから同時に呼ばれても同一 userId の SharedFlow が重複しないよう
+    // Mutex で保護する。結果として WebSocket も 1 本に抑えられる。
+    suspend fun creditEvents(userId: String): SharedFlow<CreditEvent> = cacheMutex.withLock {
+        cache.getOrPut(userId) {
+            client.subscribe(userId)
+                .mapNotNull { it.toDomain() }
+                .shareIn(appScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), replay = 0)
+        }
     }
 
     private companion object {
