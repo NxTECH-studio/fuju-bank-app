@@ -51,6 +51,7 @@ kotlin {
         androidUnitTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlin.testJunit)
+            implementation(libs.koin.test)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
