@@ -1,5 +1,6 @@
 package studio.nxtech.fujubank.data.repository
 
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -12,7 +13,11 @@ class AuthRepository(
     private val authApi: AuthApi,
     private val tokenStorage: TokenStorage,
 ) {
-    private val _mfaRequiredEvents = MutableSharedFlow<Unit>(replay = 0, extraBufferCapacity = 1)
+    private val _mfaRequiredEvents = MutableSharedFlow<Unit>(
+        replay = 0,
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
     val mfaRequiredEvents: SharedFlow<Unit> = _mfaRequiredEvents.asSharedFlow()
 
     suspend fun login(email: String, password: String): NetworkResult<Unit> =
