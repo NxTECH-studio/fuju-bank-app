@@ -56,12 +56,19 @@ PR #37 では Gradle / リンク段階までしか検証できておらず、以
 
 ## 検証
 
+### 自動化済み（2026-04-28 確認）
+
+- [x] `./gradlew :composeApp:bundleRelease`（`-P` 無し）が成功し、生成された `shared/build/buildkonfig/androidMain/.../BuildKonfig.kt` が本番 URL (`https://api.fujupay.app` / `wss://api.fujupay.app/cable`) になっている
+- [x] `./gradlew :shared:linkReleaseFrameworkIosArm64` / `:linkReleaseFrameworkIosSimulatorArm64` が成功し、`iosArm64Main` / `iosSimulatorArm64Main` の `BuildKonfig.kt` も本番 URL になっている
+- [x] Debug ビルド（`assembleDebug` / `linkDebugFrameworkIosSimulatorArm64`）後の BuildKonfig は Android `http://10.0.2.2:3000` / iOS `http://localhost:3000` に戻り、リグレッションなし
+
+### 手動（要実機 / Xcode）
+
 - [ ] Android Release AAB を実機で起動し、ログイン → 残高取得が成功
 - [ ] iOS を Xcode の Release Run（シミュレータ or 実機）で起動し、ログイン → 残高取得が成功
 - [ ] 両プラットフォームで `https://api.fujupay.app/up` 相当のヘルスチェック呼び出しが 200 を返す
 - [ ] ActionCable (`wss://api.fujupay.app/cable`) で subscribe / イベント受信が成功
 - [ ] Release ビルドのログに `10.0.2.2` / `localhost` が一切出ない
-- [ ] `assembleRelease`（`-P` 無し）で生成された APK の `BuildKonfig` が本番 URL になっている
 
 ## 依存
 
