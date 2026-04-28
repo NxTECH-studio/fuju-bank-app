@@ -1,9 +1,11 @@
+import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.buildKonfig)
 }
 
 kotlin {
@@ -71,5 +73,46 @@ android {
     }
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
+    }
+}
+
+buildkonfig {
+    packageName = "studio.nxtech.fujubank"
+    objectName = "BuildKonfig"
+
+    // デフォルト（debug 相当）: Android エミュレータからホストの localhost を叩く 10.0.2.2 を使う。
+    defaultConfigs {
+        buildConfigField(STRING, "BANK_API_BASE_URL", "http://10.0.2.2:3000")
+        buildConfigField(STRING, "CABLE_URL", "ws://10.0.2.2:3000/cable")
+    }
+
+    // Release ビルドでは本番 API を向ける。`-Pbuildkonfig.flavor=release` で切り替え。
+    defaultConfigs("release") {
+        buildConfigField(STRING, "BANK_API_BASE_URL", "https://api.fujupay.app")
+        buildConfigField(STRING, "CABLE_URL", "wss://api.fujupay.app/cable")
+    }
+
+    // iOS シミュレータは Mac 上の localhost に直接アクセスできるため上書きする。
+    targetConfigs {
+        create("iosArm64") {
+            buildConfigField(STRING, "BANK_API_BASE_URL", "http://localhost:3000")
+            buildConfigField(STRING, "CABLE_URL", "ws://localhost:3000/cable")
+        }
+        create("iosSimulatorArm64") {
+            buildConfigField(STRING, "BANK_API_BASE_URL", "http://localhost:3000")
+            buildConfigField(STRING, "CABLE_URL", "ws://localhost:3000/cable")
+        }
+    }
+
+    // Release flavor 時は iOS でも本番 URL を使う。
+    targetConfigs("release") {
+        create("iosArm64") {
+            buildConfigField(STRING, "BANK_API_BASE_URL", "https://api.fujupay.app")
+            buildConfigField(STRING, "CABLE_URL", "wss://api.fujupay.app/cable")
+        }
+        create("iosSimulatorArm64") {
+            buildConfigField(STRING, "BANK_API_BASE_URL", "https://api.fujupay.app")
+            buildConfigField(STRING, "CABLE_URL", "wss://api.fujupay.app/cable")
+        }
     }
 }
