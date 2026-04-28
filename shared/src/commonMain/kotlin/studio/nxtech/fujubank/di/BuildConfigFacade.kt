@@ -12,3 +12,8 @@ fun defaultBankApiBaseUrl(): String = BuildKonfig.BANK_API_BASE_URL
  * ActionCable の WebSocket エンドポイント。Debug/Release・プラットフォームで切り替わる。
  */
 fun defaultCableUrl(): String = BuildKonfig.CABLE_URL
+
+/**
+ * AuthCore (`fuju-system-authentication`) のベース URL。Debug/Release・プラットフォームで切り替わる。
+ */
+fun defaultAuthCoreBaseUrl(): String = BuildKonfig.AUTHCORE_BASE_URL
