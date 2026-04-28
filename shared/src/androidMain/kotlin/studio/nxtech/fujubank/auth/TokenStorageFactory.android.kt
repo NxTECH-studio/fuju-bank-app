@@ -25,23 +25,27 @@ private class EncryptedPreferencesTokenStorage(context: Context) : TokenStorage 
         )
     }
 
-    override suspend fun getAccessToken(): String? = read(KEY_ACCESS)
+    override suspend fun loadAccess(): String? = withContext(Dispatchers.IO) {
+        runCatching { prefs.getString(KEY_ACCESS, null) }.getOrNull()
+    }
 
-    override suspend fun getRefreshToken(): String? = read(KEY_REFRESH)
-
-    override suspend fun getSubject(): String? = read(KEY_SUBJECT)
-
-    override suspend fun save(
-        access: String,
-        refresh: String,
-        subject: String,
-    ) = withContext(Dispatchers.IO) {
+    override suspend fun loadExpiresAt(): Long? = withContext(Dispatchers.IO) {
         runCatching {
-            prefs.edit()
-                .putString(KEY_ACCESS, access)
-                .putString(KEY_REFRESH, refresh)
-                .putString(KEY_SUBJECT, subject)
-                .apply()
+            val raw = prefs.getLong(KEY_EXPIRES_AT, -1L)
+            if (raw <= 0L) null else raw
+        }.getOrNull()
+    }
+
+    override suspend fun saveAccess(token: String, expiresAt: Long?) = withContext(Dispatchers.IO) {
+        runCatching {
+            prefs.edit().apply {
+                putString(KEY_ACCESS, token)
+                if (expiresAt != null) {
+                    putLong(KEY_EXPIRES_AT, expiresAt)
+                } else {
+                    remove(KEY_EXPIRES_AT)
+                }
+            }.apply()
         }
         Unit
     }
@@ -51,14 +55,9 @@ private class EncryptedPreferencesTokenStorage(context: Context) : TokenStorage 
         Unit
     }
 
-    private suspend fun read(key: String): String? = withContext(Dispatchers.IO) {
-        runCatching { prefs.getString(key, null) }.getOrNull()
-    }
-
     private companion object {
         const val PREF_FILE = "fuju_tokens"
         const val KEY_ACCESS = "access"
-        const val KEY_REFRESH = "refresh"
-        const val KEY_SUBJECT = "subject"
+        const val KEY_EXPIRES_AT = "expires_at"
     }
 }
