@@ -3,74 +3,83 @@ package studio.nxtech.fujubank.data.remote.dto
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class AuthDtoTest {
 
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = Json {
+        ignoreUnknownKeys = true
+        explicitNulls = false
+    }
+
+    @Test
+    fun loginRequest_uses_identifier_field() {
+        val encoded = json.encodeToString(
+            LoginRequest.serializer(),
+            LoginRequest(identifier = "user@example.com", password = "pw"),
+        )
+        assertEquals("""{"identifier":"user@example.com","password":"pw"}""", encoded)
+    }
 
     @Test
     fun loginRequest_roundtrips() {
-        val original = LoginRequest(email = "user@example.com", password = "p@ssw0rd")
+        val original = LoginRequest(identifier = "alice01", password = "p@ssw0rd")
         val encoded = json.encodeToString(LoginRequest.serializer(), original)
         val decoded = json.decodeFromString(LoginRequest.serializer(), encoded)
         assertEquals(original, decoded)
     }
 
     @Test
-    fun loginRequest_uses_camelCase_field_names() {
-        val encoded = json.encodeToString(
-            LoginRequest.serializer(),
-            LoginRequest(email = "a@b.co", password = "pw"),
-        )
-        assertEquals("""{"email":"a@b.co","password":"pw"}""", encoded)
-    }
-
-    @Test
-    fun refreshRequest_uses_snake_case() {
-        val encoded = json.encodeToString(
-            RefreshRequest.serializer(),
-            RefreshRequest(refreshToken = "rt-123"),
-        )
-        assertEquals("""{"refresh_token":"rt-123"}""", encoded)
-    }
-
-    @Test
-    fun refreshRequest_roundtrips() {
-        val original = RefreshRequest(refreshToken = "rt-123")
-        val encoded = json.encodeToString(RefreshRequest.serializer(), original)
-        val decoded = json.decodeFromString(RefreshRequest.serializer(), encoded)
-        assertEquals(original, decoded)
-    }
-
-    @Test
-    fun tokenResponse_deserializes_snake_case_payload() {
+    fun tokenResponse_deserializes_authcore_payload() {
         val payload = """
             {
               "access_token": "at-abc",
-              "refresh_token": "rt-xyz",
-              "subject": "01HZY8X2B7K3J4M5N6P7Q8R9ST",
-              "expires_in": 3600
+              "token_type": "Bearer",
+              "expires_in": 900
             }
         """.trimIndent()
 
         val decoded = json.decodeFromString(TokenResponse.serializer(), payload)
 
         assertEquals("at-abc", decoded.accessToken)
-        assertEquals("rt-xyz", decoded.refreshToken)
-        assertEquals("01HZY8X2B7K3J4M5N6P7Q8R9ST", decoded.subject)
-        assertEquals(3600L, decoded.expiresIn)
+        assertEquals("Bearer", decoded.tokenType)
+        assertEquals(900L, decoded.expiresIn)
     }
 
     @Test
-    fun tokenResponse_roundtrips() {
-        val original = TokenResponse(
-            accessToken = "at-abc",
-            refreshToken = "rt-xyz",
-            subject = "01HZY8X2B7K3J4M5N6P7Q8R9ST",
-            expiresIn = 3600L,
+    fun preTokenResponse_deserializes_mfa_payload() {
+        val payload = """
+            {
+              "pre_token": "pt-xyz",
+              "mfa_required": true,
+              "token_type": "Bearer",
+              "expires_in": 600
+            }
+        """.trimIndent()
+
+        val decoded = json.decodeFromString(PreTokenResponse.serializer(), payload)
+
+        assertEquals("pt-xyz", decoded.preToken)
+        assertEquals(true, decoded.mfaRequired)
+        assertEquals(600L, decoded.expiresIn)
+    }
+
+    @Test
+    fun mfaVerifyRequest_omits_null_fields() {
+        val encoded = json.encodeToString(
+            MfaVerifyRequest.serializer(),
+            MfaVerifyRequest(code = "123456"),
         )
-        val encoded = json.encodeToString(TokenResponse.serializer(), original)
-        val decoded = json.decodeFromString(TokenResponse.serializer(), encoded)
-        assertEquals(original, decoded)
+        // explicitNulls = false なので recovery_code は出ない。
+        assertEquals("""{"code":"123456"}""", encoded)
+    }
+
+    @Test
+    fun mfaVerifyRequest_uses_snake_case_for_recovery_code() {
+        val encoded = json.encodeToString(
+            MfaVerifyRequest.serializer(),
+            MfaVerifyRequest(recoveryCode = "abcd-efgh"),
+        )
+        assertTrue(encoded.contains(""""recovery_code":"abcd-efgh""""), "encoded=$encoded")
     }
 }
