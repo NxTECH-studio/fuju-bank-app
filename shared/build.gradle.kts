@@ -82,8 +82,18 @@ android {
 // に debug URL (`http://10.0.2.2:3000`) が埋め込まれる事故が起きうる。BuildKonfig は
 // `project.findProperty("buildkonfig.flavor")` で値を読むため、extra プロパティでも
 // `-P` と同じ経路で拾われる。
+//
+// Xcode から起動される `embedAndSignAppleFrameworkForXcode` は内部で $CONFIGURATION を
+// 読んで linkDebug / linkRelease にディスパッチするが、トップレベル task 名には
+// "Release" を含まないため task 名だけ見ても release を判別できない。よって
+// CONFIGURATION env var も併せて見る。これで Xcode の Scheme で Release を選ぶだけで
+// release flavor が発火するようになる（Android Studio は Build Variants の release が
+// `assembleRelease` を呼ぶので task 名側で拾える）。
 if (!project.hasProperty("buildkonfig.flavor")) {
-    val triggersRelease = gradle.startParameter.taskNames.any { name ->
+    val taskNames = gradle.startParameter.taskNames
+    val xcodeRelease = System.getenv("CONFIGURATION") == "Release" &&
+        taskNames.any { it.contains("embedAndSignAppleFramework") }
+    val triggersRelease = xcodeRelease || taskNames.any { name ->
         val isAndroidRelease = name.contains("Release") &&
             !name.contains("UnitTest") &&
             !name.contains("AndroidTest")
