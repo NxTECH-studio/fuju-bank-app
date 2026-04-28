@@ -38,7 +38,12 @@ internal fun KtorClientConfig<*>.applyCommon(config: HttpClientConfig) {
     }
     install(Logging) {
         level = if (config.enableLogging) LogLevel.BODY else LogLevel.HEADERS
-        sanitizeHeader { header -> header.equals(HttpHeaders.Authorization, ignoreCase = true) }
+        sanitizeHeader { header ->
+            header.equals(HttpHeaders.Authorization, ignoreCase = true) ||
+                header.equals(HttpHeaders.Cookie, ignoreCase = true) ||
+                header.equals(HttpHeaders.SetCookie, ignoreCase = true) ||
+                header.equals(HttpHeaders.ProxyAuthorization, ignoreCase = true)
+        }
     }
     install(HttpTimeout) {
         requestTimeoutMillis = 30_000
