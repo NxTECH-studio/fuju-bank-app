@@ -33,7 +33,7 @@ final class SessionViewModel: ObservableObject {
 
     /// アプリ起動時に呼んで、保存済み access / refresh cookie からセッションを復元する。
     func bootstrap() {
-        SessionStoreIosKt.bootstrapSession(
+        AuthFlowIosKt.bootstrapSession(
             sessionStore: sessionStore,
             authRepository: KoinIosKt.authRepository(),
             userRepository: KoinIosKt.userRepository(),
