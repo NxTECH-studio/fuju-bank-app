@@ -91,7 +91,7 @@ A1 (AUTHCORE_BASE_URL を BuildKonfig 化)
   - `shared/src/commonMain/.../di/AuthModule.kt`（`NetworkConstants.AUTHCORE_BASE_URL` 参照箇所）
   - `shared/src/commonMain/.../di/BuildConfigFacade.kt`（`defaultAuthCoreBaseUrl()` を追加）
 - **実装ポイント**:
-  - debug: `http://10.0.2.2:9000`（Android）/ `http://localhost:9000`（iOS）など、AuthCore のローカル待受ポートに合わせる。**backend 側 B4 で実体が決まったら同期する**。
+  - debug: `http://10.0.2.2:8080`（Android）/ `http://localhost:8080`（iOS）。AuthCore (`fuju-system-authentication`) のローカル待受ポート `:8080` に合わせる。
   - release: backend 側で確定する `https://authcore.fujupay.app`（仮）。**この値は backend B4 が確定値を出すまで暫定。確定後に PR を 1 本追加で当てる前提で OK**。
   - **並列セッション運用**: A1 自体は backend 完了を待たずに着手できる。release 値が暫定でも release ビルド自体は通るので CI まで先に整える。
 - **検証**: `./gradlew :shared:generateBuildKonfig` 成功。Debug/Release それぞれで `BuildKonfig.AUTHCORE_BASE_URL` が期待値になる。
