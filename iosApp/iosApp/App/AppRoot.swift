@@ -14,15 +14,15 @@ struct AppRoot: View {
             switch session.state {
             case let mfa as SessionState.MfaPending:
                 MfaVerifyView(viewModel: MfaVerifyViewModel(preToken: mfa.preToken))
+                    .id(mfa.preToken)
             case let auth as SessionState.Authenticated:
                 AuthenticatedPlaceholderView(userId: auth.userId)
             default:
                 LoginView(viewModel: LoginViewModel())
             }
         }
-        .onAppear {
-            // 起動 1 回だけセッション復元を試みる。SwiftUI の onAppear は再表示でも呼ばれるため
-            // 実害は無いが冗長なので bootstrapped フラグを 1 つ持たせる手も後で検討する。
+        .task {
+            // SessionStore.bootstrap は冪等（2 度目以降は即 return）なので task の再起動でも安全。
             session.bootstrap()
         }
     }

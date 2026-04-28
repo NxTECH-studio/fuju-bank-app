@@ -23,7 +23,7 @@ object AuthErrorMessages {
             "リクエストが多すぎます。しばらく待ってから再試行してください"
         ApiErrorCode.VALIDATION_FAILED ->
             "入力内容を確認してください"
-        else -> "ログインに失敗しました（${error.code.name}）"
+        else -> "ログインに失敗しました。時間をおいて再試行してください"
     }
 
     /**
@@ -38,7 +38,7 @@ object AuthErrorMessages {
             "認証セッションの有効期限が切れました。最初からやり直してください"
         ApiErrorCode.RATE_LIMIT_EXCEEDED ->
             "リクエストが多すぎます。しばらく待ってから再試行してください"
-        else -> "認証に失敗しました（${error.code.name}）"
+        else -> "認証に失敗しました。時間をおいて再試行してください"
     }
 
     /**

@@ -5,7 +5,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 /**
@@ -27,10 +26,10 @@ import kotlinx.coroutines.launch
  */
 class FlowToken internal constructor(
     private val scope: CoroutineScope,
-    private val job: Job,
+    @Suppress("unused") private val job: Job,
 ) {
+    /** 観測を停止する。scope を cancel すれば子の collect も自動でキャンセルされる。 */
     fun close() {
-        job.cancel()
         scope.cancel()
     }
 }

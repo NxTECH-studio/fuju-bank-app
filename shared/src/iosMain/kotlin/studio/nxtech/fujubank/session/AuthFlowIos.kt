@@ -1,7 +1,5 @@
 package studio.nxtech.fujubank.session
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import studio.nxtech.fujubank.data.remote.ApiError
 import studio.nxtech.fujubank.data.remote.NetworkResult
@@ -42,7 +40,7 @@ fun loginAndProvision(
     password: String,
     onResult: (AuthFlowOutcome) -> Unit,
 ) {
-    CoroutineScope(Dispatchers.Main).launch {
+    sessionStore.scope.launch {
         val outcome = when (val login = authRepository.login(identifier, password)) {
             is NetworkResult.Success -> when (val value = login.value) {
                 is LoginResult.NeedsMfa -> {
@@ -75,7 +73,7 @@ fun verifyMfaAndProvision(
     recoveryCode: String?,
     onResult: (AuthFlowOutcome) -> Unit,
 ) {
-    CoroutineScope(Dispatchers.Main).launch {
+    sessionStore.scope.launch {
         val outcome = when (val verify = authRepository.verifyMfa(preToken, code = code, recoveryCode = recoveryCode)) {
             is NetworkResult.Success -> provisionAfterAuth(userRepository, sessionStore)
             is NetworkResult.Failure -> AuthFlowOutcome.Failure(
@@ -100,7 +98,7 @@ fun bootstrapSession(
     userRepository: UserRepository,
     onComplete: () -> Unit,
 ) {
-    CoroutineScope(Dispatchers.Main).launch {
+    sessionStore.scope.launch {
         sessionStore.bootstrap(authRepository, userRepository)
         onComplete()
     }

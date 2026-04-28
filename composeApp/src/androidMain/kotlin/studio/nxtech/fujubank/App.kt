@@ -14,6 +14,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import org.koin.mp.KoinPlatform
 import studio.nxtech.fujubank.data.repository.AuthRepository
 import studio.nxtech.fujubank.data.repository.UserRepository
@@ -55,25 +58,34 @@ fun App() {
         ) {
             when (val state = sessionState) {
                 is SessionState.Unauthenticated -> {
-                    val viewModel = remember {
-                        LoginViewModel(
-                            authRepository = authRepository,
-                            userRepository = userRepository,
-                            sessionStore = sessionStore,
-                        )
-                    }
+                    val viewModel: LoginViewModel = viewModel(
+                        factory = viewModelFactory {
+                            initializer {
+                                LoginViewModel(
+                                    authRepository = authRepository,
+                                    userRepository = userRepository,
+                                    sessionStore = sessionStore,
+                                )
+                            }
+                        },
+                    )
                     LoginScreen(viewModel)
                 }
                 is SessionState.MfaPending -> {
                     // pre_token が変わるたびに ViewModel を作り直すため key 化する。
-                    val viewModel = remember(state.preToken) {
-                        MfaVerifyViewModel(
-                            preToken = state.preToken,
-                            authRepository = authRepository,
-                            userRepository = userRepository,
-                            sessionStore = sessionStore,
-                        )
-                    }
+                    val viewModel: MfaVerifyViewModel = viewModel(
+                        key = state.preToken,
+                        factory = viewModelFactory {
+                            initializer {
+                                MfaVerifyViewModel(
+                                    preToken = state.preToken,
+                                    authRepository = authRepository,
+                                    userRepository = userRepository,
+                                    sessionStore = sessionStore,
+                                )
+                            }
+                        },
+                    )
                     MfaVerifyScreen(viewModel)
                 }
                 is SessionState.Authenticated -> AuthenticatedPlaceholder(userId = state.userId)

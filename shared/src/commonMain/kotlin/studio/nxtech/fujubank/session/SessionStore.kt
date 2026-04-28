@@ -1,8 +1,13 @@
 package studio.nxtech.fujubank.session
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.repository.AuthRepository
 import studio.nxtech.fujubank.data.repository.UserRepository
@@ -15,10 +20,17 @@ import studio.nxtech.fujubank.data.repository.UserRepository
  *   結果に応じて呼び出し側が `setMfaPending` / `setAuthenticated` / `clear` を切り替える。
  * - [bootstrap] はアプリ起動時に 1 度だけ呼び、access が残っていれば `getMe` で生死確認、
  *   ダメなら refresh→getMe の順でセッション復元を試みる。
+ * - [scope] はセッション関連のバックグラウンドコルーチンのオーナー。Koin singleton なので
+ *   アプリ全体で 1 つだけ存在し、AuthFlowIos などのファサードから launch する際の親になる。
  */
 class SessionStore {
     private val _state = MutableStateFlow<SessionState>(SessionState.Unauthenticated)
     val state: StateFlow<SessionState> = _state.asStateFlow()
+
+    val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    private val bootstrapMutex = Mutex()
+    private var bootstrapped: Boolean = false
 
     val current: SessionState
         get() = _state.value
@@ -43,15 +55,18 @@ class SessionStore {
      * 2. access が手に入ったら bank `GET /users/me` を叩いて自分の userId を確定。
      * 3. どこかで失敗したら [SessionState.Unauthenticated] のまま。
      *
+     * 二度目以降の呼び出しは即座に return する（Authenticated 状態を巻き戻さないため）。
      * 失敗時に既存トークンを破棄するかどうかは呼び出し側（authRepository.logout など）に任せる。
-     * ここでは「成功したら Authenticated にする」だけに責務を絞る。
      */
     suspend fun bootstrap(
         authRepository: AuthRepository,
         userRepository: UserRepository,
     ) {
+        bootstrapMutex.withLock {
+            if (bootstrapped) return
+            bootstrapped = true
+        }
         if (!authRepository.isAuthenticated()) {
-            // access 無し → refresh を試す（HttpOnly cookie が残っていれば成功する）
             when (authRepository.refresh()) {
                 is NetworkResult.Success -> Unit
                 is NetworkResult.Failure, is NetworkResult.NetworkFailure -> {
