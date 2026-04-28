@@ -76,6 +76,26 @@ android {
     }
 }
 
+// Android `assembleRelease` / `bundleRelease` や iOS の Release framework リンク等の
+// release 系タスクが起動された場合は BuildKonfig の flavor も release に強制する。
+// これを入れないと `-Pbuildkonfig.flavor=release` の付け忘れで本番 AAB / iOS Framework
+// に debug URL (`http://10.0.2.2:3000`) が埋め込まれる事故が起きうる。BuildKonfig は
+// `project.findProperty("buildkonfig.flavor")` で値を読むため、extra プロパティでも
+// `-P` と同じ経路で拾われる。
+if (!project.hasProperty("buildkonfig.flavor")) {
+    val triggersRelease = gradle.startParameter.taskNames.any { name ->
+        val isAndroidRelease = name.contains("Release") &&
+            !name.contains("UnitTest") &&
+            !name.contains("AndroidTest")
+        val isIosReleaseLink = name.startsWith("linkRelease") ||
+            name.contains("ReleaseFrameworkIos")
+        isAndroidRelease || isIosReleaseLink
+    }
+    if (triggersRelease) {
+        extra["buildkonfig.flavor"] = "release"
+    }
+}
+
 buildkonfig {
     packageName = "studio.nxtech.fujubank"
     objectName = "BuildKonfig"
