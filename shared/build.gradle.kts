@@ -101,15 +101,19 @@ buildkonfig {
     objectName = "BuildKonfig"
 
     // デフォルト（debug 相当）: Android エミュレータからホストの localhost を叩く 10.0.2.2 を使う。
+    // AUTHCORE は別リポジトリ (`fuju-system-authentication`) のサービスでローカルは :8080。
     defaultConfigs {
         buildConfigField(STRING, "BANK_API_BASE_URL", "http://10.0.2.2:3000")
         buildConfigField(STRING, "CABLE_URL", "ws://10.0.2.2:3000/cable")
+        buildConfigField(STRING, "AUTHCORE_BASE_URL", "http://10.0.2.2:8080")
     }
 
     // Release ビルドでは本番 API を向ける。`-Pbuildkonfig.flavor=release` で切り替え。
+    // AUTHCORE_BASE_URL の release 値は backend B4 確定までの暫定。確定後に追従 PR を 1 本当てる。
     defaultConfigs("release") {
         buildConfigField(STRING, "BANK_API_BASE_URL", "https://api.fujupay.app")
         buildConfigField(STRING, "CABLE_URL", "wss://api.fujupay.app/cable")
+        buildConfigField(STRING, "AUTHCORE_BASE_URL", "https://authcore.fujupay.app")
     }
 
     // iOS シミュレータは Mac 上の localhost に直接アクセスできるため上書きする。
@@ -117,10 +121,12 @@ buildkonfig {
         create("iosArm64") {
             buildConfigField(STRING, "BANK_API_BASE_URL", "http://localhost:3000")
             buildConfigField(STRING, "CABLE_URL", "ws://localhost:3000/cable")
+            buildConfigField(STRING, "AUTHCORE_BASE_URL", "http://localhost:8080")
         }
         create("iosSimulatorArm64") {
             buildConfigField(STRING, "BANK_API_BASE_URL", "http://localhost:3000")
             buildConfigField(STRING, "CABLE_URL", "ws://localhost:3000/cable")
+            buildConfigField(STRING, "AUTHCORE_BASE_URL", "http://localhost:8080")
         }
     }
 
@@ -129,10 +135,12 @@ buildkonfig {
         create("iosArm64") {
             buildConfigField(STRING, "BANK_API_BASE_URL", "https://api.fujupay.app")
             buildConfigField(STRING, "CABLE_URL", "wss://api.fujupay.app/cable")
+            buildConfigField(STRING, "AUTHCORE_BASE_URL", "https://authcore.fujupay.app")
         }
         create("iosSimulatorArm64") {
             buildConfigField(STRING, "BANK_API_BASE_URL", "https://api.fujupay.app")
             buildConfigField(STRING, "CABLE_URL", "wss://api.fujupay.app/cable")
+            buildConfigField(STRING, "AUTHCORE_BASE_URL", "https://authcore.fujupay.app")
         }
     }
 }
