@@ -14,6 +14,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.remote.api.UserApi
+import studio.nxtech.fujubank.data.remote.api.UserMeApi
 import studio.nxtech.fujubank.domain.model.Transaction
 import studio.nxtech.fujubank.domain.model.TransactionKind
 import studio.nxtech.fujubank.domain.model.User
@@ -58,7 +59,7 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)))
+        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
 
         val result = repository.create(subject = "01HZY8X2B7K3J4M5N6P7Q8R9ST")
 
@@ -86,7 +87,7 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)))
+        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
 
         val result = repository.get("usr_01HZY8X2B7")
 
@@ -120,7 +121,7 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)))
+        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
 
         val result = repository.transactions("usr_me")
 
@@ -159,7 +160,7 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)))
+        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
 
         val result = repository.transactions("usr_me")
 
@@ -195,7 +196,7 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)))
+        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
 
         val result = repository.transactions("usr_me")
 
@@ -214,11 +215,69 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)))
+        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
 
         val result = repository.transactions("usr_me")
 
         val success = assertIs<NetworkResult.Success<List<Transaction>>>(result)
         assertEquals(0, success.value.size)
+    }
+
+    @Test
+    fun provisionMe_maps_user_response_to_domain() = runTest {
+        val engine = MockEngine { request ->
+            assertEquals("/users/me", request.url.encodedPath)
+            assertEquals("POST", request.method.value)
+            respond(
+                content = ByteReadChannel(
+                    """
+                    {
+                      "id": "usr_provisioned",
+                      "sub": "s",
+                      "balance_fuju": 0,
+                      "created_at": "2026-04-21T12:34:56Z"
+                    }
+                    """.trimIndent(),
+                ),
+                status = HttpStatusCode.Created,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
+
+        val result = repository.provisionMe()
+
+        val success = assertIs<NetworkResult.Success<User>>(result)
+        assertEquals("usr_provisioned", success.value.id)
+        assertEquals(0L, success.value.balanceFuju)
+    }
+
+    @Test
+    fun getMe_maps_user_response_to_domain() = runTest {
+        val engine = MockEngine { request ->
+            assertEquals("/users/me", request.url.encodedPath)
+            assertEquals("GET", request.method.value)
+            respond(
+                content = ByteReadChannel(
+                    """
+                    {
+                      "id": "usr_me",
+                      "sub": "s",
+                      "balance_fuju": 5000,
+                      "created_at": "2026-04-21T12:34:56Z"
+                    }
+                    """.trimIndent(),
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
+
+        val result = repository.getMe()
+
+        val success = assertIs<NetworkResult.Success<User>>(result)
+        assertEquals("usr_me", success.value.id)
+        assertEquals(5_000L, success.value.balanceFuju)
     }
 }

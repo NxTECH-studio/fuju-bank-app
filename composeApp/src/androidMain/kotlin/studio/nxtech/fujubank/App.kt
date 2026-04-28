@@ -1,86 +1,105 @@
 package studio.nxtech.fujubank
 
-import android.util.Log
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.painterResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import org.koin.mp.KoinPlatform
-import studio.nxtech.fujubank.data.remote.NetworkResult
-import studio.nxtech.fujubank.data.remote.api.UserApi
+import studio.nxtech.fujubank.data.repository.AuthRepository
+import studio.nxtech.fujubank.data.repository.UserRepository
+import studio.nxtech.fujubank.features.auth.LoginScreen
+import studio.nxtech.fujubank.features.auth.LoginViewModel
+import studio.nxtech.fujubank.features.auth.MfaVerifyScreen
+import studio.nxtech.fujubank.features.auth.MfaVerifyViewModel
+import studio.nxtech.fujubank.session.SessionState
+import studio.nxtech.fujubank.session.SessionStore
 
-import fujubankapp.composeapp.generated.resources.Res
-import fujubankapp.composeapp.generated.resources.compose_multiplatform
-
+/**
+ * Android アプリのルート Composable。
+ *
+ * SessionStore.state を観測して `Unauthenticated → LoginScreen` /
+ * `MfaPending → MfaVerifyScreen` / `Authenticated → 暫定ホームスタブ` を切り替える。
+ * ホーム本体は A3 で作るのでここでは残高とサインアウト導線を持たないプレースホルダ。
+ */
 @Composable
 @Preview
 fun App() {
+    val koin = remember { KoinPlatform.getKoin() }
+    val sessionStore = remember { koin.get<SessionStore>() }
+    val authRepository = remember { koin.get<AuthRepository>() }
+    val userRepository = remember { koin.get<UserRepository>() }
+
+    // アプリ初回起動時に保存済みトークン or refresh cookie でセッション復元を試みる。
+    LaunchedEffect(Unit) {
+        sessionStore.bootstrap(authRepository, userRepository)
+    }
+
+    val sessionState by sessionStore.state.collectAsStateWithLifecycle()
+
     MaterialTheme {
-        var showContent by remember { mutableStateOf(false) }
-        // TODO: remove after smoke test
-        val scope = rememberCoroutineScope()
-        Column(
+        Surface(
             modifier = Modifier
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .safeContentPadding()
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                .fillMaxSize()
+                .safeContentPadding(),
+            color = MaterialTheme.colorScheme.background,
         ) {
-            Button(onClick = { showContent = !showContent }) {
-                Text("Click me!")
-            }
-            // TODO: remove after smoke test
-            Button(onClick = { scope.launch { runUserApiSmokeTest() } }) {
-                Text("Smoke test: UserApi.get")
-            }
-            AnimatedVisibility(showContent) {
-                val greeting = remember { Greeting().greet() }
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Image(painterResource(Res.drawable.compose_multiplatform), null)
-                    Text("Compose: $greeting")
+            when (val state = sessionState) {
+                is SessionState.Unauthenticated -> {
+                    val viewModel: LoginViewModel = viewModel(
+                        factory = viewModelFactory {
+                            initializer {
+                                LoginViewModel(
+                                    authRepository = authRepository,
+                                    userRepository = userRepository,
+                                    sessionStore = sessionStore,
+                                )
+                            }
+                        },
+                    )
+                    LoginScreen(viewModel)
                 }
+                is SessionState.MfaPending -> {
+                    // pre_token が変わるたびに ViewModel を作り直すため key 化する。
+                    val viewModel: MfaVerifyViewModel = viewModel(
+                        key = state.preToken,
+                        factory = viewModelFactory {
+                            initializer {
+                                MfaVerifyViewModel(
+                                    preToken = state.preToken,
+                                    authRepository = authRepository,
+                                    userRepository = userRepository,
+                                    sessionStore = sessionStore,
+                                )
+                            }
+                        },
+                    )
+                    MfaVerifyScreen(viewModel)
+                }
+                is SessionState.Authenticated -> AuthenticatedPlaceholder(userId = state.userId)
             }
         }
     }
 }
 
-// TODO: remove after smoke test
-private const val SMOKE_TEST_TAG = "FujuBankSmoke"
-
-// TODO: remove after smoke test
-private const val SMOKE_TEST_USER_ID = "00000000-0000-0000-0000-000000000000"
-
-// TODO: remove after smoke test
-private suspend fun runUserApiSmokeTest() {
-    val api = KoinPlatform.getKoin().get<UserApi>()
-    when (val result = api.get(SMOKE_TEST_USER_ID)) {
-        is NetworkResult.Success -> Log.i(
-            SMOKE_TEST_TAG,
-            "user=${result.value.id} balance_fuju=${result.value.balanceFuju}",
-        )
-        is NetworkResult.Failure -> Log.w(
-            SMOKE_TEST_TAG,
-            "api error code=${result.error.code} status=${result.error.httpStatus}",
-        )
-        is NetworkResult.NetworkFailure -> Log.w(
-            SMOKE_TEST_TAG,
-            "network failure",
-            result.cause,
+@Composable
+private fun AuthenticatedPlaceholder(userId: String) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(
+            text = "ログイン済み: $userId\n（A3 でホーム画面を実装します）",
+            style = MaterialTheme.typography.bodyLarge,
         )
     }
 }

@@ -10,6 +10,7 @@ import org.koin.dsl.KoinAppDeclaration
 fun sharedModules(cableUrl: String): List<Module> = listOf(
     authModule,
     userModule,
+    sessionModule,
     ledgerModule,
     realtimeModule(cableUrl),
     artifactModule,
