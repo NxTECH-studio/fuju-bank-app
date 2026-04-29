@@ -39,7 +39,7 @@ struct SignUpHeader: View {
             }
             .frame(width: 48, height: 48)
             Spacer()
-            Image("FujuWordmark")
+            Image("FujuLogo")
                 .resizable()
                 .scaledToFit()
                 .frame(height: 28)
