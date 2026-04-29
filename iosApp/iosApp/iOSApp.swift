@@ -9,7 +9,8 @@ struct iOSApp: App {
 
     var body: some Scene {
         WindowGroup {
-            AppRoot()
+            // SplashGate が bootstrap 完了 + min-duration を待ってから AppRoot に切替える。
+            SplashGate()
         }
     }
 }

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Splash screen 背景色。Figma node 175-2457 の `#F6F7F9` (薄いグレー)。
+      windowSplashScreenBackground と SwiftUI 側 SplashView (FujuSplashBackground.colorset)
+      の背景色は揃えること（チラつき防止）。
+    -->
+    <color name="fuju_splash_bg">#FFF6F7F9</color>
+</resources>

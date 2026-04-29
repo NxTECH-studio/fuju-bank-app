@@ -42,6 +42,16 @@ fun observeSession(store: SessionStore, onChange: (SessionState) -> Unit): FlowT
     observe(store.state, onChange)
 
 /**
+ * SessionStore の `bootstrapped` を Swift クロージャに転送する。
+ *
+ * Splash 画面で「bootstrap が完了したか」を監視する用途。`SessionState` 観測と同じく、
+ * 初期値（false）も subscribe 直後に 1 回 emit される。`true` を受け取ったら呼び出し側で
+ * close すれば良い。
+ */
+fun observeBootstrapped(store: SessionStore, onChange: (Boolean) -> Unit): FlowToken =
+    observe(store.bootstrapped) { value -> onChange(value) }
+
+/**
  * 任意の StateFlow を Swift クロージャに繋ぐ汎用版。今は SessionStore 観測専用だが、
  * A3 以降で他の Flow もブリッジする想定で内部に切り出しておく。
  */

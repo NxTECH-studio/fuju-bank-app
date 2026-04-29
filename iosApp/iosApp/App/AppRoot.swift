@@ -21,10 +21,9 @@ struct AppRoot: View {
                 LoginView(viewModel: LoginViewModel())
             }
         }
-        .task {
-            // SessionStore.bootstrap は冪等（2 度目以降は即 return）なので task の再起動でも安全。
-            session.bootstrap()
-        }
+        // bootstrap の起動は SplashGate に移管したのでここでは行わない。
+        // SplashGate が bootstrapped == true を確認してから AppRoot を出すため、
+        // 表示時点で SessionStore.state は復元済みになっている。
     }
 }
 

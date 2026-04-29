@@ -30,7 +30,19 @@ class SessionStore {
     val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val bootstrapMutex = Mutex()
-    private var bootstrapped: Boolean = false
+    // bootstrap の実体処理が「開始済み」かを表す。完了通知は _bootstrapped で別管理する。
+    // mutex 配下で立てることで、二重起動防止と「失敗時にも完了通知 = true」を両立させる。
+    private var bootstrapStarted: Boolean = false
+
+    /**
+     * `bootstrap()` の完了通知（成功・失敗どちらでも `true` になる）。
+     *
+     * Splash の出し分けに使う。Android 側は `MainActivity.installSplashScreen().setKeepOnScreenCondition`、
+     * iOS 側は SwiftUI ルートの SplashView から `observeBootstrapped` 経由で観測する。
+     * 一度 `true` になったらリセットしない（再ログインでも復元処理は走らないため）。
+     */
+    private val _bootstrapped = MutableStateFlow(false)
+    val bootstrapped: StateFlow<Boolean> = _bootstrapped.asStateFlow()
 
     val current: SessionState
         get() = _state.value
@@ -63,23 +75,28 @@ class SessionStore {
         userRepository: UserRepository,
     ) {
         bootstrapMutex.withLock {
-            if (bootstrapped) return
-            bootstrapped = true
+            if (bootstrapStarted) return
+            bootstrapStarted = true
         }
-        if (!authRepository.isAuthenticated()) {
-            when (authRepository.refresh()) {
-                is NetworkResult.Success -> Unit
-                is NetworkResult.Failure, is NetworkResult.NetworkFailure -> {
-                    _state.value = SessionState.Unauthenticated
-                    return
+        try {
+            if (!authRepository.isAuthenticated()) {
+                when (authRepository.refresh()) {
+                    is NetworkResult.Success -> Unit
+                    is NetworkResult.Failure, is NetworkResult.NetworkFailure -> {
+                        _state.value = SessionState.Unauthenticated
+                        return
+                    }
                 }
             }
-        }
-        when (val me = userRepository.getMe()) {
-            is NetworkResult.Success -> _state.value = SessionState.Authenticated(me.value.id)
-            is NetworkResult.Failure, is NetworkResult.NetworkFailure -> {
-                _state.value = SessionState.Unauthenticated
+            when (val me = userRepository.getMe()) {
+                is NetworkResult.Success -> _state.value = SessionState.Authenticated(me.value.id)
+                is NetworkResult.Failure, is NetworkResult.NetworkFailure -> {
+                    _state.value = SessionState.Unauthenticated
+                }
             }
+        } finally {
+            // 成功・失敗・例外いずれでも完了を通知する。これを忘れると Splash が永久に出続ける。
+            _bootstrapped.value = true
         }
     }
 }
