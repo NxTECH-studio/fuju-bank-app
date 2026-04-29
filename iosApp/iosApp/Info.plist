@@ -4,6 +4,8 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>CFBundleDisplayName</key>
+	<string>ふじゅ〜</string>
 	<!--
 	  Launch Screen 定義。Xcode 自動生成 (UILaunchScreen_Generation) を切り、
 	  本 plist の値を使う。Figma node 383-18577 の実アセット差し替えは別途。

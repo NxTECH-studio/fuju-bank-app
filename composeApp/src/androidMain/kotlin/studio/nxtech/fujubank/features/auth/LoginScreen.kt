@@ -55,7 +55,7 @@ import studio.nxtech.fujubank.R
  * ログイン画面（Android）— Figma node 302-2698 準拠。
  *
  * - 背景は splash と同じ `#F6F7F9`（Subtract 装飾はオープニング画面以外では出さない方針）。
- * - ヘッダにワードマーク `fuju pay` のみ表示（戻る矢印は導線上は無効、視覚的な対称のため左に配置）。
+ * - ヘッダに splash と同じ icon + `fuju pay` の合成ロゴを表示（戻る矢印は導線上は無効、視覚的な対称のため左に配置）。
  * - 入力欄は flat な rounded-16 白カード（M3 OutlinedTextField ではなく BasicTextField で見た目を Figma に揃える）。
  * - ログイン CTA は底部固定（rounded-16, ブランドピンク `#FF1E9E`）。
  * - 「Googleで続ける」「新規登録」リンクは A2f 以降で配線するため本画面ではタップ無効。
@@ -144,7 +144,7 @@ private fun Header() {
             )
         }
         Image(
-            painter = painterResource(R.drawable.fuju_wordmark),
+            painter = painterResource(R.drawable.fuju_logo),
             contentDescription = "fuju pay",
             modifier = Modifier
                 .height(28.dp),
