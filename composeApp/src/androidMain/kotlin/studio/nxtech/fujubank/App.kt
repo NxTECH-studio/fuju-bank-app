@@ -95,9 +95,7 @@ fun App() {
             ) {
                 if (bypassAuth) {
                     AuthenticatedPlaceholder(userId = "debug-bypass")
-                    return@Surface
-                }
-                when (val state = sessionState) {
+                } else when (val state = sessionState) {
                     is SessionState.Unauthenticated -> {
                         val viewModel: LoginViewModel = viewModel(
                             factory = viewModelFactory {
