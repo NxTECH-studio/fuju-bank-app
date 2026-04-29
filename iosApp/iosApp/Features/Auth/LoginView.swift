@@ -3,7 +3,7 @@ import Shared
 
 /// ログイン画面 — Figma node 302-2698 準拠。
 ///
-/// - 背景は splash と同じ `#F6F7F9`、装飾オーバーレイは `FujuSplashDecoration` を流用。
+/// - 背景は splash と同じ `#F6F7F9`（Subtract 装飾はオープニング画面以外では出さない方針）。
 /// - ヘッダにワードマーク `fuju pay` のみ表示。戻る矢印は視覚対称のため左に配置するが導線無効。
 /// - 入力欄は flat な rounded-16 白カード（`TextField` のデフォルト枠を消し、placeholder 色を Figma に揃える）。
 /// - ログイン CTA は底部固定（rounded-16, ブランドピンク `#FF1E9E`）。
@@ -24,11 +24,6 @@ struct LoginView: View {
         ZStack {
             Color("FujuSplashBackground")
                 .ignoresSafeArea()
-            Image("FujuSplashDecoration")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 252, height: 352)
-                .offset(y: -34)
 
             VStack(spacing: 0) {
                 header

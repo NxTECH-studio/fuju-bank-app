@@ -11,10 +11,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -55,7 +53,7 @@ import studio.nxtech.fujubank.R
 /**
  * ログイン画面（Android）— Figma node 302-2698 準拠。
  *
- * - 背景は splash と同じ `#F6F7F9`、装飾オーバーレイは splash の Subtract 装飾を流用。
+ * - 背景は splash と同じ `#F6F7F9`（Subtract 装飾はオープニング画面以外では出さない方針）。
  * - ヘッダにワードマーク `fuju pay` のみ表示（戻る矢印は導線上は無効、視覚的な対称のため左に配置）。
  * - 入力欄は flat な rounded-16 白カード（M3 OutlinedTextField ではなく BasicTextField で見た目を Figma に揃える）。
  * - ログイン CTA は底部固定（rounded-16, ブランドピンク `#FF1E9E`）。
@@ -74,17 +72,6 @@ fun LoginScreen(
             .fillMaxSize()
             .background(colorResource(R.color.fuju_splash_bg)),
     ) {
-        Image(
-            painter = painterResource(R.drawable.fuju_splash_decoration),
-            contentDescription = null,
-            modifier = Modifier
-                .align(Alignment.Center)
-                .width(252.dp)
-                .height(352.dp)
-                .offset(y = (-34).dp),
-            contentScale = ContentScale.Fit,
-        )
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -462,16 +449,6 @@ private fun LoginScreenLayoutPreview() {
             .fillMaxSize()
             .background(Color(0xFFF6F7F9)),
     ) {
-        Image(
-            painter = painterResource(R.drawable.fuju_splash_decoration),
-            contentDescription = null,
-            modifier = Modifier
-                .align(Alignment.Center)
-                .width(252.dp)
-                .height(352.dp)
-                .offset(y = (-34).dp),
-            contentScale = ContentScale.Fit,
-        )
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp)) {
             Header()
             Spacer(Modifier.weight(1f))
