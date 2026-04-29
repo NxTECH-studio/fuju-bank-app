@@ -29,8 +29,11 @@ import studio.nxtech.fujubank.features.auth.LoginScreen
 import studio.nxtech.fujubank.features.auth.LoginViewModel
 import studio.nxtech.fujubank.features.auth.MfaVerifyScreen
 import studio.nxtech.fujubank.features.auth.MfaVerifyViewModel
+import studio.nxtech.fujubank.features.welcome.WelcomeScreen
 import studio.nxtech.fujubank.session.SessionState
 import studio.nxtech.fujubank.session.SessionStore
+import studio.nxtech.fujubank.signup.SignupCompletionSignal
+import studio.nxtech.fujubank.signup.SignupWelcomePreferences
 import studio.nxtech.fujubank.splash.SplashConfig
 import studio.nxtech.fujubank.splash.SplashScreen
 
@@ -50,6 +53,8 @@ fun App() {
     val sessionStore = remember { koin.get<SessionStore>() }
     val authRepository = remember { koin.get<AuthRepository>() }
     val userRepository = remember { koin.get<UserRepository>() }
+    val signupCompletionSignal = remember { koin.get<SignupCompletionSignal>() }
+    val signupWelcomePreferences = remember { koin.get<SignupWelcomePreferences>() }
 
     // 画面回転で Activity が再生成されても Splash を再表示しないよう rememberSaveable で保持。
     // SystemClock.elapsedRealtime() は端末スリープ中も進むため、最低表示時間を厳密に保証する。
@@ -71,6 +76,8 @@ fun App() {
     }
 
     val sessionState by sessionStore.state.collectAsStateWithLifecycle()
+    val welcomePending by signupCompletionSignal.pending.collectAsStateWithLifecycle()
+    val welcomeAlreadyShown by signupWelcomePreferences.signupCompleted.collectAsStateWithLifecycle()
 
     MaterialTheme {
         if (!splashFinished) {
@@ -114,7 +121,21 @@ fun App() {
                         )
                         MfaVerifyScreen(viewModel)
                     }
-                    is SessionState.Authenticated -> AuthenticatedPlaceholder(userId = state.userId)
+                    is SessionState.Authenticated -> {
+                        // サインアップ画面発の Authenticated 遷移かつ未表示のときだけ Welcome を 1 段挟む。
+                        // 永続フラグは表示完了後に立てるので、kill→再起動で bootstrap 復元された
+                        // Authenticated には pending = false で素通りする。
+                        if (welcomePending && !welcomeAlreadyShown) {
+                            WelcomeScreen(
+                                onFinish = {
+                                    signupWelcomePreferences.markCompleted()
+                                    signupCompletionSignal.consume()
+                                },
+                            )
+                        } else {
+                            AuthenticatedPlaceholder(userId = state.userId)
+                        }
+                    }
                 }
             }
         }

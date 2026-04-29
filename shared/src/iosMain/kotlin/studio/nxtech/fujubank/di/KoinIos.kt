@@ -6,6 +6,8 @@ import studio.nxtech.fujubank.data.remote.api.UserApi
 import studio.nxtech.fujubank.data.repository.AuthRepository
 import studio.nxtech.fujubank.data.repository.UserRepository
 import studio.nxtech.fujubank.session.SessionStore
+import studio.nxtech.fujubank.signup.SignupCompletionSignal
+import studio.nxtech.fujubank.signup.SignupWelcomePreferences
 
 /**
  * Swift 側から呼び出す Koin 起動関数。Obj-C 経由で `KoinIosKt.doInitKoin()` として公開される。
@@ -28,3 +30,7 @@ fun authRepository(): AuthRepository = KoinPlatform.getKoin().get()
 fun userRepository(): UserRepository = KoinPlatform.getKoin().get()
 
 fun sessionStore(): SessionStore = KoinPlatform.getKoin().get()
+
+fun signupCompletionSignal(): SignupCompletionSignal = KoinPlatform.getKoin().get()
+
+fun signupWelcomePreferences(): SignupWelcomePreferences = KoinPlatform.getKoin().get()

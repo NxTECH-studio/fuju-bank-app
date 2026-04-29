@@ -267,10 +267,11 @@ class SessionStore {
 ## 関連タスク
 
 - **A2b**: ログイン画面 UI（実装済、`SessionStore.bootstrap()` / `SessionState` 連動の前提を提供）
-- **A2d**: `a2d-welcome-as-signup-rewire.md`（未作成） — 既存「ようこそ」画面をサインアップ動線へ転用
+- **A2d**: [`a2d-welcome-as-signup-rewire.md`](./a2d-welcome-as-signup-rewire.md) — 既存「ようこそ」画面をサインアップ動線へ転用
   - 動線: サインアップで認証成功 → 「ようこそ」画面へ遷移
   - 注意: A2c の本タスクが扱う「起動スプラッシュ」とは別物。Welcome は Splash の後段ではなく、サインアップ完了フックとして発火する想定。
-- **A2e**: `a2e-login-redesign.md`（未作成） — ログイン画面のリデザイン
+  - スコープ補記: A2d の実装ブランチ（`feature/a2d-welcome-as-signup-rewire`）には A2e のログイン UI 再現も同梱。詳細は A2d 本体の PR を参照。
+- **A2e**: `a2e-login-redesign.md`（実装着手は A2d に同梱、計画書は未作成） — ログイン画面のリデザイン
   - Figma:
     - <https://www.figma.com/design/bzm13wVWQmgaFFmlEbJZ3k/NxTECH?node-id=302-2698&m=dev>
     - <https://www.figma.com/design/bzm13wVWQmgaFFmlEbJZ3k/NxTECH?node-id=364-11333&m=dev>
@@ -284,4 +285,4 @@ class SessionStore {
   - 動線メモ: A2f の認証成功時 → A2d の「ようこそ」画面へ遷移する仕様（A2d の rewire と密結合）。
 - **A3**: `a3-home-balance-profile.md` — ホーム画面（Splash 完了後 Authenticated 時の遷移先）
 
-> 補足: A2d / A2e / A2f は本ファイル作成時点（2026-04-29）で計画書未作成。後続セッションで `/create-task` する際、上記 Figma URL と動線メモを起点に着手する。
+> 補足: A2d は計画書作成・実装着手済（2026-04-29）。A2e は計画書未作成だが UI のみ A2d ブランチに同梱して先行着手済。A2f は計画書未作成のままで、後続セッションで `/create-task` する際、上記 Figma URL と動線メモを起点に着手する。
