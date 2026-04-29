@@ -182,7 +182,7 @@ struct LoginView: View {
     }
 
     private var signupLink: some View {
-        // 「新規登録」 のタップでサインアップフロー (A2f) に遷移する。文言・配色は変更しない。
+        // 「新規登録」のタップでサインアップフロー (A2f) に遷移する。文言・配色は変更しない。
         Button(action: onSignupTap) {
             HStack(spacing: 4) {
                 Text("アカウントをお持ちでない方は")
