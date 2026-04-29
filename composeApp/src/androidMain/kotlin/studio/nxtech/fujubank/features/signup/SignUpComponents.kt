@@ -97,7 +97,7 @@ internal fun SignUpHeader(
             }
         }
         Image(
-            painter = painterResource(R.drawable.fuju_wordmark),
+            painter = painterResource(R.drawable.fuju_logo),
             contentDescription = "fuju pay",
             modifier = Modifier.height(28.dp),
             contentScale = ContentScale.Fit,
