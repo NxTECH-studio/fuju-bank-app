@@ -3,7 +3,6 @@ package studio.nxtech.fujubank.features.auth
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +41,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
@@ -124,7 +124,7 @@ private fun Header() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 8.dp, start = 0.dp, end = 0.dp)
+            .padding(top = 8.dp)
             .height(48.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -252,7 +252,7 @@ private fun FlatTextField(
             enabled = enabled,
             singleLine = true,
             cursorBrush = SolidColor(Color(0xFF111111)),
-            visualTransformation = if (isPassword) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
+            visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             textStyle = LocalTextStyle.current.copy(
                 fontSize = 14.sp,
@@ -407,18 +407,46 @@ private fun BottomCta(
     }
 }
 
-@Suppress("unused")
-private fun ignoreClickable(): Modifier = Modifier.clickable(enabled = false) {}
-
+// Preview は LoginViewModel が Koin DI に依存しているため UI 全体は常駐レンダリングできない。
+// 代わりにレイアウト確認用のスタブとして LoginCard / Header / BottomCta を直接組む。
+// 認証 ViewModel との接続検証は実機 / エミュレータ起動で行う前提。
 @Preview(showBackground = true, widthDp = 393, heightDp = 852)
 @Composable
-private fun LoginScreenPreview() {
-    // Preview 用に簡易状態を表示するスタブ。
+private fun LoginScreenLayoutPreview() {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF6F7F9)),
     ) {
-        Text("LoginScreen Preview", modifier = Modifier.align(Alignment.Center))
+        Image(
+            painter = painterResource(R.drawable.fuju_splash_decoration),
+            contentDescription = null,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .width(252.dp)
+                .height(352.dp)
+                .offset(y = (-34).dp),
+            contentScale = ContentScale.Fit,
+        )
+        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp)) {
+            Header()
+            Spacer(Modifier.weight(1f))
+            LoginCard(
+                identifier = "",
+                password = "",
+                isSubmitting = false,
+                onIdentifierChange = {},
+                onPasswordChange = {},
+            )
+            Spacer(Modifier.weight(1f))
+            BottomCta(
+                isSubmitting = false,
+                enabled = false,
+                onClick = {},
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 16.dp),
+            )
+        }
     }
 }

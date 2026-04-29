@@ -12,6 +12,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,7 +43,10 @@ import studio.nxtech.fujubank.R
  */
 @Composable
 fun WelcomeScreen(onFinish: () -> Unit) {
-    var phase by remember { mutableStateOf(Phase.Text) }
+    var phase by rememberSaveable { mutableStateOf(Phase.Text) }
+    // configuration change で LaunchedEffect が再起動されても onFinish を二度呼ばないためのガード。
+    // markCompleted / consume はどちらも冪等だが、設計として明示的にラッチを切る。
+    var hasFinished by rememberSaveable { mutableStateOf(false) }
 
     val textAlpha by animateFloatAsState(
         targetValue = if (phase == Phase.Text) 1f else 0f,
@@ -56,9 +60,11 @@ fun WelcomeScreen(onFinish: () -> Unit) {
     )
 
     LaunchedEffect(Unit) {
+        if (hasFinished) return@LaunchedEffect
         delay(TEXT_VISIBLE_MS.toLong())
         phase = Phase.Logo
         delay(CROSSFADE_MS.toLong() + LOGO_VISIBLE_MS.toLong())
+        hasFinished = true
         onFinish()
     }
 

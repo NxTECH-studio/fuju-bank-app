@@ -39,7 +39,7 @@ class FlowToken internal constructor(
  * 初期値も即時 1 回 emit される（StateFlow の仕様）。
  */
 fun observeSession(store: SessionStore, onChange: (SessionState) -> Unit): FlowToken =
-    observe(store.state, onChange)
+    observeFlow(store.state, onChange)
 
 /**
  * SessionStore の `bootstrapped` を Swift クロージャに転送する。
@@ -49,13 +49,13 @@ fun observeSession(store: SessionStore, onChange: (SessionState) -> Unit): FlowT
  * close すれば良い。
  */
 fun observeBootstrapped(store: SessionStore, onChange: (Boolean) -> Unit): FlowToken =
-    observe(store.bootstrapped) { value -> onChange(value) }
+    observeFlow(store.bootstrapped) { value -> onChange(value) }
 
 /**
- * 任意の StateFlow を Swift クロージャに繋ぐ汎用版。今は SessionStore 観測専用だが、
- * A3 以降で他の Flow もブリッジする想定で内部に切り出しておく。
+ * 任意の StateFlow を Swift クロージャに繋ぐ汎用版。SessionStore 以外（signup 等）の
+ * iOS ブリッジからも再利用するため `internal` で公開する。
  */
-private fun <T> observe(flow: StateFlow<T>, onChange: (T) -> Unit): FlowToken {
+internal fun <T> observeFlow(flow: StateFlow<T>, onChange: (T) -> Unit): FlowToken {
     val scope = CoroutineScope(Dispatchers.Main)
     val job = scope.launch {
         flow.collect { value -> onChange(value) }
