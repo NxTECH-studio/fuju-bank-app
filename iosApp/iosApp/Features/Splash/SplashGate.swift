@@ -50,7 +50,8 @@ struct SplashGate: View {
         }
 
         let elapsed = Date().timeIntervalSince(start)
-        let remaining = SplashConfig.minDuration - elapsed
+        let minDurationSec = TimeInterval(SplashConfig.shared.MIN_DURATION_MS) / 1000.0
+        let remaining = minDurationSec - elapsed
         if remaining > 0 {
             try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
         }
