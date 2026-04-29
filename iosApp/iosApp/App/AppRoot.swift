@@ -9,28 +9,46 @@ import Shared
 struct AppRoot: View {
     @StateObject private var session = SessionViewModel()
     @StateObject private var welcomeGate = WelcomeGateViewModel()
+    // debug ビルド専用の認証スキップフラグ。SessionStore は触らず View 層だけで強制的に
+    // AuthenticatedPlaceholderView を出す。プロセス kill で消える設計（永続化しない）。
+    @State private var bypassAuth = false
 
     var body: some View {
         Group {
-            switch session.state {
-            case let mfa as SessionState.MfaPending:
-                MfaVerifyView(viewModel: MfaVerifyViewModel(preToken: mfa.preToken))
-                    .id(mfa.preToken)
-            case let auth as SessionState.Authenticated:
-                // サインアップ画面発の Authenticated 遷移 (pending) かつ未表示の場合のみ Welcome を挟む。
-                // bootstrap 復元による Authenticated は pending = false なので素通り。
-                if welcomeGate.shouldShowWelcome {
-                    WelcomeView(onFinish: { welcomeGate.markShown() })
-                } else {
-                    AuthenticatedPlaceholderView(userId: auth.userId)
+            if bypassAuth {
+                AuthenticatedPlaceholderView(userId: "debug-bypass")
+            } else {
+                switch session.state {
+                case let mfa as SessionState.MfaPending:
+                    MfaVerifyView(viewModel: MfaVerifyViewModel(preToken: mfa.preToken))
+                        .id(mfa.preToken)
+                case let auth as SessionState.Authenticated:
+                    // サインアップ画面発の Authenticated 遷移 (pending) かつ未表示の場合のみ Welcome を挟む。
+                    // bootstrap 復元による Authenticated は pending = false なので素通り。
+                    if welcomeGate.shouldShowWelcome {
+                        WelcomeView(onFinish: { welcomeGate.markShown() })
+                    } else {
+                        AuthenticatedPlaceholderView(userId: auth.userId)
+                    }
+                default:
+                    loginView
                 }
-            default:
-                LoginView(viewModel: LoginViewModel())
             }
         }
         // bootstrap の起動は SplashGate に移管したのでここでは行わない。
         // SplashGate が bootstrapped == true を確認してから AppRoot を出すため、
         // 表示時点で SessionStore.state は復元済みになっている。
+    }
+
+    private var loginView: some View {
+        // release ビルドでは onDebugSkip パラメータを渡さず、`#if DEBUG` ブロック内のシンボルが
+        // 一切残らない設計にする。LoginView 側の onDebugSkip もデフォルト nil なので、
+        // release では debug 用 CTA は完全に消える。
+        #if DEBUG
+        return LoginView(viewModel: LoginViewModel(), onDebugSkip: { bypassAuth = true })
+        #else
+        return LoginView(viewModel: LoginViewModel())
+        #endif
     }
 }
 

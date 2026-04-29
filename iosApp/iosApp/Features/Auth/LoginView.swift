@@ -3,13 +3,16 @@ import Shared
 
 /// ログイン画面 — Figma node 302-2698 準拠。
 ///
-/// - 背景は splash と同じ `#F6F7F9`、装飾オーバーレイは `FujuSplashDecoration` を流用。
+/// - 背景は splash と同じ `#F6F7F9`（Subtract 装飾はオープニング画面以外では出さない方針）。
 /// - ヘッダにワードマーク `fuju pay` のみ表示。戻る矢印は視覚対称のため左に配置するが導線無効。
 /// - 入力欄は flat な rounded-16 白カード（`TextField` のデフォルト枠を消し、placeholder 色を Figma に揃える）。
 /// - ログイン CTA は底部固定（rounded-16, ブランドピンク `#FF1E9E`）。
 /// - 「Googleで続ける」「新規登録」リンクは A2f 以降で配線するため本画面ではタップ無効。
 struct LoginView: View {
     @StateObject var viewModel: LoginViewModel
+    /// debug ビルド限定の認証スキップ callback。release では呼び出し側が渡さず常に nil。
+    /// optional 自体は release にも残るが、参照する CTA 描画コードは `#if DEBUG` で除去される。
+    var onDebugSkip: (() -> Void)? = nil
 
     private var canSubmit: Bool {
         !viewModel.identifier.trimmingCharacters(in: .whitespaces).isEmpty
@@ -21,11 +24,6 @@ struct LoginView: View {
         ZStack {
             Color("FujuSplashBackground")
                 .ignoresSafeArea()
-            Image("FujuSplashDecoration")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 252, height: 352)
-                .offset(y: -34)
 
             VStack(spacing: 0) {
                 header
@@ -45,6 +43,13 @@ struct LoginView: View {
                 bottomCta
                     .padding(.horizontal, 24)
                     .padding(.bottom, 16)
+                #if DEBUG
+                if let onDebugSkip {
+                    debugSkipButton(action: onDebugSkip)
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 16)
+                }
+                #endif
             }
         }
     }
@@ -206,6 +211,24 @@ struct LoginView: View {
         }
         .disabled(!canSubmit)
     }
+
+    #if DEBUG
+    /// debug ビルド限定の認証スキップ CTA。本番 UI に紛れた場合に一目で識別できるよう、
+    /// グレー枠 + 細字 + 「[DEBUG]」プレフィクスで本番 CTA と差別化する。
+    private func debugSkipButton(action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text("[DEBUG] ログインせず進む")
+                .font(.system(size: 13, weight: .regular))
+                .foregroundColor(Self.subText)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Self.dividerText, lineWidth: 1),
+                )
+        }
+    }
+    #endif
 
     private static let text111 = Color(red: 0x11 / 255, green: 0x11 / 255, blue: 0x11 / 255)
     private static let subText = Color(red: 0x6E / 255, green: 0x6F / 255, blue: 0x72 / 255)
