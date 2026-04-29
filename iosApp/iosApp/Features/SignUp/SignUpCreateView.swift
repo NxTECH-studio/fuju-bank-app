@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 /// Screen 1: アカウント作成（Figma `383-12951` / `296-2092`）。

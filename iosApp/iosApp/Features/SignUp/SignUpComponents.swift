@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// サインアップ 3 画面で共通利用するデザイントークンと UI 部品。
 ///
@@ -62,18 +63,18 @@ struct BankTextField: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(SignUpTokens.placeholder)
             }
-            Group {
-                if secure {
-                    SecureField("", text: $text)
-                } else {
-                    TextField("", text: $text)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled(true)
-                        .keyboardType(keyboard)
-                }
+            if secure {
+                SecureField("", text: $text)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(SignUpTokens.primaryText)
+            } else {
+                TextField("", text: $text)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled(true)
+                    .keyboardType(keyboard)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(SignUpTokens.primaryText)
             }
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundColor(SignUpTokens.primaryText)
         }
         .padding(.horizontal, 24)
         .frame(height: 48)
@@ -192,21 +193,26 @@ struct LoginRedirectLink: View {
 struct LegalAgreementText: View {
     // 利用規約 / プライバシーポリシーの遷移先実装は本タスクのスコープ外。視覚のみで配線しない。
     var body: some View {
-        (
-            Text("登録することで、")
-                .foregroundColor(SignUpTokens.secondaryText)
-            + Text("利用規約")
-                .foregroundColor(SignUpTokens.linkBlue)
-                .underline()
-            + Text(" と ")
-                .foregroundColor(SignUpTokens.secondaryText)
-            + Text("プライバシーポリシー")
-                .foregroundColor(SignUpTokens.linkBlue)
-                .underline()
-            + Text(" に同意します")
-                .foregroundColor(SignUpTokens.secondaryText)
-        )
-        .font(.system(size: 12, weight: .medium))
-        .multilineTextAlignment(.center)
+        let terms = AttributedString("利用規約", attributes: linkAttributes)
+        let policy = AttributedString("プライバシーポリシー", attributes: linkAttributes)
+        let prefix = AttributedString("登録することで、", attributes: bodyAttributes)
+        let middle = AttributedString(" と ", attributes: bodyAttributes)
+        let suffix = AttributedString(" に同意します", attributes: bodyAttributes)
+        return Text(prefix + terms + middle + policy + suffix)
+            .font(.system(size: 12, weight: .medium))
+            .multilineTextAlignment(.center)
+    }
+
+    private var bodyAttributes: AttributeContainer {
+        var c = AttributeContainer()
+        c.foregroundColor = SignUpTokens.secondaryText
+        return c
+    }
+
+    private var linkAttributes: AttributeContainer {
+        var c = AttributeContainer()
+        c.foregroundColor = SignUpTokens.linkBlue
+        c.underlineStyle = .single
+        return c
     }
 }
