@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      アプリ本体のベーステーマ。Compose を使うので装飾は最低限で良く、
+      従来 AndroidManifest が直接指定していた Theme.Material.Light.NoActionBar 相当を
+      明示的なエイリアスとして定義する。
+    -->
+    <style name="Theme.App" parent="@android:style/Theme.Material.Light.NoActionBar" />
+
+    <!--
+      アプリ起動時の Splash 用テーマ。MainActivity.installSplashScreen() で
+      利用される。bootstrap 完了後 (postSplashScreenTheme) は Theme.App に切り替わる。
+    -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/fuju_splash_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/fuju_logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.App</item>
+    </style>
+</resources>

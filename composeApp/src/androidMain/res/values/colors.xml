@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      TODO(a2c): Figma node 383-18577 の実背景色に差し替える。
+      暫定で白を採用。windowSplashScreenBackground と SwiftUI 側 SplashView の
+      背景色は揃えること（チラつき防止）。
+    -->
+    <color name="fuju_splash_bg">#FFFFFFFF</color>
+</resources>

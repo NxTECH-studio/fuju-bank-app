@@ -1,0 +1,19 @@
+<!--
+  TODO(a2c): Figma node 383-18577 から実ロゴを export して差し替える。
+  本ファイルは暫定プレースホルダ。Material splashscreen 仕様で
+  windowSplashScreenAnimatedIcon に渡す前提のため、108dp 角の
+  vector drawable として最小限の図形（円 + テキストっぽい矩形）で
+  ロゴを示している。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M54,18m-30,0a30,30 0,1 1,60 0a30,30 0,1 1,-60 0"
+        android:fillColor="#1F2937" />
+    <path
+        android:pathData="M40,46h28v6h-28zM40,56h22v6h-22zM40,66h18v4h-18z"
+        android:fillColor="#FFFFFF" />
+</vector>
