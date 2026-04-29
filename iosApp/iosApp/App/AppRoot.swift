@@ -6,12 +6,20 @@ import Shared
 /// - Unauthenticated: LoginView を表示。
 /// - MfaPending: MfaVerifyView を表示（pre_token 経由で AuthRepository.verifyMfa を叩く）。
 /// - Authenticated: ホーム本体は A3 で実装するためプレースホルダを表示。
+/// サインアップフローのローカルナビゲーション位置。
+/// SessionState は変えずに UI 層だけでサインアップ 3 画面を切替える。
+private enum SignupRoute {
+    case none, create, otp, success
+}
+
 struct AppRoot: View {
     @StateObject private var session = SessionViewModel()
     @StateObject private var welcomeGate = WelcomeGateViewModel()
+    @StateObject private var signupFlow = SignUpFlowState()
     // debug ビルド専用の認証スキップフラグ。SessionStore は触らず View 層だけで強制的に
     // AuthenticatedPlaceholderView を出す。プロセス kill で消える設計（永続化しない）。
     @State private var bypassAuth = false
+    @State private var signupRoute: SignupRoute = .none
 
     var body: some View {
         Group {
@@ -31,7 +39,7 @@ struct AppRoot: View {
                         AuthenticatedPlaceholderView(userId: auth.userId)
                     }
                 default:
-                    loginView
+                    unauthenticatedRouter
                 }
             }
         }
@@ -40,14 +48,48 @@ struct AppRoot: View {
         // 表示時点で SessionStore.state は復元済みになっている。
     }
 
+    @ViewBuilder
+    private var unauthenticatedRouter: some View {
+        switch signupRoute {
+        case .none:
+            loginView
+        case .create:
+            SignUpCreateView(
+                onNext: { signupRoute = .otp },
+                onBack: { signupRoute = .none },
+                onLoginRedirect: { signupRoute = .none },
+            )
+            .environmentObject(signupFlow)
+        case .otp:
+            SignUpOtpView(
+                onConfirm: { signupRoute = .success },
+                onBack: { signupRoute = .create },
+            )
+            .environmentObject(signupFlow)
+        case .success:
+            SignUpSuccessView(onFinish: {
+                signupFlow.reset()
+                signupRoute = .none
+            })
+        }
+    }
+
     private var loginView: some View {
         // release ビルドでは onDebugSkip パラメータを渡さず、`#if DEBUG` ブロック内のシンボルが
         // 一切残らない設計にする。LoginView 側の onDebugSkip もデフォルト nil なので、
         // release では debug 用 CTA は完全に消える。
+        let signupTap: () -> Void = {
+            signupFlow.reset()
+            signupRoute = .create
+        }
         #if DEBUG
-        return LoginView(viewModel: LoginViewModel(), onDebugSkip: { bypassAuth = true })
+        return LoginView(
+            viewModel: LoginViewModel(),
+            onSignupTap: signupTap,
+            onDebugSkip: { bypassAuth = true },
+        )
         #else
-        return LoginView(viewModel: LoginViewModel())
+        return LoginView(viewModel: LoginViewModel(), onSignupTap: signupTap)
         #endif
     }
 }

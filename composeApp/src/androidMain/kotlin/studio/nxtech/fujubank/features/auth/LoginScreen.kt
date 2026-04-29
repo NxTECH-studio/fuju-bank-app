@@ -3,6 +3,7 @@ package studio.nxtech.fujubank.features.auth
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,6 +63,7 @@ import studio.nxtech.fujubank.R
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel,
+    onSignupClick: () -> Unit = {},
     onDebugSkip: (() -> Unit)? = null,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -85,6 +87,7 @@ fun LoginScreen(
                 isSubmitting = state.isSubmitting,
                 onIdentifierChange = viewModel::onIdentifierChange,
                 onPasswordChange = viewModel::onPasswordChange,
+                onSignupClick = onSignupClick,
             )
             state.errorMessage?.let { message ->
                 Text(
@@ -158,6 +161,7 @@ private fun LoginCard(
     isSubmitting: Boolean,
     onIdentifierChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
+    onSignupClick: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -223,7 +227,7 @@ private fun LoginCard(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 GoogleButton()
-                SignupLink()
+                SignupLink(onClick = onSignupClick)
             }
         }
     }
@@ -343,8 +347,9 @@ private fun GoogleButton() {
 }
 
 @Composable
-private fun SignupLink() {
-    // 「新規登録」 のタップ動線は A2f で配線する。本タスクでは視覚のみ。
+private fun SignupLink(onClick: () -> Unit) {
+    // 「新規登録」のタップでサインアップフロー (A2f) に遷移する。文言・配色は変更しない。
+    // AnnotatedString のヒットテストは粗いので、Text 全体をクリック領域として扱う。
     val annotated = buildAnnotatedString {
         withStyle(
             SpanStyle(
@@ -366,7 +371,10 @@ private fun SignupLink() {
             append("新規登録")
         }
     }
-    Text(text = annotated)
+    Text(
+        text = annotated,
+        modifier = Modifier.clickable(onClick = onClick),
+    )
 }
 
 @Composable
@@ -458,6 +466,7 @@ private fun LoginScreenLayoutPreview() {
                 isSubmitting = false,
                 onIdentifierChange = {},
                 onPasswordChange = {},
+                onSignupClick = {},
             )
             Spacer(Modifier.weight(1f))
             BottomCta(

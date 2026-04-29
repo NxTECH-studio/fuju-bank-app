@@ -10,6 +10,8 @@ import Shared
 /// - 「Googleで続ける」「新規登録」リンクは A2f 以降で配線するため本画面ではタップ無効。
 struct LoginView: View {
     @StateObject var viewModel: LoginViewModel
+    /// 「新規登録」リンクのタップで呼ばれる。サインアップフロー (A2f) のエントリーポイント。
+    var onSignupTap: () -> Void = {}
     /// debug ビルド限定の認証スキップ callback。release では呼び出し側が渡さず常に nil。
     /// optional 自体は release にも残るが、参照する CTA 描画コードは `#if DEBUG` で除去される。
     var onDebugSkip: (() -> Void)? = nil
@@ -180,16 +182,19 @@ struct LoginView: View {
     }
 
     private var signupLink: some View {
-        // 「新規登録」 のタップ動線は A2f で配線する。本画面では視覚のみ。
-        HStack(spacing: 4) {
-            Text("アカウントをお持ちでない方は")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(Self.subText)
-            Text("新規登録")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(Self.brandPink)
-                .underline()
+        // 「新規登録」のタップでサインアップフロー (A2f) に遷移する。文言・配色は変更しない。
+        Button(action: onSignupTap) {
+            HStack(spacing: 4) {
+                Text("アカウントをお持ちでない方は")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Self.subText)
+                Text("新規登録")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Self.brandPink)
+                    .underline()
+            }
         }
+        .buttonStyle(.plain)
     }
 
     private var bottomCta: some View {

@@ -29,6 +29,10 @@ import studio.nxtech.fujubank.features.auth.LoginScreen
 import studio.nxtech.fujubank.features.auth.LoginViewModel
 import studio.nxtech.fujubank.features.auth.MfaVerifyScreen
 import studio.nxtech.fujubank.features.auth.MfaVerifyViewModel
+import studio.nxtech.fujubank.features.signup.SignUpCreateScreen
+import studio.nxtech.fujubank.features.signup.SignUpFlowViewModel
+import studio.nxtech.fujubank.features.signup.SignUpOtpScreen
+import studio.nxtech.fujubank.features.signup.SignUpSuccessScreen
 import studio.nxtech.fujubank.features.welcome.WelcomeScreen
 import studio.nxtech.fujubank.session.SessionState
 import studio.nxtech.fujubank.session.SessionStore
@@ -83,6 +87,11 @@ fun App() {
     // AuthenticatedPlaceholder を出す。回転で消えると煩わしいので rememberSaveable。
     var bypassAuth by rememberSaveable { mutableStateOf(false) }
 
+    // サインアップフローの現在地。Unauthenticated 中のローカルナビゲーションとして扱う。
+    // ログイン成功時は SessionState.Authenticated 経由でこの画面群は出なくなるため、
+    // 完了画面の「次へ」では None に戻すだけで良い。
+    var signupRoute by rememberSaveable { mutableStateOf(SignupRoute.None) }
+
     MaterialTheme {
         if (!splashFinished) {
             SplashScreen()
@@ -97,27 +106,14 @@ fun App() {
                     AuthenticatedPlaceholder(userId = "debug-bypass")
                 } else when (val state = sessionState) {
                     is SessionState.Unauthenticated -> {
-                        val viewModel: LoginViewModel = viewModel(
-                            factory = viewModelFactory {
-                                initializer {
-                                    LoginViewModel(
-                                        authRepository = authRepository,
-                                        userRepository = userRepository,
-                                        sessionStore = sessionStore,
-                                    )
-                                }
-                            },
+                        UnauthenticatedRouter(
+                            signupRoute = signupRoute,
+                            onSignupRouteChange = { signupRoute = it },
+                            authRepository = authRepository,
+                            userRepository = userRepository,
+                            sessionStore = sessionStore,
+                            onBypassAuth = { bypassAuth = true },
                         )
-                        // release ビルドでは null を渡し、debug ビルド限定のスキップ CTA を完全に
-                        // 合成対象外にする。BuildConfig.DEBUG はコンパイル時定数のため、release では
-                        // 常に null 経路となり LoginScreen 内の if (onDebugSkip != null) がデッドコード化する。
-                        val onDebugSkip: (() -> Unit)? =
-                            if (BuildConfig.DEBUG) {
-                                { bypassAuth = true }
-                            } else {
-                                null
-                            }
-                        LoginScreen(viewModel = viewModel, onDebugSkip = onDebugSkip)
                     }
                     is SessionState.MfaPending -> {
                         // pre_token が変わるたびに ViewModel を作り直すため key 化する。
@@ -154,6 +150,66 @@ fun App() {
                 }
             }
         }
+    }
+}
+
+private enum class SignupRoute { None, Create, Otp, Success }
+
+@Composable
+private fun UnauthenticatedRouter(
+    signupRoute: SignupRoute,
+    onSignupRouteChange: (SignupRoute) -> Unit,
+    authRepository: AuthRepository,
+    userRepository: UserRepository,
+    sessionStore: SessionStore,
+    onBypassAuth: () -> Unit,
+) {
+    val signupViewModel: SignUpFlowViewModel = viewModel()
+
+    when (signupRoute) {
+        SignupRoute.None -> {
+            val viewModel: LoginViewModel = viewModel(
+                factory = viewModelFactory {
+                    initializer {
+                        LoginViewModel(
+                            authRepository = authRepository,
+                            userRepository = userRepository,
+                            sessionStore = sessionStore,
+                        )
+                    }
+                },
+            )
+            // release ビルドでは null を渡し、debug ビルド限定のスキップ CTA を完全に
+            // 合成対象外にする。BuildConfig.DEBUG はコンパイル時定数のため、release では
+            // 常に null 経路となり LoginScreen 内の if (onDebugSkip != null) がデッドコード化する。
+            val onDebugSkip: (() -> Unit)? =
+                if (BuildConfig.DEBUG) onBypassAuth else null
+            LoginScreen(
+                viewModel = viewModel,
+                onSignupClick = {
+                    signupViewModel.reset()
+                    onSignupRouteChange(SignupRoute.Create)
+                },
+                onDebugSkip = onDebugSkip,
+            )
+        }
+        SignupRoute.Create -> SignUpCreateScreen(
+            viewModel = signupViewModel,
+            onNext = { onSignupRouteChange(SignupRoute.Otp) },
+            onBack = { onSignupRouteChange(SignupRoute.None) },
+            onLoginRedirect = { onSignupRouteChange(SignupRoute.None) },
+        )
+        SignupRoute.Otp -> SignUpOtpScreen(
+            viewModel = signupViewModel,
+            onConfirm = { onSignupRouteChange(SignupRoute.Success) },
+            onBack = { onSignupRouteChange(SignupRoute.Create) },
+        )
+        SignupRoute.Success -> SignUpSuccessScreen(
+            onFinish = {
+                signupViewModel.reset()
+                onSignupRouteChange(SignupRoute.None)
+            },
+        )
     }
 }
 
