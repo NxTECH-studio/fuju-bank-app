@@ -24,6 +24,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -61,7 +62,10 @@ import studio.nxtech.fujubank.R
  * - 「Googleで続ける」「新規登録」リンクは A2f 以降で配線するため本画面ではタップ無効。
  */
 @Composable
-fun LoginScreen(viewModel: LoginViewModel) {
+fun LoginScreen(
+    viewModel: LoginViewModel,
+    onDebugSkip: (() -> Unit)? = null,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val canSubmit = state.identifier.isNotBlank() && state.password.isNotBlank() && !state.isSubmitting
 
@@ -115,6 +119,15 @@ fun LoginScreen(viewModel: LoginViewModel) {
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp, vertical = 16.dp),
             )
+            if (onDebugSkip != null) {
+                DebugSkipButton(
+                    onClick = onDebugSkip,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp)
+                        .padding(bottom = 16.dp),
+                )
+            }
         }
     }
 }
@@ -407,6 +420,37 @@ private fun BottomCta(
     }
 }
 
+/**
+ * debug ビルド限定の認証スキップ CTA。
+ *
+ * 本番 UI に紛れた場合に一目で識別できるように、OutlinedButton + 「[DEBUG]」プレフィクス
+ * + グレー枠 + 細字で本番 CTA と差別化する。release ビルドでは呼び出し側が onDebugSkip = null
+ * を渡すため、このコンポーザブル自体が合成対象にならない。
+ */
+@Composable
+private fun DebugSkipButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color(0xFFC5C5CB)),
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = Color(0xFF6E6F72),
+        ),
+        modifier = modifier.height(44.dp),
+    ) {
+        Text(
+            text = "[DEBUG] ログインせず進む",
+            style = TextStyle(
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Normal,
+            ),
+        )
+    }
+}
+
 // Preview は LoginViewModel が Koin DI に依存しているため UI 全体は常駐レンダリングできない。
 // 代わりにレイアウト確認用のスタブとして LoginCard / Header / BottomCta を直接組む。
 // 認証 ViewModel との接続検証は実機 / エミュレータ起動で行う前提。
@@ -446,6 +490,13 @@ private fun LoginScreenLayoutPreview() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp, vertical = 16.dp),
+            )
+            DebugSkipButton(
+                onClick = {},
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp)
+                    .padding(bottom = 16.dp),
             )
         }
     }

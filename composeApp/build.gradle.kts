@@ -50,6 +50,10 @@ android {
         versionCode = 1
         versionName = "1.0"
     }
+    // BuildConfig.DEBUG を debug ビルドのデバッグ専用 UI 分岐に使うため有効化。
+    buildFeatures {
+        buildConfig = true
+    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"

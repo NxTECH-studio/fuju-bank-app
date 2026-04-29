@@ -79,6 +79,10 @@ fun App() {
     val welcomePending by signupCompletionSignal.pending.collectAsStateWithLifecycle()
     val welcomeAlreadyShown by signupWelcomePreferences.signupCompleted.collectAsStateWithLifecycle()
 
+    // debug ビルド専用の認証スキップフラグ。SessionStore は触らず UI 層だけで強制的に
+    // AuthenticatedPlaceholder を出す。回転で消えると煩わしいので rememberSaveable。
+    var bypassAuth by rememberSaveable { mutableStateOf(false) }
+
     MaterialTheme {
         if (!splashFinished) {
             SplashScreen()
@@ -89,6 +93,10 @@ fun App() {
                     .safeContentPadding(),
                 color = MaterialTheme.colorScheme.background,
             ) {
+                if (bypassAuth) {
+                    AuthenticatedPlaceholder(userId = "debug-bypass")
+                    return@Surface
+                }
                 when (val state = sessionState) {
                     is SessionState.Unauthenticated -> {
                         val viewModel: LoginViewModel = viewModel(
@@ -102,7 +110,16 @@ fun App() {
                                 }
                             },
                         )
-                        LoginScreen(viewModel)
+                        // release ビルドでは null を渡し、debug ビルド限定のスキップ CTA を完全に
+                        // 合成対象外にする。BuildConfig.DEBUG はコンパイル時定数のため、release では
+                        // 常に null 経路となり LoginScreen 内の if (onDebugSkip != null) がデッドコード化する。
+                        val onDebugSkip: (() -> Unit)? =
+                            if (BuildConfig.DEBUG) {
+                                { bypassAuth = true }
+                            } else {
+                                null
+                            }
+                        LoginScreen(viewModel = viewModel, onDebugSkip = onDebugSkip)
                     }
                     is SessionState.MfaPending -> {
                         // pre_token が変わるたびに ViewModel を作り直すため key 化する。
