@@ -146,30 +146,51 @@ class SessionStore {
   ```
 - `AndroidManifest.xml` の `application` または `MainActivity` の `android:theme` を `@style/Theme.App.Starting` に切り替え。
 
-### Step 5: Android - `MainActivity` で keepOnScreenCondition
+### Step 5: Android - in-app Splash と OS splash の二段構え
 
-- `composeApp/src/androidMain/kotlin/studio/nxtech/fujubank/MainActivity.kt`:
+> **計画変更（実装時に判断）**: 当初は `setKeepOnScreenCondition` で OS splash を保持して
+> bootstrap 完了 + min-duration を待つ案だったが、Material splash screen API は中央正方形
+> アイコン 1 枚しか描画できず、Figma node 175-2457 の横長合成（icon + wordmark + 装飾）を
+> 表現できないことが判明したため、以下の二段構成に変更した。
+
+#### OS splash（背景色のみのフラッシュ）
+
+- `Theme.App.Starting` の `windowSplashScreenAnimatedIcon` を `@android:color/transparent`
+  に設定し、OS splash の中央アイコンを抑止
+- `windowSplashScreenBackground` には `@color/fuju_splash_bg` (`#F6F7F9`) のみを指定
+- `MainActivity.installSplashScreen()` は呼ぶ（androidx.core:core-splashscreen で API 24+ に
+  互換 backport が効く）が `setKeepOnScreenCondition` は使わない（OS splash は活動が
+  ready になり次第即閉じる）
+
+#### in-app Splash（Figma 通りの合成）
+
+- `composeApp/src/androidMain/kotlin/studio/nxtech/fujubank/splash/SplashScreen.kt` を新規作成し、
+  背景色 + Subtract 装飾 (`fuju_splash_decoration.xml`) + 合成ロゴ (`fuju_logo.xml`) を ZStack 配置
+- `App()` Composable で `splashFinished: Boolean` を `rememberSaveable` で保持し、bootstrap +
+  min-duration を満たすまで `SplashScreen()` を表示
   ```kotlin
-  class MainActivity : ComponentActivity() {
-      private val sessionStore: SessionStore by inject()  // Koin
-
-      override fun onCreate(savedInstanceState: Bundle?) {
-          val splashScreen = installSplashScreen()
-          super.onCreate(savedInstanceState)
-          enableEdgeToEdge()
-
-          val startedAt = SystemClock.uptimeMillis()
-          splashScreen.setKeepOnScreenCondition {
-              val elapsed = SystemClock.uptimeMillis() - startedAt
-              !sessionStore.bootstrapped.value || elapsed < SplashConfig.MIN_DURATION_MS
-          }
-
-          setContent { App() }
+  var splashFinished by rememberSaveable { mutableStateOf(false) }
+  if (!splashFinished) {
+      LaunchedEffect(Unit) {
+          val startedAt = SystemClock.elapsedRealtime()
+          sessionStore.bootstrap(authRepository, userRepository)
+          val elapsed = SystemClock.elapsedRealtime() - startedAt
+          val remaining = SplashConfig.MIN_DURATION_MS - elapsed
+          if (remaining > 0) delay(remaining)
+          splashFinished = true
       }
   }
   ```
-- `composeApp/src/androidMain/kotlin/studio/nxtech/fujubank/splash/SplashConfig.kt` に `const val MIN_DURATION_MS = 2000L` を配置。
-- `bootstrap()` を起動するエントリは既存の Koin 初期化 / `App()` 経由のままで OK（呼び出されないと `bootstrapped` が永久に `false` になる点だけ確認）。
+- `SplashConfig.MIN_DURATION_MS = 2000L` は `shared/src/commonMain` に配置し、Android / iOS
+  両方が単一の真実源として参照する
+
+#### 設計のポイント
+
+- `rememberSaveable` で `splashFinished` を保持することで、画面回転で Activity が再生成されても
+  Splash が再 2 秒表示されない
+- `SystemClock.elapsedRealtime()` を採用（端末スリープ中も進む）。`uptimeMillis()` ではないことに注意
+- bootstrap 起動を `App()` Composable 内に置くことで、`MainActivity` から `SessionStore` への
+  Koin 注入が不要になる
 
 ### Step 6: iOS - LaunchScreen.storyboard 最小編集
 

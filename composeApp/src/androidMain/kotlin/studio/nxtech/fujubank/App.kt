@@ -12,6 +12,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,19 +51,23 @@ fun App() {
     val authRepository = remember { koin.get<AuthRepository>() }
     val userRepository = remember { koin.get<UserRepository>() }
 
-    var splashFinished by remember { mutableStateOf(false) }
+    // 画面回転で Activity が再生成されても Splash を再表示しないよう rememberSaveable で保持。
+    // SystemClock.elapsedRealtime() は端末スリープ中も進むため、最低表示時間を厳密に保証する。
+    var splashFinished by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        val startedAt = SystemClock.elapsedRealtime()
-        // bootstrap は 2 回目以降の呼び出しが冪等。アプリ初回起動時に保存済み
-        // トークン or refresh cookie でセッション復元を試みる。
-        sessionStore.bootstrap(authRepository, userRepository)
-        val elapsed = SystemClock.elapsedRealtime() - startedAt
-        val remaining = SplashConfig.MIN_DURATION_MS - elapsed
-        if (remaining > 0) {
-            delay(remaining)
+    if (!splashFinished) {
+        LaunchedEffect(Unit) {
+            val startedAt = SystemClock.elapsedRealtime()
+            // bootstrap は 2 回目以降の呼び出しが冪等。アプリ初回起動時に保存済み
+            // トークン or refresh cookie でセッション復元を試みる。
+            sessionStore.bootstrap(authRepository, userRepository)
+            val elapsed = SystemClock.elapsedRealtime() - startedAt
+            val remaining = SplashConfig.MIN_DURATION_MS - elapsed
+            if (remaining > 0) {
+                delay(remaining)
+            }
+            splashFinished = true
         }
-        splashFinished = true
     }
 
     val sessionState by sessionStore.state.collectAsStateWithLifecycle()
