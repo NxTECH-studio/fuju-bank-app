@@ -8,6 +8,7 @@ import Shared
 /// - Authenticated: ホーム本体は A3 で実装するためプレースホルダを表示。
 struct AppRoot: View {
     @StateObject private var session = SessionViewModel()
+    @StateObject private var welcomeGate = WelcomeGateViewModel()
 
     var body: some View {
         Group {
@@ -16,7 +17,13 @@ struct AppRoot: View {
                 MfaVerifyView(viewModel: MfaVerifyViewModel(preToken: mfa.preToken))
                     .id(mfa.preToken)
             case let auth as SessionState.Authenticated:
-                AuthenticatedPlaceholderView(userId: auth.userId)
+                // サインアップ画面発の Authenticated 遷移 (pending) かつ未表示の場合のみ Welcome を挟む。
+                // bootstrap 復元による Authenticated は pending = false なので素通り。
+                if welcomeGate.shouldShowWelcome {
+                    WelcomeView(onFinish: { welcomeGate.markShown() })
+                } else {
+                    AuthenticatedPlaceholderView(userId: auth.userId)
+                }
             default:
                 LoginView(viewModel: LoginViewModel())
             }
