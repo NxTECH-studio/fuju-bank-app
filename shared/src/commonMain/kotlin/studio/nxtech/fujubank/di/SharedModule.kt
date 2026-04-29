@@ -11,6 +11,7 @@ fun sharedModules(cableUrl: String): List<Module> = listOf(
     authModule,
     userModule,
     sessionModule,
+    signupModule,
     ledgerModule,
     realtimeModule(cableUrl),
     artifactModule,
