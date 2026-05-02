@@ -18,4 +18,12 @@ enum FujupayPalette {
     static let shadowTint = Color(red: 30 / 255, green: 34 / 255, blue: 42 / 255)
     /// ボトムバー上端の細いボーダー。
     static let bottomBarBorder = Color(red: 0xEF / 255, green: 0xEF / 255, blue: 0xEF / 255)
+    /// 取引履歴行の補助テキスト（日時 / 店舗名）。Figma `410:20343` 参照。
+    static let transactionMeta = Color(red: 0x70 / 255, green: 0x72 / 255, blue: 0x75 / 255)
+    /// 取引履歴行の区切り線。
+    static let transactionDivider = Color(red: 0xEF / 255, green: 0xEF / 255, blue: 0xEF / 255)
+    /// 取引相手アバターの暫定プレースホルダ（人物用）。
+    static let avatarPerson = Color(red: 0xE5 / 255, green: 0xE5 / 255, blue: 0xE5 / 255)
+    /// 取引相手アバターの暫定プレースホルダ（アーティファクト用）。
+    static let avatarArtifact = Color(red: 0xC9 / 255, green: 0xD8 / 255, blue: 0xE1 / 255)
 }

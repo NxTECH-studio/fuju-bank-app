@@ -58,7 +58,10 @@ struct RootTabView: View {
         case .account:
             AccountPlaceholderView()
         case .transactionHistory:
-            ComingSoonView(title: "取引履歴", onBack: { destination = .home })
+            TransactionListView(
+                onBack: { destination = .home },
+                onNotificationTap: { toast.send("通知機能は実装中です") },
+            )
         case .send:
             ComingSoonView(title: "送る・もらう", onBack: { destination = .home })
         }
