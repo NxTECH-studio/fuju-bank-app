@@ -86,16 +86,16 @@ private fun ActionTile(
             .clip(RoundedCornerShape(20.dp))
             .background(FujupayColors.Surface)
             .clickable(onClick = onClick)
-            .padding(top = 6.dp, bottom = 14.dp),
+            .padding(top = 12.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         // Figma 上は 28dp 指定だが、SVG のアスペクト比により視覚的に小さく見えるため、
-        // 32dp に拡大して見え方を安定させる。
+        // 40dp に拡大して視認性を上げる。タイル高さも併せて padding を増やす。
         Image(
             painter = painterResource(iconRes),
             contentDescription = label,
-            modifier = Modifier.size(32.dp),
+            modifier = Modifier.size(40.dp),
         )
         Text(
             text = label,

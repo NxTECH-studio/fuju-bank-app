@@ -80,15 +80,11 @@ struct RootTabView: View {
             // 領域が別途確保されるため、純バー高さは 50pt (top pad 8 + タブ 42) に縮める。
             .frame(height: 50)
             .frame(maxWidth: .infinity)
-            // バーの白い bg はホームインジケータ領域 (下 safe area) まで延ばし、
-            // タブだけ safe area 内に置く。Color に直接 .ignoresSafeArea を付けると
-            // safeAreaInset コンテキスト下では効かないことがあるため、Rectangle を
-            // 明示的に背景レイヤーとして用意する。
-            .background(
-                Rectangle()
-                    .fill(FujupayPalette.surface)
-                    .ignoresSafeArea(edges: .bottom),
-            )
+            // バーの白い bg はホームインジケータ領域 (下 safe area) まで延ばす。
+            // `.background(_:ignoresSafeAreaEdges:)` は SafeArea を bg にだけ無効化する
+            // 専用 API で、safeAreaInset 配下でも機能する（Rectangle().ignoresSafeArea
+            // を chain しても効かない問題を回避）。
+            .background(FujupayPalette.surface, ignoresSafeAreaEdges: .bottom)
             .overlay(
                 Rectangle()
                     .frame(height: 1)
