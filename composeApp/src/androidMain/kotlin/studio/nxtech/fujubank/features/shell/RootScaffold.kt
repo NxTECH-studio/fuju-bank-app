@@ -70,16 +70,21 @@ fun RootScaffold() {
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
 
+    // フッター（ボトムナビ + 中央 FAB）はホーム画面のみ表示する。
+    // 取引履歴 / 送る・もらう / アカウントなどサブ画面ではコンテンツを画面下端まで使えるよう非表示にする。
+    val showBottomBar = destination == RootDestination.Home
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = FujupayColors.Background,
         bottomBar = {
-            BottomNavWithFab(
-                selected = destination,
-                onSelectHome = { destination = RootDestination.Home },
-                onSelectAccount = { destination = RootDestination.Account },
-                onPayClick = { showToast("支払い機能は実装中です") },
-            )
+            if (showBottomBar) {
+                BottomNavWithFab(
+                    selected = destination,
+                    onSelectHome = { destination = RootDestination.Home },
+                    onSelectAccount = { destination = RootDestination.Account },
+                    onPayClick = { showToast("支払い機能は実装中です") },
+                )
+            }
         },
     ) { innerPadding ->
         Box(
