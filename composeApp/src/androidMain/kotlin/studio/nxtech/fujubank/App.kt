@@ -2,7 +2,6 @@ package studio.nxtech.fujubank
 
 import android.os.SystemClock
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -91,9 +90,10 @@ fun App() {
     // 完了画面の「次へ」では None に戻すだけで良い。
     var signupRoute by rememberSaveable { mutableStateOf(SignupRoute.None) }
 
-    // Authenticated (RootScaffold) のときは Scaffold が独自に WindowInsets を管理するため、
-    // 親で safeContentPadding を掛けると status bar / nav bar 領域に二重余白ができ、
-    // 左右上下に「謎の隙間」が見えてしまう。Home を出すときだけ edge-to-edge にする。
+    // 親 Surface には safeContentPadding を掛けず edge-to-edge にする。各画面側で
+    // 自前の bg を fillMaxSize で塗り、内側コンテンツに systemBarsPadding を入れて
+    // status bar / nav bar を避ける構成。RootScaffold は内部 Scaffold が
+    // WindowInsets を管理するため同じく edge-to-edge で OK。
     val showRoot = bypassAuth ||
         (sessionState is SessionState.Authenticated && !(welcomePending && !welcomeAlreadyShown))
 
@@ -108,12 +108,8 @@ fun App() {
                 RootScaffold()
             }
         } else {
-            // Figma `89:12356` 全体の地色 (#F6F7F9) を Surface の bg に使うことで、
-            // safe area と内側コンテンツの境目が「狭い枠」に見える違和感を解消する。
             Surface(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .safeContentPadding(),
+                modifier = Modifier.fillMaxSize(),
                 color = FujupayColors.Background,
             ) {
                 when (val state = sessionState) {
