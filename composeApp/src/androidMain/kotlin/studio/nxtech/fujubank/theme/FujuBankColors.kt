@@ -7,9 +7,9 @@ import androidx.compose.ui.graphics.Color
  *
  * Material3 の ColorScheme と意味論が衝突するため、専用 object に切り出す。
  * Compose Material3 の `MaterialTheme.colorScheme` には依存させず、コンポーザブルから
- * `FujupayColors.background` のように直接参照する。
+ * `FujuBankColors.background` のように直接参照する。
  */
-object FujupayColors {
+object FujuBankColors {
     /** 画面の地の色。fujupay ブランドのオフホワイト。 */
     val Background: Color = Color(0xFFF6F7F9)
 

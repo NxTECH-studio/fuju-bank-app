@@ -14,7 +14,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import studio.nxtech.fujubank.theme.FujupayColors
+import studio.nxtech.fujubank.theme.FujuBankColors
 
 /**
  * 取引履歴 / 送る・もらう など、A3 ではまだ未実装の画面の汎用プレースホルダ。
@@ -29,7 +29,7 @@ fun ComingSoonScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(FujupayColors.Background)
+            .background(FujuBankColors.Background)
             .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -39,14 +39,14 @@ fun ComingSoonScreen(
             style = TextStyle(
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = FujupayColors.TextPrimary,
+                color = FujuBankColors.TextPrimary,
             ),
         )
         Text(
             text = "この画面は別タスクで実装します",
             style = TextStyle(
                 fontSize = 14.sp,
-                color = FujupayColors.TextSecondary,
+                color = FujuBankColors.TextSecondary,
             ),
             modifier = Modifier.padding(top = 8.dp),
         )
@@ -55,7 +55,7 @@ fun ComingSoonScreen(
             style = TextStyle(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = FujupayColors.BrandPink,
+                color = FujuBankColors.BrandPink,
             ),
             modifier = Modifier
                 .padding(top = 24.dp)

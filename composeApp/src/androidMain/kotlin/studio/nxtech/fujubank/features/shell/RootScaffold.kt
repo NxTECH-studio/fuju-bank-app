@@ -49,7 +49,7 @@ import studio.nxtech.fujubank.features.transactions.TransactionListScreen
 import studio.nxtech.fujubank.features.transactions.TransactionListViewModel
 import studio.nxtech.fujubank.navigation.RootDestination
 import studio.nxtech.fujubank.session.SessionStore
-import studio.nxtech.fujubank.theme.FujupayColors
+import studio.nxtech.fujubank.theme.FujuBankColors
 
 /**
  * ログイン後のルートシェル。Scaffold の bottomBar に Figma `89:12356` `43:258` 準拠の
@@ -75,7 +75,7 @@ fun RootScaffold() {
     val showBottomBar = destination == RootDestination.Home || destination == RootDestination.Account
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = FujupayColors.Background,
+        containerColor = FujuBankColors.Background,
         bottomBar = {
             if (showBottomBar) {
                 BottomNavWithFab(
@@ -157,8 +157,8 @@ private fun BottomNavWithFab(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .height(84.dp)
-                .background(FujupayColors.Surface)
-                .border(width = 1.dp, color = FujupayColors.BottomBarBorder)
+                .background(FujuBankColors.Surface)
+                .border(width = 1.dp, color = FujuBankColors.BottomBarBorder)
                 .padding(top = 8.dp, start = 48.dp, end = 48.dp),
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -200,7 +200,7 @@ private fun BottomNavWithFab(
                 .size(64.dp)
                 .shadow(elevation = 6.dp, shape = CircleShape, clip = false)
                 .clip(CircleShape)
-                .background(FujupayColors.BrandPink)
+                .background(FujuBankColors.BrandPink)
                 .clickable(onClick = onPayClick),
             contentAlignment = Alignment.Center,
         ) {
@@ -234,7 +234,7 @@ private fun BottomTab(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val labelColor = if (selected) Color.Black else FujupayColors.TextTertiary
+    val labelColor = if (selected) Color.Black else FujuBankColors.TextTertiary
     // Figma 上では Frame 幅 32dp に対して「アカウント」テキストが 40dp と幅を超えており、
     // 横にはみ出す前提のレイアウト。Column の幅は固定せず、ラベル幅まで広げて改行を防ぐ。
     Column(

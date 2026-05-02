@@ -14,7 +14,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import studio.nxtech.fujubank.R
-import studio.nxtech.fujubank.theme.FujupayColors
+import studio.nxtech.fujubank.theme.FujuBankColors
 
 /**
  * 通知ベル（48dp タップ領域 + 24dp アイコン + 赤ドット）。
@@ -45,13 +45,13 @@ fun NotificationBellButton(
             modifier = Modifier
                 .size(8.dp)
                 .offset(x = 7.dp, y = (-7).dp)
-                .background(color = FujupayColors.Background, shape = CircleShape),
+                .background(color = FujuBankColors.Background, shape = CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Box(
                 modifier = Modifier
                     .size(5.dp)
-                    .background(color = FujupayColors.NotificationDot, shape = CircleShape),
+                    .background(color = FujuBankColors.NotificationDot, shape = CircleShape),
             )
         }
     }

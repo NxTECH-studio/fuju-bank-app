@@ -10,7 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import studio.nxtech.fujubank.theme.FujupayColors
+import studio.nxtech.fujubank.theme.FujuBankColors
 
 /**
  * アカウントタブ画面の Coming Soon プレースホルダ。
@@ -21,7 +21,7 @@ fun AccountPlaceholderScreen(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(FujupayColors.Background),
+            .background(FujuBankColors.Background),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -29,7 +29,7 @@ fun AccountPlaceholderScreen(modifier: Modifier = Modifier) {
             style = TextStyle(
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
-                color = FujupayColors.TextSecondary,
+                color = FujuBankColors.TextSecondary,
             ),
         )
     }

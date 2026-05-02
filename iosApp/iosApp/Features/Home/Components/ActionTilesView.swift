@@ -12,10 +12,10 @@ struct ActionTilesView: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            tile(image: "ActionHistory", labelColor: FujupayPalette.actionPurple, label: "取引履歴", action: onTransactionHistory)
-            tile(image: "ActionSend", labelColor: FujupayPalette.actionGreen, label: "送る・もらう", action: onSendReceive)
-            tile(image: "ActionScan", labelColor: FujupayPalette.brandPink, label: "スキャン", action: onScan)
-            tile(image: "ActionCharge", labelColor: FujupayPalette.actionBlue, label: "チャージ", action: onCharge)
+            tile(image: "ActionHistory", labelColor: FujuBankPalette.actionPurple, label: "取引履歴", action: onTransactionHistory)
+            tile(image: "ActionSend", labelColor: FujuBankPalette.actionGreen, label: "送る・もらう", action: onSendReceive)
+            tile(image: "ActionScan", labelColor: FujuBankPalette.brandPink, label: "スキャン", action: onScan)
+            tile(image: "ActionCharge", labelColor: FujuBankPalette.actionBlue, label: "チャージ", action: onCharge)
         }
         .frame(maxWidth: .infinity)
     }
@@ -38,7 +38,7 @@ struct ActionTilesView: View {
             .frame(maxWidth: .infinity)
             .padding(.top, 6)
             .padding(.bottom, 14)
-            .background(FujupayPalette.surface)
+            .background(FujuBankPalette.surface)
             .clipShape(RoundedRectangle(cornerRadius: 20))
         }
         .buttonStyle(.plain)

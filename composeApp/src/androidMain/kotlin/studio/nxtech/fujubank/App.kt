@@ -37,7 +37,7 @@ import studio.nxtech.fujubank.signup.SignupCompletionSignal
 import studio.nxtech.fujubank.signup.SignupWelcomePreferences
 import studio.nxtech.fujubank.splash.SplashConfig
 import studio.nxtech.fujubank.splash.SplashScreen
-import studio.nxtech.fujubank.theme.FujupayColors
+import studio.nxtech.fujubank.theme.FujuBankColors
 
 /**
  * Android アプリのルート Composable。
@@ -103,14 +103,14 @@ fun App() {
         } else if (showRoot) {
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = FujupayColors.Background,
+                color = FujuBankColors.Background,
             ) {
                 RootScaffold()
             }
         } else {
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = FujupayColors.Background,
+                color = FujuBankColors.Background,
             ) {
                 when (val state = sessionState) {
                     is SessionState.Unauthenticated -> {

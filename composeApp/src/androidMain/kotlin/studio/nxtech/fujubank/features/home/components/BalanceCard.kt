@@ -22,7 +22,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import studio.nxtech.fujubank.theme.FujupayColors
+import studio.nxtech.fujubank.theme.FujuBankColors
 import studio.nxtech.fujubank.util.formatBalanceFuju
 import studio.nxtech.fujubank.util.maskedBalance
 
@@ -46,7 +46,7 @@ fun BalanceCard(
                 clip = false,
             )
             .clip(RoundedCornerShape(32.dp))
-            .background(FujupayColors.Surface)
+            .background(FujuBankColors.Surface)
             .padding(30.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -73,7 +73,7 @@ fun BalanceCard(
                     style = TextStyle(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Normal,
-                        color = FujupayColors.TextSecondary,
+                        color = FujuBankColors.TextSecondary,
                     ),
                 )
                 Row(
@@ -114,7 +114,7 @@ private fun RevealToggle(
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(35.dp))
-            .background(FujupayColors.BrandPink.copy(alpha = 0.1f))
+            .background(FujuBankColors.BrandPink.copy(alpha = 0.1f))
             .clickable(onClick = onClick)
             .padding(horizontal = 11.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center,
@@ -124,7 +124,7 @@ private fun RevealToggle(
             style = TextStyle(
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
-                color = FujupayColors.BrandPink,
+                color = FujuBankColors.BrandPink,
             ),
         )
     }

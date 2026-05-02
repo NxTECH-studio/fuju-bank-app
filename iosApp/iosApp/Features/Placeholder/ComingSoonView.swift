@@ -8,18 +8,18 @@ struct ComingSoonView: View {
 
     var body: some View {
         ZStack {
-            FujupayPalette.background.ignoresSafeArea()
+            FujuBankPalette.background.ignoresSafeArea()
             VStack(spacing: 8) {
                 Text(title)
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(FujupayPalette.textPrimary)
+                    .foregroundStyle(FujuBankPalette.textPrimary)
                 Text("この画面は別タスクで実装します")
                     .font(.system(size: 14))
-                    .foregroundStyle(FujupayPalette.textSecondary)
+                    .foregroundStyle(FujuBankPalette.textSecondary)
                 Button(action: onBack) {
                     Text("戻る")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(FujupayPalette.brandPink)
+                        .foregroundStyle(FujuBankPalette.brandPink)
                         .padding(.top, 16)
                 }
                 .buttonStyle(.plain)

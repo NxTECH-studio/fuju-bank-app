@@ -24,16 +24,16 @@ struct TransactionRowView: View {
                     HStack(alignment: .top, spacing: 16) {
                         Text(variant.title)
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(FujupayPalette.textPrimary)
+                            .foregroundStyle(FujuBankPalette.textPrimary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         Text(TransactionDateFormatterIosKt.formatTransactionDateForIos(instant: transaction.occurredAt))
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(FujupayPalette.transactionMeta)
+                            .foregroundStyle(FujuBankPalette.transactionMeta)
                     }
                     if let subtitle = variant.subtitle {
                         Text(subtitle)
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(FujupayPalette.transactionMeta)
+                            .foregroundStyle(FujuBankPalette.transactionMeta)
                     }
                 }
             }
@@ -71,22 +71,22 @@ private struct TransactionRowVariant {
                 return "アーティファクト \(short)"
             }
             self.sign = "+"
-            self.amountColor = FujupayPalette.actionGreen
-            self.avatarColor = FujupayPalette.avatarArtifact
+            self.amountColor = FujuBankPalette.actionGreen
+            self.avatarColor = FujuBankPalette.avatarArtifact
         } else if direction == TransactionDirection.incoming {
             let from = transaction.counterpartyUserId.map { String($0.suffix(SHORT_ID_LEN)) } ?? "相手"
             self.title = "\(from)からもらいました"
             self.subtitle = nil
             self.sign = "+"
-            self.amountColor = FujupayPalette.actionGreen
-            self.avatarColor = FujupayPalette.avatarPerson
+            self.amountColor = FujuBankPalette.actionGreen
+            self.avatarColor = FujuBankPalette.avatarPerson
         } else {
             let to = transaction.counterpartyUserId.map { String($0.suffix(SHORT_ID_LEN)) } ?? "相手"
             self.title = "\(to)に送りました"
             self.subtitle = nil
             self.sign = "-"
-            self.amountColor = FujupayPalette.textPrimary
-            self.avatarColor = FujupayPalette.avatarPerson
+            self.amountColor = FujuBankPalette.textPrimary
+            self.avatarColor = FujuBankPalette.avatarPerson
         }
     }
 }

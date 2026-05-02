@@ -20,7 +20,7 @@ import studio.nxtech.fujubank.R
  * 右 通知ベル（赤ドット）。Figma `89:12356` 準拠。
  */
 @Composable
-fun FujupayHeader(
+fun FujuBankHeader(
     onNotificationClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {

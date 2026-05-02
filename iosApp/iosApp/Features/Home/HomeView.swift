@@ -16,7 +16,7 @@ struct HomeView: View {
 
     var body: some View {
         ZStack {
-            FujupayPalette.background.ignoresSafeArea()
+            FujuBankPalette.background.ignoresSafeArea()
             content
         }
         .onAppear { viewModel.onAppear() }
@@ -28,12 +28,12 @@ struct HomeView: View {
         case .loading:
             ProgressView()
                 .progressViewStyle(.circular)
-                .tint(FujupayPalette.brandPink)
+                .tint(FujuBankPalette.brandPink)
         case let .error(message):
             VStack(spacing: 16) {
                 Text(message)
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(FujupayPalette.textPrimary)
+                    .foregroundStyle(FujuBankPalette.textPrimary)
                     .multilineTextAlignment(.center)
                 Button(action: { viewModel.refresh() }) {
                     Text("再試行")
@@ -41,7 +41,7 @@ struct HomeView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 10)
-                        .background(FujupayPalette.brandPink)
+                        .background(FujuBankPalette.brandPink)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
@@ -54,7 +54,7 @@ struct HomeView: View {
 
     private func loadedContent(profile: UserProfile, revealed: Bool) -> some View {
         VStack(spacing: 16) {
-            FujupayHeaderView(onNotificationTap: {
+            FujuBankHeaderView(onNotificationTap: {
                 onShowToast("通知機能は実装中です")
             })
             .padding(.top, 8)
@@ -69,7 +69,7 @@ struct HomeView: View {
             HStack {
                 Text("取引メニュー")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(FujupayPalette.textSecondary)
+                    .foregroundStyle(FujuBankPalette.textSecondary)
                 Spacer()
             }
             .padding(.top, 8)
