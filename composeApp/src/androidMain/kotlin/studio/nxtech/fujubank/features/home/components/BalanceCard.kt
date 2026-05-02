@@ -22,8 +22,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import studio.nxtech.fujubank.format.CurrencyFormatter
 import studio.nxtech.fujubank.theme.FujuBankColors
-import studio.nxtech.fujubank.util.formatBalanceFuju
 import studio.nxtech.fujubank.util.maskedBalance
 
 /**
@@ -81,7 +81,7 @@ fun BalanceCard(
                     horizontalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
                     Text(
-                        text = if (revealed) formatBalanceFuju(balanceFuju) else maskedBalance(),
+                        text = if (revealed) CurrencyFormatter.formatAmount(balanceFuju) else maskedBalance(),
                         style = TextStyle(
                             fontSize = 20.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -89,7 +89,7 @@ fun BalanceCard(
                         ),
                     )
                     Text(
-                        text = "ふじゅ〜",
+                        text = CurrencyFormatter.UNIT,
                         style = TextStyle(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
