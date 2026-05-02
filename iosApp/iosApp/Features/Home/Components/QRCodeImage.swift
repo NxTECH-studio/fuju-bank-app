@@ -11,24 +11,32 @@ struct QRCodeImage: View {
     var foregroundColor: Color = FujupayPalette.textPrimary
     var backgroundColor: Color = .white
 
-    private let context = CIContext()
-    private let generator = CIFilter.qrCodeGenerator()
+    // SwiftUI の View は値型で再生成が頻繁に走るため、Metal pipeline 構築コストの大きい
+    // CIContext は static で共有する。レンダ結果は @State で content キーにキャッシュし、
+    // 再描画毎の createCGImage を回避する。
+    private static let context = CIContext()
+    @State private var cachedImage: UIImage?
 
     var body: some View {
-        if let image = generateImage() {
-            Image(uiImage: image)
-                .resizable()
-                .interpolation(.none)
-                .scaledToFit()
-        } else {
-            // 失敗時は空のグレー矩形でフォールバック。
-            Rectangle()
-                .fill(Color.gray.opacity(0.1))
+        Group {
+            if let image = cachedImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .interpolation(.none)
+                    .scaledToFit()
+            } else {
+                Rectangle()
+                    .fill(Color.gray.opacity(0.1))
+            }
+        }
+        .task(id: content) {
+            cachedImage = Self.generateImage(for: content)
         }
     }
 
-    private func generateImage() -> UIImage? {
+    private static func generateImage(for content: String) -> UIImage? {
         guard let data = content.data(using: .utf8) else { return nil }
+        let generator = CIFilter.qrCodeGenerator()
         generator.message = data
         generator.correctionLevel = "L"
         guard let outputImage = generator.outputImage else { return nil }

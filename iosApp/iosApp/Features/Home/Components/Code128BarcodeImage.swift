@@ -8,26 +8,34 @@ import CoreImage.CIFilterBuiltins
 struct Code128BarcodeImage: View {
     let content: String
 
-    private let context = CIContext()
-    private let generator = CIFilter.code128BarcodeGenerator()
+    // CIContext は Metal pipeline 構築が重いので static 共有。レンダ結果は @State で
+    // content キーにキャッシュして再描画毎の createCGImage を避ける。
+    private static let context = CIContext()
+    @State private var cachedImage: UIImage?
 
     var body: some View {
-        if let image = generateImage() {
-            Image(uiImage: image)
-                .resizable()
-                .interpolation(.none)
-                .aspectRatio(contentMode: .fill)
-        } else {
-            Rectangle()
-                .fill(Color.gray.opacity(0.1))
+        Group {
+            if let image = cachedImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .interpolation(.none)
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                Rectangle()
+                    .fill(Color.gray.opacity(0.1))
+            }
+        }
+        .task(id: content) {
+            cachedImage = Self.generateImage(for: content)
         }
     }
 
-    private func generateImage() -> UIImage? {
+    private static func generateImage(for content: String) -> UIImage? {
         guard let data = content.data(using: .ascii) else {
             // Code128 は ASCII 範囲のみ。fail 時は何も描かない。
             return nil
         }
+        let generator = CIFilter.code128BarcodeGenerator()
         generator.message = data
         generator.quietSpace = 0
         guard let outputImage = generator.outputImage else { return nil }
