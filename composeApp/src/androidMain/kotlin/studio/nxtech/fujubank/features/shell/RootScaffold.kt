@@ -122,7 +122,7 @@ private fun BottomNavWithFab(
     onPayClick: () -> Unit,
 ) {
     Box(modifier = Modifier.fillMaxWidth()) {
-        // 下段：ホーム / 中央スペーサ / アカウント
+        // 下段：ホーム / 支払いラベルセル / アカウント
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -137,8 +137,9 @@ private fun BottomNavWithFab(
                 selected = selected == RootDestination.Home || selected == RootDestination.TransactionHistory || selected == RootDestination.Send,
                 onClick = onSelectHome,
             )
-            // 中央 FAB のためのスペース。
-            Box(modifier = Modifier.size(72.dp))
+            // 中央セル：他のタブと同じ Column 構造で、アイコン部は透明スロット。
+            // 円形 FAB は同じ位置に Box overlay として描画される。
+            PayLabelCell(onClick = onPayClick)
             BottomNavItem(
                 iconRes = R.drawable.ic_account_circle,
                 label = "アカウント",
@@ -146,7 +147,7 @@ private fun BottomNavWithFab(
                 onClick = onSelectAccount,
             )
         }
-        // 中央 FAB（タブの上にせり出す）
+        // 中央 FAB（円形ボタン、タブの上にせり出す）
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -165,6 +166,29 @@ private fun BottomNavWithFab(
                 modifier = Modifier.size(28.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun PayLabelCell(onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        // 他のタブの Icon (24dp) とベースラインを揃える透明スロット。
+        // 円形 FAB は親 Box の overlay として上に描画される。
+        Box(modifier = Modifier.size(24.dp))
+        Text(
+            text = "支払い",
+            style = TextStyle(
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium,
+                color = FujupayColors.BrandPink,
+            ),
+        )
     }
 }
 

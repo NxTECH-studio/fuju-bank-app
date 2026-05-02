@@ -51,23 +51,28 @@ struct RootTabView: View {
     }
 
     private var bottomBar: some View {
-        ZStack {
-            HStack {
+        ZStack(alignment: .top) {
+            // SwiftUI の `Spacer` を 4 か所に置くことで、Android 側の
+            // `Arrangement.SpaceEvenly` と同等の等分配置に揃える（外側 padding 固定では
+            // タブが端に寄りすぎる）。
+            HStack(spacing: 0) {
+                Spacer()
                 tabItem(symbol: "house.fill", label: "ホーム", selected: destination.isHomeFamily) {
                     destination = .home
                 }
                 Spacer()
-                Color.clear.frame(width: 72, height: 1) // 中央 FAB 分のスペース
+                payLabelCell
                 Spacer()
                 tabItem(symbol: "person.circle", label: "アカウント", selected: destination == .account) {
                     destination = .account
                 }
+                Spacer()
             }
-            .padding(.horizontal, 24)
             .frame(height: 64)
             .frame(maxWidth: .infinity)
             .background(FujupayPalette.surface)
 
+            // 中央 FAB（円形ボタン、タブの上にせり出す）
             Button(action: { toast.send("支払い機能は実装中です") }) {
                 ZStack {
                     Circle()
@@ -82,6 +87,20 @@ struct RootTabView: View {
             .buttonStyle(.plain)
             .offset(y: -13)
         }
+    }
+
+    // 中央セル：他のタブと同じ縦構造でアイコン位置を透明スロットにし、
+    // 「支払い」ラベルを表示する。円形 FAB は ZStack の overlay として上に描画される。
+    private var payLabelCell: some View {
+        Button(action: { toast.send("支払い機能は実装中です") }) {
+            VStack(spacing: 2) {
+                Color.clear.frame(width: 22, height: 22)
+                Text("支払い")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(FujupayPalette.brandPink)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     private func tabItem(
