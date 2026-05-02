@@ -42,17 +42,20 @@ fun ActionTiles(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        // 暫定: 旧決済アプリ専用カテゴリ色 (ActionPurple/Green/Blue) を削除したため、
+        // 残ったブランドカラーで仮置きしている。ホーム画面そのものが
+        // bank-rebranding-home タスクで作り直される予定なのでこのタイル群は撤去される。
         ActionTile(
             iconRes = R.drawable.ic_history,
             label = "取引履歴",
-            labelColor = FujuBankColors.ActionPurple,
+            labelColor = FujuBankColors.TextPrimary,
             onClick = onTransactionHistory,
             modifier = Modifier.weight(1f),
         )
         ActionTile(
             iconRes = R.drawable.ic_send,
             label = "送る・もらう",
-            labelColor = FujuBankColors.ActionGreen,
+            labelColor = FujuBankColors.TextPrimary,
             onClick = onSendReceive,
             modifier = Modifier.weight(1f),
         )
@@ -66,7 +69,7 @@ fun ActionTiles(
         ActionTile(
             iconRes = R.drawable.ic_add_circle,
             label = "チャージ",
-            labelColor = FujuBankColors.ActionBlue,
+            labelColor = FujuBankColors.TextPrimary,
             onClick = onCharge,
             modifier = Modifier.weight(1f),
         )
