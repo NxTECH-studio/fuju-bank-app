@@ -1,12 +1,10 @@
 package studio.nxtech.fujubank
 
 import android.os.SystemClock
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -14,7 +12,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,6 +26,7 @@ import studio.nxtech.fujubank.features.auth.LoginScreen
 import studio.nxtech.fujubank.features.auth.LoginViewModel
 import studio.nxtech.fujubank.features.auth.MfaVerifyScreen
 import studio.nxtech.fujubank.features.auth.MfaVerifyViewModel
+import studio.nxtech.fujubank.features.shell.RootScaffold
 import studio.nxtech.fujubank.features.signup.SignUpCreateScreen
 import studio.nxtech.fujubank.features.signup.SignUpFlowViewModel
 import studio.nxtech.fujubank.features.signup.SignUpOtpScreen
@@ -103,7 +101,7 @@ fun App() {
                 color = MaterialTheme.colorScheme.background,
             ) {
                 if (bypassAuth) {
-                    AuthenticatedPlaceholder(userId = "debug-bypass")
+                    RootScaffold()
                 } else when (val state = sessionState) {
                     is SessionState.Unauthenticated -> {
                         UnauthenticatedRouter(
@@ -144,7 +142,7 @@ fun App() {
                                 },
                             )
                         } else {
-                            AuthenticatedPlaceholder(userId = state.userId)
+                            RootScaffold()
                         }
                     }
                 }
@@ -213,12 +211,3 @@ private fun UnauthenticatedRouter(
     }
 }
 
-@Composable
-private fun AuthenticatedPlaceholder(userId: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(
-            text = "ログイン済み: $userId\n（A3 でホーム画面を実装します）",
-            style = MaterialTheme.typography.bodyLarge,
-        )
-    }
-}
