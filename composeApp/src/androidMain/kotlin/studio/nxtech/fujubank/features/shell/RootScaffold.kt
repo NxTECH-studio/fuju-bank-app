@@ -171,6 +171,7 @@ private fun BottomNavWithFab(
             }
         }
         // 中央 pink 円形 FAB（親 Box の TopCenter に置き、バー上端から 13dp 上にせり出す）。
+        // 64dp 円の中に 28dp アイコン + 9sp ラベルを縦並びで中央寄せ。
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -178,24 +179,23 @@ private fun BottomNavWithFab(
                 .shadow(elevation = 6.dp, shape = CircleShape, clip = false)
                 .clip(CircleShape)
                 .background(FujupayColors.BrandPink)
-                .clickable(onClick = onPayClick)
-                .padding(top = 10.dp, bottom = 22.dp, start = 16.dp, end = 16.dp),
-            contentAlignment = Alignment.TopCenter,
+                .clickable(onClick = onPayClick),
+            contentAlignment = Alignment.Center,
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp),
             ) {
                 // Text "支払い" でラベル読み上げするので Image 側は cd=null にして二重読み上げを避ける。
                 Image(
                     painter = painterResource(R.drawable.ic_pay_qr),
                     contentDescription = null,
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(28.dp),
                 )
                 Text(
                     text = "支払い",
                     style = TextStyle(
-                        fontSize = 8.sp,
+                        fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                     ),

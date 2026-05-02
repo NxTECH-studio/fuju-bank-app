@@ -38,6 +38,7 @@ import studio.nxtech.fujubank.signup.SignupCompletionSignal
 import studio.nxtech.fujubank.signup.SignupWelcomePreferences
 import studio.nxtech.fujubank.splash.SplashConfig
 import studio.nxtech.fujubank.splash.SplashScreen
+import studio.nxtech.fujubank.theme.FujupayColors
 
 /**
  * Android アプリのルート Composable。
@@ -94,11 +95,13 @@ fun App() {
         if (!splashFinished) {
             SplashScreen()
         } else {
+            // Figma `89:12356` 全体の地色 (#F6F7F9) を Surface の bg に使うことで、
+            // safe area と内側コンテンツの境目が「狭い枠」に見える違和感を解消する。
             Surface(
                 modifier = Modifier
                     .fillMaxSize()
                     .safeContentPadding(),
-                color = MaterialTheme.colorScheme.background,
+                color = FujupayColors.Background,
             ) {
                 if (bypassAuth) {
                     RootScaffold()

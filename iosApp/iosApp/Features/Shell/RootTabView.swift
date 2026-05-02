@@ -86,26 +86,24 @@ struct RootTabView: View {
                 alignment: .top
             )
 
-            // 中央 pink 円形 FAB（top -13）。アイコン + 「支払い」ラベルを内蔵。
+            // 中央 pink 円形 FAB（top -13）。64pt 円の中に 28pt アイコン + 9pt ラベルを
+            // 縦並びで中央寄せ。padding は使わず VStack の自然中央寄せで配置する。
             Button(action: { toast.send("支払い機能は実装中です") }) {
-                VStack(spacing: 2) {
+                VStack(spacing: 1) {
                     Image("FabPayQr")
                         .resizable()
                         .renderingMode(.template)
                         .foregroundColor(.white)
                         .scaledToFit()
-                        .frame(width: 32, height: 32)
+                        .frame(width: 28, height: 28)
                     Text("支払い")
-                        .font(.system(size: 8, weight: .bold))
+                        .font(.system(size: 9, weight: .bold))
                         .foregroundColor(.white)
                 }
-                .padding(.top, 10)
-                .padding(.bottom, 22)
-                .padding(.horizontal, 16)
                 .frame(width: 64, height: 64)
                 .background(FujupayPalette.brandPink)
-                .clipShape(RoundedRectangle(cornerRadius: 58))
-                .shadow(color: Color(red: 30/255, green: 34/255, blue: 42/255).opacity(0.08), radius: 6, x: 0, y: 4)
+                .clipShape(Circle())
+                .shadow(color: Color(red: 30/255, green: 34/255, blue: 42/255).opacity(0.18), radius: 6, x: 0, y: 4)
             }
             .buttonStyle(.plain)
             .offset(y: -13)
