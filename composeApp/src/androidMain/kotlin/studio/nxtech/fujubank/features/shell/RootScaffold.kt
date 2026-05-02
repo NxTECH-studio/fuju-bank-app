@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -127,14 +126,18 @@ private fun BottomNavWithFab(
     val homeFamily = selected == RootDestination.Home ||
         selected == RootDestination.TransactionHistory ||
         selected == RootDestination.Send
-    Box(modifier = Modifier.fillMaxWidth()) {
-        // 下段 84dp / 上 8dp padding / 左右 48dp padding。中央は FAB のためのスペース。
+    // 親 Box の高さは 84dp(バー) + 13dp(FAB せり出し) = 97dp。FAB を offset で
+    // バーの外に出すと Compose の hit test が layout bounds 外を拾わずタップが
+    // 取れなくなるため、FAB をこの Box 内に収めてバー側を 13dp 下げる。
+    Box(modifier = Modifier.fillMaxWidth().height(97.dp)) {
+        // 下段 84dp バー（上端 13dp 下げる）。pt-8 px-48 / 中央は FAB スペース。
         Row(
             modifier = Modifier
+                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .height(84.dp)
                 .background(FujupayColors.Surface)
-                .border(width = 1.dp, color = Color(0xFFEFEFEF))
+                .border(width = 1.dp, color = FujupayColors.BottomBarBorder)
                 .padding(top = 8.dp, start = 48.dp, end = 48.dp),
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -168,14 +171,13 @@ private fun BottomNavWithFab(
                 )
             }
         }
-        // 中央 pink 円形 FAB（バー上部 -13dp にせり出す）。アイコンとラベルを内蔵。
+        // 中央 pink 円形 FAB（親 Box の TopCenter に置き、バー上端から 13dp 上にせり出す）。
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .offset(y = (-13).dp)
-                .size(width = 64.dp, height = 64.dp)
+                .size(64.dp)
                 .shadow(elevation = 6.dp, shape = CircleShape, clip = false)
-                .clip(RoundedCornerShape(58.dp))
+                .clip(CircleShape)
                 .background(FujupayColors.BrandPink)
                 .clickable(onClick = onPayClick)
                 .padding(top = 10.dp, bottom = 22.dp, start = 16.dp, end = 16.dp),
@@ -185,9 +187,10 @@ private fun BottomNavWithFab(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
+                // Text "支払い" でラベル読み上げするので Image 側は cd=null にして二重読み上げを避ける。
                 Image(
                     painter = painterResource(R.drawable.ic_pay_qr),
-                    contentDescription = "支払い",
+                    contentDescription = null,
                     modifier = Modifier.size(32.dp),
                 )
                 Text(

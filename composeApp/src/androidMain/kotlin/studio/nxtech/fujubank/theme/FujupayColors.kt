@@ -36,4 +36,10 @@ object FujupayColors {
 
     /** チャージアクションのカテゴリ色。 */
     val ActionBlue: Color = Color(0xFF1E83FF)
+
+    /** 通知ベルの未読ドット。 */
+    val NotificationDot: Color = Color(0xFFFF0000)
+
+    /** ボトムナビ上部の細いボーダー。 */
+    val BottomBarBorder: Color = Color(0xFFEFEFEF)
 }

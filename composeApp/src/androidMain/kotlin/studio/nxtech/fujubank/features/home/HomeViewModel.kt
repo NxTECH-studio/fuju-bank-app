@@ -2,6 +2,7 @@ package studio.nxtech.fujubank.features.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,6 +27,10 @@ class HomeViewModel(
     private val _state = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
 
+    // 進行中の fetch Job。新しい load() 開始前にキャンセルし、refresh 連打で
+    // 古い結果が後勝ちで state を上書きしないようにする。
+    private var loadJob: Job? = null
+
     init {
         load(initial = true)
     }
@@ -41,6 +46,7 @@ class HomeViewModel(
     }
 
     private fun load(initial: Boolean) {
+        loadJob?.cancel()
         if (!initial) {
             _state.update { current ->
                 when (current) {
@@ -49,7 +55,7 @@ class HomeViewModel(
                 }
             }
         }
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             when (val result = profileRepository.getMyProfile()) {
                 is NetworkResult.Success -> _state.update { current ->
                     when (current) {
