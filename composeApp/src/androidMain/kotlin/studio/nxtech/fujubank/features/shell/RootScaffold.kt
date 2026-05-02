@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -214,10 +213,10 @@ private fun BottomTab(
     onClick: () -> Unit,
 ) {
     val labelColor = if (selected) Color.Black else FujupayColors.TextTertiary
+    // Figma 上では Frame 幅 32dp に対して「アカウント」テキストが 40dp と幅を超えており、
+    // 横にはみ出す前提のレイアウト。Column の幅は固定せず、ラベル幅まで広げて改行を防ぐ。
     Column(
-        modifier = Modifier
-            .width(32.dp)
-            .clickable(onClick = onClick),
+        modifier = Modifier.clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Image(
@@ -227,6 +226,8 @@ private fun BottomTab(
         )
         Text(
             text = label,
+            maxLines = 1,
+            softWrap = false,
             style = TextStyle(
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Bold,

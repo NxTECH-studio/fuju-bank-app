@@ -119,6 +119,8 @@ struct RootTabView: View {
         action: @escaping () -> Void,
     ) -> some View {
         let labelColor = selected ? Color.black : FujupayPalette.textTertiary
+        // Figma では Frame 幅 32 に対して「アカウント」テキストが 40 と幅を超えており、
+        // 横にはみ出す前提のレイアウト。VStack の幅は固定せず、ラベル幅まで広げて改行を防ぐ。
         return Button(action: action) {
             VStack(spacing: 0) {
                 Image(image)
@@ -129,8 +131,9 @@ struct RootTabView: View {
                 Text(label)
                     .font(.system(size: 8, weight: .bold))
                     .foregroundStyle(labelColor)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
-            .frame(width: 32)
         }
         .buttonStyle(.plain)
     }
