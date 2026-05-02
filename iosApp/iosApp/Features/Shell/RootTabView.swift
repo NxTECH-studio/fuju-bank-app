@@ -21,13 +21,22 @@ struct RootTabView: View {
     }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .bottom) {
             FujupayPalette.background.ignoresSafeArea()
+
+            // 主コンテンツ：バー可視領域 (50pt) ぶんの bottom inset を `safeAreaInset` で
+            // 確保し、コンテンツがバーに被らないようにする。バー自身は別レイヤーとして
+            // ZStack の底に置き、`.ignoresSafeArea(.bottom)` でホームインジケータまで
+            // 白い bg を確実に延ばす（`.background(_, ignoresSafeAreaEdges:)` だけだと
+            // 環境によって効かないため、レイヤー分離方式に変更）。
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .safeAreaInset(edge: .bottom, spacing: 0) {
-                    bottomBar
+                    Color.clear.frame(height: 50)
                 }
+
+            bottomBar
+
             ToastOverlay(message: toast.message)
         }
     }
@@ -51,8 +60,20 @@ struct RootTabView: View {
     }
 
     private var bottomBar: some View {
+        // 上 50pt にタブ + 上 1pt のボーダー、下にホームインジケータ領域を兼ねる
+        // 余白を含む白いバー全体。ZStack の最下層に置いて
+        // `.ignoresSafeArea(.bottom)` で底まで bg を伸ばす。
         ZStack(alignment: .top) {
-            // 84pt のバー / pt-8 / 左右 px-48 / 中央は FAB スペース。
+            // 白い bg + 上端 1pt ボーダー
+            FujupayPalette.surface
+                .overlay(
+                    Rectangle()
+                        .frame(height: 1)
+                        .foregroundColor(FujupayPalette.bottomBarBorder),
+                    alignment: .top,
+                )
+
+            // タブ群（バー上部 50pt 内に配置）
             HStack(spacing: 0) {
                 // 左：ホーム（右寄せ、pr-64 で中央 FAB と離す）
                 HStack {
@@ -76,21 +97,8 @@ struct RootTabView: View {
             }
             .padding(.top, 8)
             .padding(.horizontal, 48)
-            // Figma の 84pt はホームインジケータ込み。`safeAreaInset` 経由ではインジケータ
-            // 領域が別途確保されるため、純バー高さは 50pt (top pad 8 + タブ 42) に縮める。
-            .frame(height: 50)
+            .frame(height: 50, alignment: .top)
             .frame(maxWidth: .infinity)
-            // バーの白い bg はホームインジケータ領域 (下 safe area) まで延ばす。
-            // `.background(_:ignoresSafeAreaEdges:)` は SafeArea を bg にだけ無効化する
-            // 専用 API で、safeAreaInset 配下でも機能する（Rectangle().ignoresSafeArea
-            // を chain しても効かない問題を回避）。
-            .background(FujupayPalette.surface, ignoresSafeAreaEdges: .bottom)
-            .overlay(
-                Rectangle()
-                    .frame(height: 1)
-                    .foregroundColor(FujupayPalette.bottomBarBorder),
-                alignment: .top
-            )
 
             // 中央 pink 円形 FAB（top -13）。64pt 円の中に 28pt アイコン + 9pt ラベルを
             // 縦並びで中央寄せ。padding は使わず VStack の自然中央寄せで配置する。
@@ -114,6 +122,9 @@ struct RootTabView: View {
             .buttonStyle(.plain)
             .offset(y: -13)
         }
+        .frame(height: 50)
+        .frame(maxWidth: .infinity)
+        .ignoresSafeArea(edges: .bottom)
     }
 
     private func tabItem(
