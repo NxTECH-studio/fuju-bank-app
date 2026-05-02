@@ -25,10 +25,7 @@ struct RootTabView: View {
             FujupayPalette.background.ignoresSafeArea()
 
             // 主コンテンツ：バー可視領域 (50pt) ぶんの bottom inset を `safeAreaInset` で
-            // 確保し、コンテンツがバーに被らないようにする。バー自身は別レイヤーとして
-            // ZStack の底に置き、`.ignoresSafeArea(.bottom)` でホームインジケータまで
-            // 白い bg を確実に延ばす（`.background(_, ignoresSafeAreaEdges:)` だけだと
-            // 環境によって効かないため、レイヤー分離方式に変更）。
+            // 確保し、コンテンツがバーに被らないようにする。
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -39,6 +36,10 @@ struct RootTabView: View {
 
             ToastOverlay(message: toast.message)
         }
+        // ZStack 自体の bottom edge を画面下端に揃える。これがないと alignment .bottom が
+        // safe-area-bottom (ホームインジケータの上端) で止まり、バーが画面最下端まで
+        // 届かない。これで bottomBar の白 bg が確実に端末ボトムまで貼られる。
+        .ignoresSafeArea(edges: .bottom)
     }
 
     @ViewBuilder

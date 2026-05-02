@@ -90,12 +90,13 @@ private fun ActionTile(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        // Figma 上は 28dp 指定だが、SVG のアスペクト比により視覚的に小さく見えるため、
-        // 40dp に拡大して視認性を上げる。タイル高さも併せて padding を増やす。
+        // Figma CSS 仕様: width: 28px / height: 28px / aspect-ratio: 1/1
+        // 各 VectorDrawable は viewport 32x32 + group transform で正方化済みなので、
+        // ここで size(28.dp) を渡せば 4 つ均一に 1:1 の 28dp 枠で描画される。
         Image(
             painter = painterResource(iconRes),
             contentDescription = label,
-            modifier = Modifier.size(40.dp),
+            modifier = Modifier.size(28.dp),
         )
         Text(
             text = label,

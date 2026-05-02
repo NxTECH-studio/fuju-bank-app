@@ -23,11 +23,14 @@ struct ActionTilesView: View {
     private func tile(image: String, labelColor: Color, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 4) {
+                // Figma CSS 仕様: width: 28pt / height: 28pt / aspect-ratio: 1/1
+                // SVG は viewBox 32x32 + group transform で正方化済みなので 28pt 枠で
+                // 4 つ均一に描画される。
                 Image(image)
                     .resizable()
                     .renderingMode(.original)
                     .scaledToFit()
-                    .frame(width: 32, height: 32)
+                    .frame(width: 28, height: 28)
                 Text(label)
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(labelColor)
