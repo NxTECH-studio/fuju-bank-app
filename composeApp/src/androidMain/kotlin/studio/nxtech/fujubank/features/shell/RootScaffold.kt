@@ -40,11 +40,15 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import org.koin.mp.KoinPlatform
 import studio.nxtech.fujubank.R
 import studio.nxtech.fujubank.data.repository.ProfileRepository
+import studio.nxtech.fujubank.data.repository.UserRepository
 import studio.nxtech.fujubank.features.account.AccountPlaceholderScreen
 import studio.nxtech.fujubank.features.home.HomeScreen
 import studio.nxtech.fujubank.features.home.HomeViewModel
 import studio.nxtech.fujubank.features.placeholder.ComingSoonScreen
+import studio.nxtech.fujubank.features.transactions.TransactionListScreen
+import studio.nxtech.fujubank.features.transactions.TransactionListViewModel
 import studio.nxtech.fujubank.navigation.RootDestination
+import studio.nxtech.fujubank.session.SessionStore
 import studio.nxtech.fujubank.theme.FujupayColors
 
 /**
@@ -66,16 +70,21 @@ fun RootScaffold() {
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
 
+    // フッター（ボトムナビ + 中央 FAB）はメインタブ（ホーム / アカウント）でのみ表示する。
+    // 取引履歴 / 送る・もらう のサブ画面ではコンテンツを画面下端まで使えるよう非表示にする。
+    val showBottomBar = destination == RootDestination.Home || destination == RootDestination.Account
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = FujupayColors.Background,
         bottomBar = {
-            BottomNavWithFab(
-                selected = destination,
-                onSelectHome = { destination = RootDestination.Home },
-                onSelectAccount = { destination = RootDestination.Account },
-                onPayClick = { showToast("支払い機能は実装中です") },
-            )
+            if (showBottomBar) {
+                BottomNavWithFab(
+                    selected = destination,
+                    onSelectHome = { destination = RootDestination.Home },
+                    onSelectAccount = { destination = RootDestination.Account },
+                    onPayClick = { showToast("支払い機能は実装中です") },
+                )
+            }
         },
     ) { innerPadding ->
         Box(
@@ -102,10 +111,23 @@ fun RootScaffold() {
                     )
                 }
                 RootDestination.Account -> AccountPlaceholderScreen()
-                RootDestination.TransactionHistory -> ComingSoonScreen(
-                    title = "取引履歴",
-                    onBack = { destination = RootDestination.Home },
-                )
+                RootDestination.TransactionHistory -> {
+                    val viewModel: TransactionListViewModel = viewModel(
+                        factory = viewModelFactory {
+                            initializer {
+                                TransactionListViewModel(
+                                    userRepository = KoinPlatform.getKoin().get<UserRepository>(),
+                                    sessionStore = KoinPlatform.getKoin().get<SessionStore>(),
+                                )
+                            }
+                        },
+                    )
+                    TransactionListScreen(
+                        viewModel = viewModel,
+                        onBack = { destination = RootDestination.Home },
+                        onNotificationClick = { showToast("通知機能は実装中です") },
+                    )
+                }
                 RootDestination.Send -> ComingSoonScreen(
                     title = "送る・もらう",
                     onBack = { destination = RootDestination.Home },

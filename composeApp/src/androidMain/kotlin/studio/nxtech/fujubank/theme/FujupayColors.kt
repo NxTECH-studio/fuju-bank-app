@@ -42,4 +42,16 @@ object FujupayColors {
 
     /** ボトムナビ上部の細いボーダー。 */
     val BottomBarBorder: Color = Color(0xFFEFEFEF)
+
+    /** 取引履歴行の補助テキスト（日時 / 店舗名）。Figma `410:20343` 参照。 */
+    val TransactionMeta: Color = Color(0xFF707275)
+
+    /** 取引履歴行の区切り線。 */
+    val TransactionDivider: Color = Color(0xFFEFEFEF)
+
+    /** 取引相手アバターの暫定プレースホルダ（人物用）。 */
+    val AvatarPerson: Color = Color(0xFFE5E5E5)
+
+    /** 取引相手アバターの暫定プレースホルダ（アーティファクト用）。 */
+    val AvatarArtifact: Color = Color(0xFFC9D8E1)
 }
