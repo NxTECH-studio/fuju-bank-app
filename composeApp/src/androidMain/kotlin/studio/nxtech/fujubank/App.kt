@@ -91,9 +91,22 @@ fun App() {
     // 完了画面の「次へ」では None に戻すだけで良い。
     var signupRoute by rememberSaveable { mutableStateOf(SignupRoute.None) }
 
+    // Authenticated (RootScaffold) のときは Scaffold が独自に WindowInsets を管理するため、
+    // 親で safeContentPadding を掛けると status bar / nav bar 領域に二重余白ができ、
+    // 左右上下に「謎の隙間」が見えてしまう。Home を出すときだけ edge-to-edge にする。
+    val showRoot = bypassAuth ||
+        (sessionState is SessionState.Authenticated && !(welcomePending && !welcomeAlreadyShown))
+
     MaterialTheme {
         if (!splashFinished) {
             SplashScreen()
+        } else if (showRoot) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = FujupayColors.Background,
+            ) {
+                RootScaffold()
+            }
         } else {
             // Figma `89:12356` 全体の地色 (#F6F7F9) を Surface の bg に使うことで、
             // safe area と内側コンテンツの境目が「狭い枠」に見える違和感を解消する。
@@ -103,9 +116,7 @@ fun App() {
                     .safeContentPadding(),
                 color = FujupayColors.Background,
             ) {
-                if (bypassAuth) {
-                    RootScaffold()
-                } else when (val state = sessionState) {
+                when (val state = sessionState) {
                     is SessionState.Unauthenticated -> {
                         UnauthenticatedRouter(
                             signupRoute = signupRoute,
@@ -134,19 +145,13 @@ fun App() {
                         MfaVerifyScreen(viewModel)
                     }
                     is SessionState.Authenticated -> {
-                        // サインアップ画面発の Authenticated 遷移かつ未表示のときだけ Welcome を 1 段挟む。
-                        // 永続フラグは表示完了後に立てるので、kill→再起動で bootstrap 復元された
-                        // Authenticated には pending = false で素通りする。
-                        if (welcomePending && !welcomeAlreadyShown) {
-                            WelcomeScreen(
-                                onFinish = {
-                                    signupWelcomePreferences.markCompleted()
-                                    signupCompletionSignal.consume()
-                                },
-                            )
-                        } else {
-                            RootScaffold()
-                        }
+                        // showRoot 分岐から漏れたケース = Welcome 表示中のみ。
+                        WelcomeScreen(
+                            onFinish = {
+                                signupWelcomePreferences.markCompleted()
+                                signupCompletionSignal.consume()
+                            },
+                        )
                     }
                 }
             }

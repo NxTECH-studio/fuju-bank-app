@@ -24,7 +24,7 @@ struct BalanceCardView: View {
                         Text(displayValue)
                             .font(.system(size: 20, weight: .semibold))
                             .foregroundStyle(Color.black)
-                        Text("円")
+                        Text("ふじゅ〜")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(Color.black)
                     }

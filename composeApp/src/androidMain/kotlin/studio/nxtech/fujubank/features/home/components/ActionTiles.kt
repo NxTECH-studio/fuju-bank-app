@@ -90,10 +90,12 @@ private fun ActionTile(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        // Figma 上は 28dp 指定だが、SVG のアスペクト比により視覚的に小さく見えるため、
+        // 32dp に拡大して見え方を安定させる。
         Image(
             painter = painterResource(iconRes),
             contentDescription = label,
-            modifier = Modifier.size(28.dp),
+            modifier = Modifier.size(32.dp),
         )
         Text(
             text = label,

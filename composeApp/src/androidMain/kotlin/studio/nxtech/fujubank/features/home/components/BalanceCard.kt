@@ -89,7 +89,7 @@ fun BalanceCard(
                         ),
                     )
                     Text(
-                        text = "円",
+                        text = "ふじゅ〜",
                         style = TextStyle(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,

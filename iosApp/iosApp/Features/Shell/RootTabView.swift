@@ -76,7 +76,9 @@ struct RootTabView: View {
             }
             .padding(.top, 8)
             .padding(.horizontal, 48)
-            .frame(height: 84)
+            // Figma の 84pt はホームインジケータ込み。`safeAreaInset` 経由ではインジケータ
+            // 領域が別途確保されるため、純バー高さは 50pt (top pad 8 + タブ 42) に縮める。
+            .frame(height: 50)
             .frame(maxWidth: .infinity)
             .background(FujupayPalette.surface)
             .overlay(
