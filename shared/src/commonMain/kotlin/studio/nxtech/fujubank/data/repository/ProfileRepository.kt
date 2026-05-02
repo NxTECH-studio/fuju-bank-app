@@ -2,6 +2,8 @@ package studio.nxtech.fujubank.data.repository
 
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import studio.nxtech.fujubank.BuildKonfig
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.remote.api.AuthCoreUserApi
 import studio.nxtech.fujubank.data.remote.api.UserMeApi
@@ -24,12 +26,19 @@ class ProfileRepository(
     private val userMeApi: UserMeApi,
 ) {
 
-    suspend fun getMyProfile(): NetworkResult<UserProfile> = coroutineScope {
-        val authCoreDeferred = async { authCoreUserApi.getProfile() }
-        val bankDeferred = async { userMeApi.getMe() }
-        val authCoreResult = authCoreDeferred.await()
-        val bankResult = bankDeferred.await()
-        merge(authCoreResult, bankResult)
+    suspend fun getMyProfile(): NetworkResult<UserProfile> {
+        if (BuildKonfig.USE_DUMMY_PROFILE) {
+            // 通信を伴わない UI 確認用フェイクデータ。loading 状態を観察できるよう少しだけ待つ。
+            delay(300)
+            return NetworkResult.Success(DUMMY_PROFILE)
+        }
+        return coroutineScope {
+            val authCoreDeferred = async { authCoreUserApi.getProfile() }
+            val bankDeferred = async { userMeApi.getMe() }
+            val authCoreResult = authCoreDeferred.await()
+            val bankResult = bankDeferred.await()
+            merge(authCoreResult, bankResult)
+        }
     }
 
     private fun merge(
@@ -71,3 +80,13 @@ class ProfileRepository(
 private val PUBLIC_ID_REGEX = Regex("^[A-Za-z0-9_-]{1,64}$")
 
 internal fun isValidPublicId(value: String): Boolean = PUBLIC_ID_REGEX.matches(value)
+
+private val DUMMY_PROFILE = UserProfile(
+    authCoreId = "01HX4T8K7N9P2QABC0DEF12345",
+    bankUserId = "user_dummy_001",
+    publicId = "fujupay_demo_user",
+    email = "demo@fujupay.app",
+    iconUrl = null,
+    mfaEnabled = false,
+    balanceFuju = 1_234_567L,
+)
