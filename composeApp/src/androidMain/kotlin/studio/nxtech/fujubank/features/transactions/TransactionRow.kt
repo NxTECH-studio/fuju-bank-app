@@ -37,8 +37,8 @@ import studio.nxtech.fujubank.util.formatTransactionDate
  * - 下段に金額を 32sp で大きく表示し、`+` / `-` 記号と「ふじゅ〜」16sp サフィックスを付す
  *
  * 金額の色:
- * - Mint / Incoming: 緑（#0CD80C）— 残高プラス。
- * - Outgoing: 黒（#111111）— 残高マイナス。
+ * - Mint / Incoming: ブランドピンク（`BrandPink` / #FF1E9E）— 残高プラス。Figma 銀行版に合わせる。
+ * - Outgoing: 黒（`TextPrimary` / #111111）— 残高マイナス。
  */
 @Composable
 fun TransactionRow(
@@ -81,7 +81,7 @@ fun TransactionRow(
                         style = TextStyle(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = FujuBankColors.TransactionMeta,
+                            color = FujuBankColors.TextSecondary,
                         ),
                     )
                 }
@@ -91,7 +91,7 @@ fun TransactionRow(
                         style = TextStyle(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = FujuBankColors.TransactionMeta,
+                            color = FujuBankColors.TextSecondary,
                         ),
                     )
                 }
@@ -147,7 +147,7 @@ private data class TransactionRowVariant(
                 title = "発行",
                 subtitle = transaction.artifactId?.let { "アーティファクト ${it.takeLast(SHORT_ID_LEN)}" },
                 sign = "+",
-                amountColor = FujuBankColors.ActionGreen,
+                amountColor = FujuBankColors.BrandPink,
                 avatarColor = FujuBankColors.AvatarArtifact,
             )
             TransactionDirection.Incoming -> {
@@ -156,7 +156,7 @@ private data class TransactionRowVariant(
                     title = "${from}からもらいました",
                     subtitle = null,
                     sign = "+",
-                    amountColor = FujuBankColors.ActionGreen,
+                    amountColor = FujuBankColors.BrandPink,
                     avatarColor = FujuBankColors.AvatarPerson,
                 )
             }
