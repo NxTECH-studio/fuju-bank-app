@@ -8,6 +8,7 @@ import studio.nxtech.fujubank.data.remote.dto.TransactionDto
 import studio.nxtech.fujubank.data.remote.dto.UserResponse
 import studio.nxtech.fujubank.data.remote.map
 import studio.nxtech.fujubank.domain.model.Transaction
+import studio.nxtech.fujubank.domain.model.TransactionDirection
 import studio.nxtech.fujubank.domain.model.TransactionKind
 import studio.nxtech.fujubank.domain.model.User
 import kotlin.time.Instant
@@ -59,6 +60,7 @@ private fun UserResponse.toDomain(): User = User(
 private fun TransactionDto.toDomain(myUserId: String): Transaction = Transaction(
     id = id,
     kind = kind,
+    direction = direction(myUserId),
     amount = amount,
     counterpartyUserId = counterpartyUserId(myUserId),
     artifactId = artifactId,
@@ -70,4 +72,15 @@ private fun TransactionDto.toDomain(myUserId: String): Transaction = Transaction
 private fun TransactionDto.counterpartyUserId(myUserId: String): String? = when (kind) {
     TransactionKind.MINT -> null
     TransactionKind.TRANSFER -> if (fromUserId == myUserId) toUserId else fromUserId
+}
+
+// mint: 常に Incoming 扱い (実体は新規発行)。
+// transfer: 自分が from なら Outgoing、それ以外は Incoming。
+private fun TransactionDto.direction(myUserId: String): TransactionDirection = when (kind) {
+    TransactionKind.MINT -> TransactionDirection.Mint
+    TransactionKind.TRANSFER -> if (fromUserId == myUserId) {
+        TransactionDirection.Outgoing
+    } else {
+        TransactionDirection.Incoming
+    }
 }

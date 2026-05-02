@@ -16,6 +16,7 @@ import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.remote.api.UserApi
 import studio.nxtech.fujubank.data.remote.api.UserMeApi
 import studio.nxtech.fujubank.domain.model.Transaction
+import studio.nxtech.fujubank.domain.model.TransactionDirection
 import studio.nxtech.fujubank.domain.model.TransactionKind
 import studio.nxtech.fujubank.domain.model.User
 import kotlin.test.Test
@@ -129,6 +130,7 @@ class UserRepositoryTest {
         val txn = success.value.single()
         assertEquals("txn_mint", txn.id)
         assertEquals(TransactionKind.MINT, txn.kind)
+        assertEquals(TransactionDirection.Mint, txn.direction)
         assertEquals(500L, txn.amount)
         assertNull(txn.counterpartyUserId)
         assertEquals("art_1", txn.artifactId)
@@ -167,6 +169,7 @@ class UserRepositoryTest {
         val success = assertIs<NetworkResult.Success<List<Transaction>>>(result)
         val txn = success.value.single()
         assertEquals(TransactionKind.TRANSFER, txn.kind)
+        assertEquals(TransactionDirection.Outgoing, txn.direction)
         assertEquals("usr_other", txn.counterpartyUserId)
         assertNull(txn.artifactId)
     }
@@ -203,6 +206,7 @@ class UserRepositoryTest {
         val success = assertIs<NetworkResult.Success<List<Transaction>>>(result)
         val txn = success.value.single()
         assertEquals(TransactionKind.TRANSFER, txn.kind)
+        assertEquals(TransactionDirection.Incoming, txn.direction)
         assertEquals("usr_other", txn.counterpartyUserId)
     }
 
