@@ -39,12 +39,14 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import org.koin.mp.KoinPlatform
 import studio.nxtech.fujubank.R
+import studio.nxtech.fujubank.data.repository.LedgerRepository
 import studio.nxtech.fujubank.data.repository.ProfileRepository
 import studio.nxtech.fujubank.data.repository.UserRepository
 import studio.nxtech.fujubank.features.account.AccountPlaceholderScreen
 import studio.nxtech.fujubank.features.home.HomeScreen
 import studio.nxtech.fujubank.features.home.HomeViewModel
-import studio.nxtech.fujubank.features.placeholder.ComingSoonScreen
+import studio.nxtech.fujubank.features.send.SendScreen
+import studio.nxtech.fujubank.features.send.SendViewModel
 import studio.nxtech.fujubank.features.transactions.TransactionListScreen
 import studio.nxtech.fujubank.features.transactions.TransactionListViewModel
 import studio.nxtech.fujubank.navigation.RootDestination
@@ -70,6 +72,18 @@ fun RootScaffold() {
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
 
+    // HomeViewModel をルート側で 1 つだけ生成し、各画面で共有する。送金成功時など
+    // 別画面から HomeViewModel.refresh() を呼びたいケースに備えるため、ここで hoist する。
+    val homeViewModel: HomeViewModel = viewModel(
+        factory = viewModelFactory {
+            initializer {
+                HomeViewModel(
+                    profileRepository = KoinPlatform.getKoin().get<ProfileRepository>(),
+                )
+            }
+        },
+    )
+
     // フッター（ボトムナビ + 中央 FAB）はメインタブ（ホーム / アカウント）でのみ表示する。
     // 取引履歴 / 送る・もらう のサブ画面ではコンテンツを画面下端まで使えるよう非表示にする。
     val showBottomBar = destination == RootDestination.Home || destination == RootDestination.Account
@@ -93,23 +107,12 @@ fun RootScaffold() {
                 .padding(innerPadding),
         ) {
             when (destination) {
-                RootDestination.Home -> {
-                    val viewModel: HomeViewModel = viewModel(
-                        factory = viewModelFactory {
-                            initializer {
-                                HomeViewModel(
-                                    profileRepository = KoinPlatform.getKoin().get<ProfileRepository>(),
-                                )
-                            }
-                        },
-                    )
-                    HomeScreen(
-                        viewModel = viewModel,
-                        onTransactionHistory = { destination = RootDestination.TransactionHistory },
-                        onSendReceive = { destination = RootDestination.Send },
-                        onShowToast = showToast,
-                    )
-                }
+                RootDestination.Home -> HomeScreen(
+                    viewModel = homeViewModel,
+                    onTransactionHistory = { destination = RootDestination.TransactionHistory },
+                    onSendReceive = { destination = RootDestination.Send },
+                    onShowToast = showToast,
+                )
                 RootDestination.Account -> AccountPlaceholderScreen()
                 RootDestination.TransactionHistory -> {
                     val viewModel: TransactionListViewModel = viewModel(
@@ -128,10 +131,29 @@ fun RootScaffold() {
                         onNotificationClick = { showToast("通知機能は実装中です") },
                     )
                 }
-                RootDestination.Send -> ComingSoonScreen(
-                    title = "送る・もらう",
-                    onBack = { destination = RootDestination.Home },
-                )
+                RootDestination.Send -> {
+                    val viewModel: SendViewModel = viewModel(
+                        factory = viewModelFactory {
+                            initializer {
+                                SendViewModel(
+                                    ledgerRepository = KoinPlatform.getKoin().get<LedgerRepository>(),
+                                    sessionStore = KoinPlatform.getKoin().get<SessionStore>(),
+                                )
+                            }
+                        },
+                    )
+                    SendScreen(
+                        viewModel = viewModel,
+                        onBack = { destination = RootDestination.Home },
+                        onShowToast = showToast,
+                        // 送金成功で Home に戻し、ホイストされた HomeViewModel に
+                        // refresh を投げて残高表示を更新する（A6 で realtime に移行予定）。
+                        onTransferSucceeded = {
+                            destination = RootDestination.Home
+                            homeViewModel.refresh()
+                        },
+                    )
+                }
             }
         }
     }

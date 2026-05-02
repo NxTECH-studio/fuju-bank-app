@@ -69,7 +69,13 @@ struct RootTabView: View {
                 onNotificationTap: { toast.send("通知機能は実装中です") },
             )
         case .send:
-            ComingSoonView(title: "送る・もらう", onBack: { destination = .home })
+            SendView(
+                onBack: { destination = .home },
+                onShowToast: { message in toast.send(message) },
+                // 送金成功で Home に戻す。HomeView は @StateObject の再生成で
+                // onAppear → load が走り直し、最新残高が反映される（A6 で realtime に移行予定）。
+                onTransferSucceeded: { destination = .home },
+            )
         }
     }
 
