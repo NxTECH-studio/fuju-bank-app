@@ -16,10 +16,13 @@ struct Code128BarcodeImage: View {
     var body: some View {
         Group {
             if let image = cachedImage {
+                // Code128 のソース画像はアスペクト比が 12:1 程度に横長。
+                // `.aspectRatio(.fill)` だと与えられた frame より大きい方のスケールを採用して
+                // 横にはみ出すため、ここでは `.resizable()` のみでフレームに合わせて stretch する。
+                // バー幅比は読み取り用ではなく UI 用途なので stretch でも視覚的に問題ない。
                 Image(uiImage: image)
                     .resizable()
                     .interpolation(.none)
-                    .aspectRatio(contentMode: .fill)
             } else {
                 Rectangle()
                     .fill(Color.gray.opacity(0.1))
