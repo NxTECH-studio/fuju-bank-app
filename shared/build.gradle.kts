@@ -1,4 +1,6 @@
+import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.BOOLEAN
 import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -108,6 +110,16 @@ if (!project.hasProperty("buildkonfig.flavor")) {
     }
 }
 
+// `local.properties` の `useDummyProfile=true` で UI 確認用ダミー UserProfile に切替える。
+// バックエンド未起動でも HomeScreen を起動できるようにするデバッグスイッチ。
+// Release flavor では強制 false（本番ビルドへの混入防止）。
+val useDummyProfile: Boolean = run {
+    val file = rootProject.file("local.properties")
+    if (!file.exists()) return@run false
+    Properties().apply { file.inputStream().use(::load) }
+        .getProperty("useDummyProfile")?.toBooleanStrictOrNull() ?: false
+}
+
 buildkonfig {
     packageName = "studio.nxtech.fujubank"
     objectName = "BuildKonfig"
@@ -118,6 +130,7 @@ buildkonfig {
         buildConfigField(STRING, "BANK_API_BASE_URL", "http://10.0.2.2:3000")
         buildConfigField(STRING, "CABLE_URL", "ws://10.0.2.2:3000/cable")
         buildConfigField(STRING, "AUTHCORE_BASE_URL", "http://10.0.2.2:8080")
+        buildConfigField(BOOLEAN, "USE_DUMMY_PROFILE", useDummyProfile.toString())
     }
 
     // Release ビルドでは本番 API を向ける。`-Pbuildkonfig.flavor=release` で切り替え。
@@ -126,6 +139,7 @@ buildkonfig {
         buildConfigField(STRING, "BANK_API_BASE_URL", "https://api.fujupay.app")
         buildConfigField(STRING, "CABLE_URL", "wss://api.fujupay.app/cable")
         buildConfigField(STRING, "AUTHCORE_BASE_URL", "https://authcore.fujupay.app")
+        buildConfigField(BOOLEAN, "USE_DUMMY_PROFILE", "false")
     }
 
     // iOS シミュレータは Mac 上の localhost に直接アクセスできるため上書きする。

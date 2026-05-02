@@ -1,12 +1,9 @@
 package studio.nxtech.fujubank
 
 import android.os.SystemClock
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -14,7 +11,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,6 +25,7 @@ import studio.nxtech.fujubank.features.auth.LoginScreen
 import studio.nxtech.fujubank.features.auth.LoginViewModel
 import studio.nxtech.fujubank.features.auth.MfaVerifyScreen
 import studio.nxtech.fujubank.features.auth.MfaVerifyViewModel
+import studio.nxtech.fujubank.features.shell.RootScaffold
 import studio.nxtech.fujubank.features.signup.SignUpCreateScreen
 import studio.nxtech.fujubank.features.signup.SignUpFlowViewModel
 import studio.nxtech.fujubank.features.signup.SignUpOtpScreen
@@ -40,6 +37,7 @@ import studio.nxtech.fujubank.signup.SignupCompletionSignal
 import studio.nxtech.fujubank.signup.SignupWelcomePreferences
 import studio.nxtech.fujubank.splash.SplashConfig
 import studio.nxtech.fujubank.splash.SplashScreen
+import studio.nxtech.fujubank.theme.FujupayColors
 
 /**
  * Android アプリのルート Composable。
@@ -92,19 +90,29 @@ fun App() {
     // 完了画面の「次へ」では None に戻すだけで良い。
     var signupRoute by rememberSaveable { mutableStateOf(SignupRoute.None) }
 
+    // 親 Surface には safeContentPadding を掛けず edge-to-edge にする。各画面側で
+    // 自前の bg を fillMaxSize で塗り、内側コンテンツに systemBarsPadding を入れて
+    // status bar / nav bar を避ける構成。RootScaffold は内部 Scaffold が
+    // WindowInsets を管理するため同じく edge-to-edge で OK。
+    val showRoot = bypassAuth ||
+        (sessionState is SessionState.Authenticated && !(welcomePending && !welcomeAlreadyShown))
+
     MaterialTheme {
         if (!splashFinished) {
             SplashScreen()
+        } else if (showRoot) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = FujupayColors.Background,
+            ) {
+                RootScaffold()
+            }
         } else {
             Surface(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .safeContentPadding(),
-                color = MaterialTheme.colorScheme.background,
+                modifier = Modifier.fillMaxSize(),
+                color = FujupayColors.Background,
             ) {
-                if (bypassAuth) {
-                    AuthenticatedPlaceholder(userId = "debug-bypass")
-                } else when (val state = sessionState) {
+                when (val state = sessionState) {
                     is SessionState.Unauthenticated -> {
                         UnauthenticatedRouter(
                             signupRoute = signupRoute,
@@ -133,19 +141,13 @@ fun App() {
                         MfaVerifyScreen(viewModel)
                     }
                     is SessionState.Authenticated -> {
-                        // サインアップ画面発の Authenticated 遷移かつ未表示のときだけ Welcome を 1 段挟む。
-                        // 永続フラグは表示完了後に立てるので、kill→再起動で bootstrap 復元された
-                        // Authenticated には pending = false で素通りする。
-                        if (welcomePending && !welcomeAlreadyShown) {
-                            WelcomeScreen(
-                                onFinish = {
-                                    signupWelcomePreferences.markCompleted()
-                                    signupCompletionSignal.consume()
-                                },
-                            )
-                        } else {
-                            AuthenticatedPlaceholder(userId = state.userId)
-                        }
+                        // showRoot 分岐から漏れたケース = Welcome 表示中のみ。
+                        WelcomeScreen(
+                            onFinish = {
+                                signupWelcomePreferences.markCompleted()
+                                signupCompletionSignal.consume()
+                            },
+                        )
                     }
                 }
             }
@@ -213,12 +215,3 @@ private fun UnauthenticatedRouter(
     }
 }
 
-@Composable
-private fun AuthenticatedPlaceholder(userId: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(
-            text = "ログイン済み: $userId\n（A3 でホーム画面を実装します）",
-            style = MaterialTheme.typography.bodyLarge,
-        )
-    }
-}

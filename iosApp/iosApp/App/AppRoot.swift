@@ -24,19 +24,19 @@ struct AppRoot: View {
     var body: some View {
         Group {
             if bypassAuth {
-                AuthenticatedPlaceholderView(userId: "debug-bypass")
+                RootTabView()
             } else {
                 switch session.state {
                 case let mfa as SessionState.MfaPending:
                     MfaVerifyView(viewModel: MfaVerifyViewModel(preToken: mfa.preToken))
                         .id(mfa.preToken)
-                case let auth as SessionState.Authenticated:
+                case is SessionState.Authenticated:
                     // サインアップ画面発の Authenticated 遷移 (pending) かつ未表示の場合のみ Welcome を挟む。
                     // bootstrap 復元による Authenticated は pending = false なので素通り。
                     if welcomeGate.shouldShowWelcome {
                         WelcomeView(onFinish: { welcomeGate.markShown() })
                     } else {
-                        AuthenticatedPlaceholderView(userId: auth.userId)
+                        RootTabView()
                     }
                 default:
                     unauthenticatedRouter
@@ -94,22 +94,3 @@ struct AppRoot: View {
     }
 }
 
-/// ログイン済み画面のプレースホルダ。A3 で HomeView に置き換える。
-struct AuthenticatedPlaceholderView: View {
-    let userId: String
-
-    var body: some View {
-        VStack(spacing: 12) {
-            Text("ログイン済み")
-                .font(.headline)
-            Text(userId)
-                .font(.caption)
-                .foregroundColor(.secondary)
-            Text("A3 でホーム画面を実装します")
-                .font(.footnote)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
-    }
-}
