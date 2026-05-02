@@ -42,11 +42,11 @@ struct TransactionRowView: View {
     }
 
     private func amountText(variant: TransactionRowVariant) -> some View {
-        let formatted = BalanceFormatterKt.formatBalanceFuju(value: transaction.amount)
+        let formatted = CurrencyFormatter.shared.formatAmount(amount: transaction.amount)
         return (
             Text("\(variant.sign)\(formatted)")
                 .font(.system(size: 32, weight: .bold))
-            + Text("ふじゅ〜")
+            + Text(CurrencyFormatter.shared.UNIT)
                 .font(.system(size: 16, weight: .bold))
         )
         .foregroundStyle(variant.amountColor)

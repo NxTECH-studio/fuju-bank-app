@@ -25,8 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import studio.nxtech.fujubank.domain.model.Transaction
 import studio.nxtech.fujubank.domain.model.TransactionDirection
+import studio.nxtech.fujubank.format.CurrencyFormatter
 import studio.nxtech.fujubank.theme.FujuBankColors
-import studio.nxtech.fujubank.util.formatBalanceFuju
 import studio.nxtech.fujubank.util.formatTransactionDate
 
 /**
@@ -118,10 +118,10 @@ private fun AmountText(sign: String, amount: Long, color: Color) {
         buildAnnotatedString {
             withStyle(SpanStyle(fontSize = 32.sp)) {
                 append(sign)
-                append(formatBalanceFuju(amount))
+                append(CurrencyFormatter.formatAmount(amount))
             }
             withStyle(SpanStyle(fontSize = 16.sp)) {
-                append("ふじゅ〜")
+                append(CurrencyFormatter.UNIT)
             }
         }
     }

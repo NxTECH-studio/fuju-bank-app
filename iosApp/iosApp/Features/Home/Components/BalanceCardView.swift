@@ -29,7 +29,7 @@ struct BalanceCardView: View {
                             .foregroundStyle(Color.black)
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
-                        Text("ふじゅ〜")
+                        Text(CurrencyFormatter.shared.UNIT)
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(Color.black)
                             .lineLimit(1)
@@ -58,7 +58,7 @@ struct BalanceCardView: View {
 
     private var displayValue: String {
         if revealed {
-            return BalanceFormatterKt.formatBalanceFuju(value: balanceFuju)
+            return CurrencyFormatter.shared.formatAmount(amount: balanceFuju)
         }
         return BalanceFormatterKt.maskedBalance()
     }
