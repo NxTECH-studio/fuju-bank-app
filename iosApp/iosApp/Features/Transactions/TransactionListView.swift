@@ -21,6 +21,8 @@ struct TransactionListView: View {
     }
 
     private var header: some View {
+        // 横余白はホーム画面と揃えるため 16pt（HomeView 側の `padding(.horizontal, 16)` と同値）。
+        // タイトルは中央寄せ、左右に 48pt の戻るボタン / 通知ベルを配置する。
         ZStack {
             Text("取引履歴")
                 .font(.system(size: 16, weight: .bold))
@@ -35,17 +37,11 @@ struct TransactionListView: View {
                 }
                 .buttonStyle(.plain)
                 Spacer()
-                Button(action: onNotificationTap) {
-                    Image(systemName: "bell.fill")
-                        .font(.system(size: 18))
-                        .foregroundStyle(FujupayPalette.textPrimary)
-                        .frame(width: 48, height: 48)
-                }
-                .buttonStyle(.plain)
+                NotificationBellButton(onTap: onNotificationTap)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
     }
 
     @ViewBuilder

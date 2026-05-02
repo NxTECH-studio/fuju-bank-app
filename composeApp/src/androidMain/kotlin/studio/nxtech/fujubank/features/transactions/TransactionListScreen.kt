@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import studio.nxtech.fujubank.R
+import studio.nxtech.fujubank.features.home.components.NotificationBellButton
 import studio.nxtech.fujubank.theme.FujupayColors
 
 /**
@@ -84,10 +85,12 @@ private fun Header(
     onBack: () -> Unit,
     onNotificationClick: () -> Unit,
 ) {
+    // 横余白はホーム画面と揃えるため 16dp（HomeScreen の Column と同値）。
+    // タイトルは中央寄せ、左右に 48dp の戻るボタン / 通知ベルを配置する。
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -112,20 +115,10 @@ private fun Header(
                 modifier = Modifier.size(24.dp),
             )
         }
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .size(48.dp)
-                .clip(CircleShape)
-                .clickable(onClick = onNotificationClick),
-            contentAlignment = Alignment.Center,
-        ) {
-            Image(
-                painter = painterResource(R.drawable.ic_notifications),
-                contentDescription = "通知",
-                modifier = Modifier.size(24.dp),
-            )
-        }
+        NotificationBellButton(
+            onClick = onNotificationClick,
+            modifier = Modifier.align(Alignment.CenterEnd),
+        )
     }
 }
 
