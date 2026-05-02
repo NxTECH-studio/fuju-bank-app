@@ -1,5 +1,6 @@
 package studio.nxtech.fujubank.theme
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -11,6 +12,7 @@ import androidx.compose.ui.unit.sp
  * そのまま `commonMain` に持ち運びやすい形に揃えてある。フォントファミリは指定せず OS のデフォルトに任せる
  * （iOS は SF Pro、Android は Roboto / Noto Sans JP にフォールバックする想定）。
  */
+@Immutable
 data class FujuBankTextStyles(
     /** 画面タイトル（「取引履歴」「取引詳細」等）。Figma `Inter Bold 17`。 */
     val headline: TextStyle,
