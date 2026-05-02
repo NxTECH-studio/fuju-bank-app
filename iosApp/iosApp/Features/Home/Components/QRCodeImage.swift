@@ -8,7 +8,7 @@ import CoreImage.CIFilterBuiltins
 /// `correctionLevel = "L"` のみ揃える。
 struct QRCodeImage: View {
     let content: String
-    var foregroundColor: Color = FujupayPalette.textPrimary
+    var foregroundColor: Color = FujuBankPalette.textPrimary
     var backgroundColor: Color = .white
 
     // SwiftUI の View は値型で再生成が頻繁に走るため、Metal pipeline 構築コストの大きい

@@ -25,8 +25,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import studio.nxtech.fujubank.features.home.components.ActionTiles
 import studio.nxtech.fujubank.features.home.components.BalanceCard
-import studio.nxtech.fujubank.features.home.components.FujupayHeader
-import studio.nxtech.fujubank.theme.FujupayColors
+import studio.nxtech.fujubank.features.home.components.FujuBankHeader
+import studio.nxtech.fujubank.theme.FujuBankColors
 
 /**
  * ホーム画面 — Figma `89:12356` 準拠。
@@ -49,7 +49,7 @@ fun HomeScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(FujupayColors.Background),
+            .background(FujuBankColors.Background),
     ) {
         when (val current = state) {
             HomeUiState.Loading -> LoadingContent()
@@ -73,7 +73,7 @@ fun HomeScreen(
 @Composable
 private fun LoadingContent() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(color = FujupayColors.BrandPink)
+        CircularProgressIndicator(color = FujuBankColors.BrandPink)
     }
 }
 
@@ -94,7 +94,7 @@ private fun ErrorContent(
             style = TextStyle(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = FujupayColors.TextPrimary,
+                color = FujuBankColors.TextPrimary,
             ),
             textAlign = TextAlign.Center,
         )
@@ -102,8 +102,8 @@ private fun ErrorContent(
         Button(
             onClick = onRetry,
             colors = ButtonDefaults.buttonColors(
-                containerColor = FujupayColors.BrandPink,
-                contentColor = FujupayColors.Surface,
+                containerColor = FujuBankColors.BrandPink,
+                contentColor = FujuBankColors.Surface,
             ),
         ) {
             Text("再試行")
@@ -127,7 +127,7 @@ private fun LoadedContent(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        FujupayHeader(
+        FujuBankHeader(
             onNotificationClick = onNotificationClick,
             modifier = Modifier.padding(top = 8.dp),
         )
@@ -142,7 +142,7 @@ private fun LoadedContent(
             style = TextStyle(
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = FujupayColors.TextSecondary,
+                color = FujuBankColors.TextSecondary,
             ),
             modifier = Modifier
                 .fillMaxWidth()

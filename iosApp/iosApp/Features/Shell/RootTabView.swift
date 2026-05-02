@@ -31,7 +31,7 @@ struct RootTabView: View {
         GeometryReader { geo in
             let visibleBarHeight = max(0, 84 - geo.safeAreaInsets.bottom)
             ZStack(alignment: .bottom) {
-                FujupayPalette.background.ignoresSafeArea()
+                FujuBankPalette.background.ignoresSafeArea()
 
                 content
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -80,11 +80,11 @@ struct RootTabView: View {
         // タブ・FAB・ボーダーは上 50pt に固定して home indicator と被らない。
         ZStack(alignment: .top) {
             // 白い bg + 上端 1pt ボーダー
-            FujupayPalette.surface
+            FujuBankPalette.surface
                 .overlay(
                     Rectangle()
                         .frame(height: 1)
-                        .foregroundColor(FujupayPalette.bottomBarBorder),
+                        .foregroundColor(FujuBankPalette.bottomBarBorder),
                     alignment: .top,
                 )
 
@@ -130,9 +130,9 @@ struct RootTabView: View {
                         .foregroundColor(.white)
                 }
                 .frame(width: 64, height: 64)
-                .background(FujupayPalette.brandPink)
+                .background(FujuBankPalette.brandPink)
                 .clipShape(Circle())
-                .shadow(color: FujupayPalette.shadowTint.opacity(0.18), radius: 6, x: 0, y: 4)
+                .shadow(color: FujuBankPalette.shadowTint.opacity(0.18), radius: 6, x: 0, y: 4)
             }
             .buttonStyle(.plain)
             // タブは上 50pt にあるので、その上端から -13pt にせり出す位置を計算。
@@ -151,7 +151,7 @@ struct RootTabView: View {
         selected: Bool,
         action: @escaping () -> Void,
     ) -> some View {
-        let labelColor = selected ? Color.black : FujupayPalette.textTertiary
+        let labelColor = selected ? Color.black : FujuBankPalette.textTertiary
         // Figma では Frame 幅 32 に対して「アカウント」テキストが 40 と幅を超えており、
         // 横にはみ出す前提のレイアウト。VStack の幅は固定せず、ラベル幅まで広げて改行を防ぐ。
         return Button(action: action) {

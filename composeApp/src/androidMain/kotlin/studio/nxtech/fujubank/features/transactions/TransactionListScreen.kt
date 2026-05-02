@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import studio.nxtech.fujubank.R
 import studio.nxtech.fujubank.features.home.components.NotificationBellButton
-import studio.nxtech.fujubank.theme.FujupayColors
+import studio.nxtech.fujubank.theme.FujuBankColors
 
 /**
  * 取引履歴画面 — Figma `410:20343` 準拠。
@@ -58,7 +58,7 @@ fun TransactionListScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(FujupayColors.Background),
+            .background(FujuBankColors.Background),
     ) {
         Header(
             onBack = onBack,
@@ -98,7 +98,7 @@ private fun Header(
             style = TextStyle(
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = FujupayColors.TextPrimary,
+                color = FujuBankColors.TextPrimary,
             ),
         )
         Box(
@@ -125,7 +125,7 @@ private fun Header(
 @Composable
 private fun LoadingContent() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(color = FujupayColors.BrandPink)
+        CircularProgressIndicator(color = FujuBankColors.BrandPink)
     }
 }
 
@@ -143,7 +143,7 @@ private fun ErrorContent(message: String, onRetry: () -> Unit) {
             style = TextStyle(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = FujupayColors.TextPrimary,
+                color = FujuBankColors.TextPrimary,
             ),
             textAlign = TextAlign.Center,
         )
@@ -151,8 +151,8 @@ private fun ErrorContent(message: String, onRetry: () -> Unit) {
         Button(
             onClick = onRetry,
             colors = ButtonDefaults.buttonColors(
-                containerColor = FujupayColors.BrandPink,
-                contentColor = FujupayColors.Surface,
+                containerColor = FujuBankColors.BrandPink,
+                contentColor = FujuBankColors.Surface,
             ),
         ) {
             Text("再試行")
@@ -181,7 +181,7 @@ private fun LoadedContent(
                 items(state.items, key = { it.id }) { transaction ->
                     TransactionRow(transaction = transaction)
                     HorizontalDivider(
-                        color = FujupayColors.TransactionDivider,
+                        color = FujuBankColors.TransactionDivider,
                         thickness = 2.dp,
                     )
                 }
@@ -204,7 +204,7 @@ private fun EmptyContent() {
             style = TextStyle(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = FujupayColors.TextSecondary,
+                color = FujuBankColors.TextSecondary,
             ),
             textAlign = TextAlign.Center,
         )

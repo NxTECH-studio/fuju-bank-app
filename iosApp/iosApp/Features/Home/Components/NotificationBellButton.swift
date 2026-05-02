@@ -16,7 +16,7 @@ struct NotificationBellButton: View {
                     .frame(width: 24, height: 24)
                 // 赤ドット（白縁付き）。Figma の circle r=3.5 stroke 2 相当。
                 Circle()
-                    .fill(FujupayPalette.background)
+                    .fill(FujuBankPalette.background)
                     .frame(width: 9, height: 9)
                     .overlay(
                         Circle()

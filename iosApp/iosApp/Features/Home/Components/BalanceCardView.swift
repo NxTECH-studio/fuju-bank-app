@@ -19,7 +19,7 @@ struct BalanceCardView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("現在の残高")
                         .font(.system(size: 12, weight: .regular))
-                        .foregroundStyle(FujupayPalette.textSecondary)
+                        .foregroundStyle(FujuBankPalette.textSecondary)
                     // SF Pro は数字+カンマ+ハイフンが幅広で、20pt のままだと 1 行に
                     // 収まらず改行されることがある。lineLimit(1) で改行を防ぎ、
                     // minimumScaleFactor で必要なら自動縮小する。
@@ -40,10 +40,10 @@ struct BalanceCardView: View {
                 Button(action: onToggleReveal) {
                     Text(revealed ? "隠す" : "表示")
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(FujupayPalette.brandPink)
+                        .foregroundStyle(FujuBankPalette.brandPink)
                         .padding(.horizontal, 11)
                         .padding(.vertical, 7)
-                        .background(FujupayPalette.brandPink.opacity(0.1))
+                        .background(FujuBankPalette.brandPink.opacity(0.1))
                         .clipShape(RoundedRectangle(cornerRadius: 35))
                 }
                 .buttonStyle(.plain)
@@ -51,9 +51,9 @@ struct BalanceCardView: View {
         }
         .padding(30)
         .frame(maxWidth: .infinity)
-        .background(FujupayPalette.surface)
+        .background(FujuBankPalette.surface)
         .clipShape(RoundedRectangle(cornerRadius: 32))
-        .shadow(color: FujupayPalette.shadowTint.opacity(0.02), radius: 6, x: 0, y: 4)
+        .shadow(color: FujuBankPalette.shadowTint.opacity(0.02), radius: 6, x: 0, y: 4)
     }
 
     private var displayValue: String {

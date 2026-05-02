@@ -3,8 +3,8 @@ import SwiftUI
 /// fujupay ホーム画面 (Figma `89:12356`) のカラートークン。
 ///
 /// Material のセマンティクスとぶつかるため、Asset Catalog ではなく構造体で持ち、
-/// 画面側から `FujupayPalette.brandPink` のように直接参照する。
-enum FujupayPalette {
+/// 画面側から `FujuBankPalette.brandPink` のように直接参照する。
+enum FujuBankPalette {
     static let background = Color(red: 0xF6 / 255, green: 0xF7 / 255, blue: 0xF9 / 255)
     static let surface = Color.white
     static let textPrimary = Color(red: 0x11 / 255, green: 0x11 / 255, blue: 0x11 / 255)

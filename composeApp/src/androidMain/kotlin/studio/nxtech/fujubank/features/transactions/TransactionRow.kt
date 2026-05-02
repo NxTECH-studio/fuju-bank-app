@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import studio.nxtech.fujubank.domain.model.Transaction
 import studio.nxtech.fujubank.domain.model.TransactionDirection
-import studio.nxtech.fujubank.theme.FujupayColors
+import studio.nxtech.fujubank.theme.FujuBankColors
 import studio.nxtech.fujubank.util.formatBalanceFuju
 import studio.nxtech.fujubank.util.formatTransactionDate
 
@@ -73,7 +73,7 @@ fun TransactionRow(
                         style = TextStyle(
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = FujupayColors.TextPrimary,
+                            color = FujuBankColors.TextPrimary,
                         ),
                     )
                     Text(
@@ -81,7 +81,7 @@ fun TransactionRow(
                         style = TextStyle(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = FujupayColors.TransactionMeta,
+                            color = FujuBankColors.TransactionMeta,
                         ),
                     )
                 }
@@ -91,7 +91,7 @@ fun TransactionRow(
                         style = TextStyle(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = FujupayColors.TransactionMeta,
+                            color = FujuBankColors.TransactionMeta,
                         ),
                     )
                 }
@@ -147,8 +147,8 @@ private data class TransactionRowVariant(
                 title = "発行",
                 subtitle = transaction.artifactId?.let { "アーティファクト ${it.takeLast(SHORT_ID_LEN)}" },
                 sign = "+",
-                amountColor = FujupayColors.ActionGreen,
-                avatarColor = FujupayColors.AvatarArtifact,
+                amountColor = FujuBankColors.ActionGreen,
+                avatarColor = FujuBankColors.AvatarArtifact,
             )
             TransactionDirection.Incoming -> {
                 val from = transaction.counterpartyUserId?.takeLast(SHORT_ID_LEN) ?: "相手"
@@ -156,8 +156,8 @@ private data class TransactionRowVariant(
                     title = "${from}からもらいました",
                     subtitle = null,
                     sign = "+",
-                    amountColor = FujupayColors.ActionGreen,
-                    avatarColor = FujupayColors.AvatarPerson,
+                    amountColor = FujuBankColors.ActionGreen,
+                    avatarColor = FujuBankColors.AvatarPerson,
                 )
             }
             TransactionDirection.Outgoing -> {
@@ -166,8 +166,8 @@ private data class TransactionRowVariant(
                     title = "${to}に送りました",
                     subtitle = null,
                     sign = "-",
-                    amountColor = FujupayColors.TextPrimary,
-                    avatarColor = FujupayColors.AvatarPerson,
+                    amountColor = FujuBankColors.TextPrimary,
+                    avatarColor = FujuBankColors.AvatarPerson,
                 )
             }
         }

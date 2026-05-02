@@ -22,7 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import studio.nxtech.fujubank.R
-import studio.nxtech.fujubank.theme.FujupayColors
+import studio.nxtech.fujubank.theme.FujuBankColors
 
 /**
  * ホーム画面の 4 アクション（取引履歴 / 送る・もらう / スキャン / チャージ）。Figma `89:12356` 準拠。
@@ -45,28 +45,28 @@ fun ActionTiles(
         ActionTile(
             iconRes = R.drawable.ic_history,
             label = "取引履歴",
-            labelColor = FujupayColors.ActionPurple,
+            labelColor = FujuBankColors.ActionPurple,
             onClick = onTransactionHistory,
             modifier = Modifier.weight(1f),
         )
         ActionTile(
             iconRes = R.drawable.ic_send,
             label = "送る・もらう",
-            labelColor = FujupayColors.ActionGreen,
+            labelColor = FujuBankColors.ActionGreen,
             onClick = onSendReceive,
             modifier = Modifier.weight(1f),
         )
         ActionTile(
             iconRes = R.drawable.ic_qr_scanner,
             label = "スキャン",
-            labelColor = FujupayColors.BrandPink,
+            labelColor = FujuBankColors.BrandPink,
             onClick = onScan,
             modifier = Modifier.weight(1f),
         )
         ActionTile(
             iconRes = R.drawable.ic_add_circle,
             label = "チャージ",
-            labelColor = FujupayColors.ActionBlue,
+            labelColor = FujuBankColors.ActionBlue,
             onClick = onCharge,
             modifier = Modifier.weight(1f),
         )
@@ -84,7 +84,7 @@ private fun ActionTile(
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(FujupayColors.Surface)
+            .background(FujuBankColors.Surface)
             .clickable(onClick = onClick)
             .padding(top = 12.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

@@ -5,10 +5,10 @@ import SwiftUI
 struct AccountPlaceholderView: View {
     var body: some View {
         ZStack {
-            FujupayPalette.background.ignoresSafeArea()
+            FujuBankPalette.background.ignoresSafeArea()
             Text("アカウント画面は準備中です")
                 .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(FujupayPalette.textSecondary)
+                .foregroundStyle(FujuBankPalette.textSecondary)
         }
     }
 }

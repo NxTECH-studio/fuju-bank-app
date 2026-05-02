@@ -8,7 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import studio.nxtech.fujubank.theme.FujupayColors
+import studio.nxtech.fujubank.theme.FujuBankColors
 
 /**
  * Code128 風の縞模様プレースホルダー。
@@ -22,7 +22,7 @@ import studio.nxtech.fujubank.theme.FujupayColors
 fun BarcodeImage(
     content: String,
     modifier: Modifier = Modifier,
-    barColor: Color = FujupayColors.TextPrimary,
+    barColor: Color = FujuBankColors.TextPrimary,
 ) {
     // content から疑似ランダムにバー幅と空白幅を決める（描画ごとにブレないように memoize）。
     val pattern = remember(content) { generatePattern(content) }

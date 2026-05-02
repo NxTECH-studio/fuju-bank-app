@@ -16,7 +16,7 @@ struct TransactionListView: View {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(FujupayPalette.background.ignoresSafeArea())
+        .background(FujuBankPalette.background.ignoresSafeArea())
         .onAppear { viewModel.onAppear() }
     }
 
@@ -26,13 +26,13 @@ struct TransactionListView: View {
         ZStack {
             Text("取引履歴")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(FujupayPalette.textPrimary)
+                .foregroundStyle(FujuBankPalette.textPrimary)
 
             HStack {
                 Button(action: onBack) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(FujupayPalette.textPrimary)
+                        .foregroundStyle(FujuBankPalette.textPrimary)
                         .frame(width: 48, height: 48)
                 }
                 .buttonStyle(.plain)
@@ -50,13 +50,13 @@ struct TransactionListView: View {
         case .loading:
             ProgressView()
                 .progressViewStyle(.circular)
-                .tint(FujupayPalette.brandPink)
+                .tint(FujuBankPalette.brandPink)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case let .error(message):
             VStack(spacing: 16) {
                 Text(message)
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(FujupayPalette.textPrimary)
+                    .foregroundStyle(FujuBankPalette.textPrimary)
                     .multilineTextAlignment(.center)
                 Button(action: { viewModel.refresh() }) {
                     Text("再試行")
@@ -64,7 +64,7 @@ struct TransactionListView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 10)
-                        .background(FujupayPalette.brandPink)
+                        .background(FujuBankPalette.brandPink)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
@@ -77,7 +77,7 @@ struct TransactionListView: View {
                     Spacer()
                     Text("まだ取引がありません")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(FujupayPalette.textSecondary)
+                        .foregroundStyle(FujuBankPalette.textSecondary)
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
@@ -92,7 +92,7 @@ struct TransactionListView: View {
                             TransactionRowView(transaction: transaction)
                             if transaction.id != lastId {
                                 Rectangle()
-                                    .fill(FujupayPalette.transactionDivider)
+                                    .fill(FujuBankPalette.transactionDivider)
                                     .frame(height: 2)
                             }
                         }
@@ -103,7 +103,7 @@ struct TransactionListView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .background(FujupayPalette.background)
+                .background(FujuBankPalette.background)
                 .refreshable { await refreshAsync() }
             }
         }
