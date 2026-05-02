@@ -23,9 +23,15 @@ final class HomeViewModel: ObservableObject {
     @Published private(set) var state: HomeUiState = .loading
 
     private let profileRepository: ProfileRepository
+    // 進行中の fetch Job。新しい load() でキャンセルし、古い結果が後勝ちで state を上書きしないようにする。
+    private var inFlight: Kotlinx_coroutines_coreJob?
 
     init() {
         self.profileRepository = KoinIosKt.profileRepository()
+    }
+
+    deinit {
+        inFlight?.cancel(cause: nil)
     }
 
     func onAppear() {
@@ -44,9 +50,8 @@ final class HomeViewModel: ObservableObject {
     }
 
     private func load() {
-        // refresh 中も画面を再描画したいので、loaded 中なら値はそのままで再 fetch する。
-        // loading 状態は初回のみ表示。
-        ProfileFlowIosKt.fetchMyProfile(profileRepository: profileRepository) { [weak self] outcome in
+        inFlight?.cancel(cause: nil)
+        inFlight = ProfileFlowIosKt.fetchMyProfile(profileRepository: profileRepository) { [weak self] outcome in
             Task { @MainActor in
                 guard let self else { return }
                 switch outcome {
