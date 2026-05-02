@@ -38,7 +38,10 @@ fun fetchMyTransactions(
     sessionStore: SessionStore,
     onResult: (TransactionsLoadOutcome) -> Unit,
 ): Job = transactionsScope.launch {
-    val userId = (sessionStore.current as? SessionState.Authenticated)?.userId
+    val sessionUserId = (sessionStore.current as? SessionState.Authenticated)?.userId
+    // ダミーモードでは Repository が userId を無視してフェイクデータを返すため、
+    // セッション未確立でも UI 確認のために空文字でフォールスルーさせる。
+    val userId = sessionUserId ?: if (userRepository.useDummyData) "" else null
     val outcome = if (userId == null) {
         TransactionsLoadOutcome.Unauthenticated
     } else {

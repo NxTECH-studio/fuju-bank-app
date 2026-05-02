@@ -48,11 +48,14 @@ class TransactionListViewModel(
             }
         }
         loadJob = viewModelScope.launch {
-            val userId = (sessionStore.current as? SessionState.Authenticated)?.userId
-            if (userId == null) {
+            val sessionUserId = (sessionStore.current as? SessionState.Authenticated)?.userId
+            // ダミーモードでは Repository が userId を無視してフェイクデータを返すため、
+            // セッション未確立でも UI 確認のために空文字でフォールスルーさせる。
+            if (sessionUserId == null && !userRepository.useDummyData) {
                 _state.value = TransactionListUiState.Error(message = "セッションが切れました")
                 return@launch
             }
+            val userId = sessionUserId ?: ""
             when (val result = userRepository.transactions(userId)) {
                 is NetworkResult.Success -> _state.value = TransactionListUiState.Loaded(
                     items = result.value.sortedByDescending { it.occurredAt },

@@ -19,7 +19,7 @@ class UserRepository(
     private val userApi: UserApi,
     private val userMeApi: UserMeApi,
     // テストや本番では false を強制する。デフォルトは BuildKonfig 側のフラグに従う。
-    private val useDummyData: Boolean = BuildKonfig.USE_DUMMY_PROFILE,
+    val useDummyData: Boolean = BuildKonfig.USE_DUMMY_PROFILE,
 ) {
 
     suspend fun create(subject: String): NetworkResult<User> =
