@@ -60,9 +60,10 @@ struct RootTabView: View {
     }
 
     private var bottomBar: some View {
-        // 上 50pt にタブ + 上 1pt のボーダー、下にホームインジケータ領域を兼ねる
-        // 余白を含む白いバー全体。ZStack の最下層に置いて
-        // `.ignoresSafeArea(.bottom)` で底まで bg を伸ばす。
+        // バー全体: 84pt (上 50pt 可視タブ領域 + 下 34pt ホームインジケータ領域) で
+        // 端末の最下端まで白を貼る。`.ignoresSafeArea(.bottom)` で safe area の
+        // bottom inset を無効化して画面ボトム edge までレイアウトを伸ばす。
+        // タブ・FAB・ボーダーは上 50pt に固定して home indicator と被らない。
         ZStack(alignment: .top) {
             // 白い bg + 上端 1pt ボーダー
             FujupayPalette.surface
@@ -100,8 +101,8 @@ struct RootTabView: View {
             .frame(height: 50, alignment: .top)
             .frame(maxWidth: .infinity)
 
-            // 中央 pink 円形 FAB（top -13）。64pt 円の中に 28pt アイコン + 9pt ラベルを
-            // 縦並びで中央寄せ。padding は使わず VStack の自然中央寄せで配置する。
+            // 中央 pink 円形 FAB（バー上端から -13pt にせり出す）。64pt 円の中に
+            // 28pt アイコン + 9pt ラベルを縦並びで中央寄せ。
             Button(action: { toast.send("支払い機能は実装中です") }) {
                 VStack(spacing: 1) {
                     Image("FabPayQr")
@@ -120,9 +121,11 @@ struct RootTabView: View {
                 .shadow(color: FujupayPalette.shadowTint.opacity(0.18), radius: 6, x: 0, y: 4)
             }
             .buttonStyle(.plain)
+            // タブは上 50pt にあるので、その上端から -13pt にせり出す位置を計算。
+            // ZStack(alignment:.top) の中で alignment .top → -13 で OK。
             .offset(y: -13)
         }
-        .frame(height: 50)
+        .frame(height: 84)
         .frame(maxWidth: .infinity)
         .ignoresSafeArea(edges: .bottom)
     }
