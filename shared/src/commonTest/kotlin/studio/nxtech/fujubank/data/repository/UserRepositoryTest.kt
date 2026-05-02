@@ -60,7 +60,7 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
+        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)), useDummyData = false)
 
         val result = repository.create(subject = "01HZY8X2B7K3J4M5N6P7Q8R9ST")
 
@@ -88,7 +88,7 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
+        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)), useDummyData = false)
 
         val result = repository.get("usr_01HZY8X2B7")
 
@@ -122,7 +122,7 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
+        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)), useDummyData = false)
 
         val result = repository.transactions("usr_me")
 
@@ -162,7 +162,7 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
+        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)), useDummyData = false)
 
         val result = repository.transactions("usr_me")
 
@@ -199,7 +199,7 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
+        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)), useDummyData = false)
 
         val result = repository.transactions("usr_me")
 
@@ -219,7 +219,7 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
+        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)), useDummyData = false)
 
         val result = repository.transactions("usr_me")
 
@@ -247,7 +247,7 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
+        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)), useDummyData = false)
 
         val result = repository.provisionMe()
 
@@ -276,7 +276,7 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
+        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)), useDummyData = false)
 
         val result = repository.getMe()
 
