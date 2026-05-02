@@ -1,12 +1,14 @@
-<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 277.257 273.407" fill="none" xmlns="http://www.w3.org/2000/svg">
-<g id="Frame 49">
-<path id="Polygon 4" d="M113.37 16.4886C128.719 6.4691 148.539 6.46912 163.888 16.4886L244.741 69.2676C254.36 75.5472 249.914 90.4937 238.426 90.4937H38.8314C27.3435 90.4937 22.8969 75.5471 32.5166 69.2676L113.37 16.4886Z" fill="var(--fill-0, #EEEFF1)"/>
-<rect id="Rectangle 24" x="252.227" y="235" width="30.8064" height="227.197" rx="11.5524" transform="rotate(90 252.227 235)" fill="var(--fill-0, #EEEFF1)"/>
-<rect id="Rectangle 24_2" x="66" y="98" width="30" height="27" rx="11.5524" fill="var(--fill-0, #EEEFF1)"/>
-<rect id="Rectangle 26" x="126" y="98" width="29" height="40" rx="11.5524" fill="var(--fill-0, #EEEFF1)"/>
-<rect id="Rectangle 25" x="185" y="98" width="30" height="40" rx="11.5524" fill="var(--fill-0, #EEEFF1)"/>
-<rect id="Rectangle 27" x="65.9902" y="187" width="30" height="40" rx="11.5524" fill="var(--fill-0, #EEEFF1)"/>
-<rect id="Rectangle 28" x="126" y="187" width="29" height="40" rx="11.5524" fill="var(--fill-0, #EEEFF1)"/>
-<rect id="Rectangle 29" x="185" y="181" width="30" height="46" rx="11.5524" fill="var(--fill-0, #EEEFF1)"/>
-</g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 277.257 273.407" fill="none">
+  <!-- Roof (Polygon 4) -->
+  <path d="M113.37 16.4886C128.719 6.4691 148.539 6.46912 163.888 16.4886L244.741 69.2676C254.36 75.5472 249.914 90.4937 238.426 90.4937H38.8314C27.3435 90.4937 22.8969 75.5471 32.5166 69.2676L113.37 16.4886Z" fill="#EEEFF1"/>
+  <!-- Base bar (rotated rect → x=25.030 y=235 w=227.197 h=30.8064 r=11.5524) -->
+  <rect x="25.030" y="235" width="227.197" height="30.8064" rx="11.5524" fill="#EEEFF1"/>
+  <!-- Upper row columns -->
+  <rect x="66" y="98" width="30" height="27" rx="11.5524" fill="#EEEFF1"/>
+  <rect x="126" y="98" width="29" height="40" rx="11.5524" fill="#EEEFF1"/>
+  <rect x="185" y="98" width="30" height="40" rx="11.5524" fill="#EEEFF1"/>
+  <!-- Lower row columns -->
+  <rect x="65.9902" y="187" width="30" height="40" rx="11.5524" fill="#EEEFF1"/>
+  <rect x="126" y="187" width="29" height="40" rx="11.5524" fill="#EEEFF1"/>
+  <rect x="185" y="181" width="30" height="46" rx="11.5524" fill="#EEEFF1"/>
 </svg>
