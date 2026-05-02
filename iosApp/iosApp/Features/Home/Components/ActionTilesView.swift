@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// ホーム画面の 4 アクション（取引履歴 / 送る・もらう / スキャン / チャージ）。
+/// ホーム画面の 4 アクション（取引履歴 / 送る・もらう / スキャン / チャージ）。Figma `89:12356` 準拠。
 ///
-/// 各タイルは白い丸ボタン + 下にラベル。アイコンは SF Symbols を使い、色だけがカテゴリで変わる。
+/// 各タイルは白い丸角矩形 (rounded 20)、内側に 28pt のブランドカラーアイコン + 10pt Bold ラベル。
+/// アイコンの SVG はブランドカラーが焼き込み済みのため `Image(...).renderingMode(.original)` で描画。
 struct ActionTilesView: View {
     let onTransactionHistory: () -> Void
     let onSendReceive: () -> Void
@@ -10,33 +11,32 @@ struct ActionTilesView: View {
     let onCharge: () -> Void
 
     var body: some View {
-        HStack {
-            tile(symbol: "clock.arrow.circlepath", tint: FujupayPalette.actionPurple, label: "取引履歴", action: onTransactionHistory)
-            Spacer()
-            tile(symbol: "paperplane", tint: FujupayPalette.actionGreen, label: "送る・もらう", action: onSendReceive)
-            Spacer()
-            tile(symbol: "qrcode.viewfinder", tint: FujupayPalette.brandPink, label: "スキャン", action: onScan)
-            Spacer()
-            tile(symbol: "plus.circle", tint: FujupayPalette.actionBlue, label: "チャージ", action: onCharge)
+        HStack(spacing: 4) {
+            tile(image: "ActionHistory", labelColor: FujupayPalette.actionPurple, label: "取引履歴", action: onTransactionHistory)
+            tile(image: "ActionSend", labelColor: FujupayPalette.actionGreen, label: "送る・もらう", action: onSendReceive)
+            tile(image: "ActionScan", labelColor: FujupayPalette.brandPink, label: "スキャン", action: onScan)
+            tile(image: "ActionCharge", labelColor: FujupayPalette.actionBlue, label: "チャージ", action: onCharge)
         }
         .frame(maxWidth: .infinity)
     }
 
-    private func tile(symbol: String, tint: Color, label: String, action: @escaping () -> Void) -> some View {
+    private func tile(image: String, labelColor: Color, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 8) {
-                ZStack {
-                    Circle()
-                        .fill(FujupayPalette.surface)
-                        .frame(width: 56, height: 56)
-                    Image(systemName: symbol)
-                        .font(.system(size: 24, weight: .regular))
-                        .foregroundStyle(tint)
-                }
+            VStack(spacing: 4) {
+                Image(image)
+                    .resizable()
+                    .renderingMode(.original)
+                    .scaledToFit()
+                    .frame(width: 28, height: 28)
                 Text(label)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(FujupayPalette.textSecondary)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(labelColor)
             }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 6)
+            .padding(.bottom, 14)
+            .background(FujupayPalette.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
         }
         .buttonStyle(.plain)
     }

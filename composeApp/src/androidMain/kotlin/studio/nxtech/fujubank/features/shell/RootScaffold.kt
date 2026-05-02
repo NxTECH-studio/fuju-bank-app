@@ -1,7 +1,9 @@
 package studio.nxtech.fujubank.features.shell
 
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,14 +15,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -48,8 +50,9 @@ import studio.nxtech.fujubank.navigation.RootDestination
 import studio.nxtech.fujubank.theme.FujupayColors
 
 /**
- * ログイン後のルートシェル。Scaffold の bottomBar に NavigationBar 風のタブと、
- * その上に重なる中央 FAB（マゼンタの「支払い」ボタン）を Box で重ね合わせる。
+ * ログイン後のルートシェル。Scaffold の bottomBar に Figma `89:12356` `43:258` 準拠の
+ * カスタムボトムナビ（白背景 / pt-8 px-48 / 84dp）と、その上に重なる中央 FAB（pink 円形 + 内側ラベル）を
+ * Box で重ね合わせる。
  *
  * MVP では Navigation Compose を導入せず、[RootDestination] を `rememberSaveable` で
  * 保持して切替える。A4 / A5 で本格的な NavGraph に置き換える想定。
@@ -121,104 +124,110 @@ private fun BottomNavWithFab(
     onSelectAccount: () -> Unit,
     onPayClick: () -> Unit,
 ) {
+    val homeFamily = selected == RootDestination.Home ||
+        selected == RootDestination.TransactionHistory ||
+        selected == RootDestination.Send
     Box(modifier = Modifier.fillMaxWidth()) {
-        // 下段：ホーム / 支払いラベルセル / アカウント
+        // 下段 84dp / 上 8dp padding / 左右 48dp padding。中央は FAB のためのスペース。
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp)
-                .background(FujupayColors.Surface),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceEvenly,
+                .height(84.dp)
+                .background(FujupayColors.Surface)
+                .border(width = 1.dp, color = Color(0xFFEFEFEF))
+                .padding(top = 8.dp, start = 48.dp, end = 48.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            BottomNavItem(
-                iconRes = R.drawable.ic_home,
-                label = "ホーム",
-                selected = selected == RootDestination.Home || selected == RootDestination.TransactionHistory || selected == RootDestination.Send,
-                onClick = onSelectHome,
-            )
-            // 中央セル：他のタブと同じ Column 構造で、アイコン部は透明スロット。
-            // 円形 FAB は同じ位置に Box overlay として描画される。
-            PayLabelCell(onClick = onPayClick)
-            BottomNavItem(
-                iconRes = R.drawable.ic_account_circle,
-                label = "アカウント",
-                selected = selected == RootDestination.Account,
-                onClick = onSelectAccount,
-            )
+            // 左：ホーム（右寄せ、右に 64dp 余白で中央 FAB と離す）
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 64.dp),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                BottomTab(
+                    iconRes = R.drawable.ic_home,
+                    label = "ホーム",
+                    selected = homeFamily,
+                    onClick = onSelectHome,
+                )
+            }
+            // 右：アカウント（左寄せ、左に 64dp 余白）
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 64.dp),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                BottomTab(
+                    iconRes = R.drawable.ic_account_circle,
+                    label = "アカウント",
+                    selected = selected == RootDestination.Account,
+                    onClick = onSelectAccount,
+                )
+            }
         }
-        // 中央 FAB（円形ボタン、タブの上にせり出す）
+        // 中央 pink 円形 FAB（バー上部 -13dp にせり出す）。アイコンとラベルを内蔵。
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .offset(y = (-13).dp)
-                .size(56.dp)
+                .size(width = 64.dp, height = 64.dp)
                 .shadow(elevation = 6.dp, shape = CircleShape, clip = false)
-                .clip(CircleShape)
+                .clip(RoundedCornerShape(58.dp))
                 .background(FujupayColors.BrandPink)
-                .clickable(onClick = onPayClick),
-            contentAlignment = Alignment.Center,
+                .clickable(onClick = onPayClick)
+                .padding(top = 10.dp, bottom = 22.dp, start = 16.dp, end = 16.dp),
+            contentAlignment = Alignment.TopCenter,
         ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_pay_qr),
-                contentDescription = "支払い",
-                tint = Color.White,
-                modifier = Modifier.size(28.dp),
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.ic_pay_qr),
+                    contentDescription = "支払い",
+                    modifier = Modifier.size(32.dp),
+                )
+                Text(
+                    text = "支払い",
+                    style = TextStyle(
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                    ),
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun PayLabelCell(onClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        // 他のタブの Icon (24dp) とベースラインを揃える透明スロット。
-        // 円形 FAB は親 Box の overlay として上に描画される。
-        Box(modifier = Modifier.size(24.dp))
-        Text(
-            text = "支払い",
-            style = TextStyle(
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Medium,
-                color = FujupayColors.BrandPink,
-            ),
-        )
-    }
-}
-
-@Composable
-private fun BottomNavItem(
+private fun BottomTab(
     iconRes: Int,
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val tint = if (selected) FujupayColors.BrandPink else FujupayColors.TextTertiary
+    val labelColor = if (selected) Color.Black else FujupayColors.TextTertiary
     Column(
         modifier = Modifier
-            .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 4.dp),
+            .width(32.dp)
+            .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Icon(
+        Image(
             painter = painterResource(iconRes),
             contentDescription = label,
-            tint = tint,
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier.size(32.dp),
         )
         Text(
             text = label,
             style = TextStyle(
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Medium,
-                color = tint,
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold,
+                color = labelColor,
             ),
         )
     }

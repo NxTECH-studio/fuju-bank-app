@@ -9,45 +9,44 @@ struct BalanceCardView: View {
     let onToggleReveal: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 14) {
             Code128BarcodeImage(content: publicId)
                 .frame(height: 63)
                 .frame(maxWidth: .infinity)
-            HStack(spacing: 16) {
+            HStack(spacing: 12) {
                 QRCodeImage(content: publicId)
                     .frame(width: 66, height: 66)
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 12) {
                     Text("現在の残高")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 12, weight: .regular))
                         .foregroundStyle(FujupayPalette.textSecondary)
-                    HStack(alignment: .lastTextBaseline, spacing: 4) {
+                    HStack(alignment: .lastTextBaseline, spacing: 5) {
                         Text(displayValue)
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundStyle(FujupayPalette.textPrimary)
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(Color.black)
                         Text("円")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(FujupayPalette.textPrimary)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Color.black)
                     }
                 }
                 Spacer()
                 Button(action: onToggleReveal) {
                     Text(revealed ? "隠す" : "表示")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(FujupayPalette.textSecondary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(FujupayPalette.background)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(FujupayPalette.brandPink)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 7)
+                        .background(FujupayPalette.brandPink.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 35))
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 24)
+        .padding(30)
         .frame(maxWidth: .infinity)
         .background(FujupayPalette.surface)
         .clipShape(RoundedRectangle(cornerRadius: 32))
-        .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 4)
+        .shadow(color: Color(red: 30/255, green: 34/255, blue: 42/255).opacity(0.02), radius: 6, x: 0, y: 4)
     }
 
     private var displayValue: String {

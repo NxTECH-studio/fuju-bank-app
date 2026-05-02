@@ -1,15 +1,15 @@
 package studio.nxtech.fujubank.features.home.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,9 +25,10 @@ import studio.nxtech.fujubank.R
 import studio.nxtech.fujubank.theme.FujupayColors
 
 /**
- * ホーム画面の 4 アクション（取引履歴 / 送る・もらう / スキャン / チャージ）。
+ * ホーム画面の 4 アクション（取引履歴 / 送る・もらう / スキャン / チャージ）。Figma `89:12356` 準拠。
  *
- * 各タイルは白い丸ボタン + 下部にラベル。アイコンの色だけがカテゴリごとに切り替わる。
+ * 各タイルは白い丸角矩形 (rounded 20)、内側に 28dp のブランドカラーアイコン + 10sp Bold のラベル。
+ * アイコン SVG はブランドカラーが焼き込み済みのため `Image` で描画して `tint` は使わない。
  */
 @Composable
 fun ActionTiles(
@@ -39,31 +40,35 @@ fun ActionTiles(
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         ActionTile(
             iconRes = R.drawable.ic_history,
-            tint = FujupayColors.ActionPurple,
             label = "取引履歴",
+            labelColor = FujupayColors.ActionPurple,
             onClick = onTransactionHistory,
+            modifier = Modifier.weight(1f),
         )
         ActionTile(
             iconRes = R.drawable.ic_send,
-            tint = FujupayColors.ActionGreen,
             label = "送る・もらう",
+            labelColor = FujupayColors.ActionGreen,
             onClick = onSendReceive,
+            modifier = Modifier.weight(1f),
         )
         ActionTile(
             iconRes = R.drawable.ic_qr_scanner,
-            tint = FujupayColors.BrandPink,
             label = "スキャン",
+            labelColor = FujupayColors.BrandPink,
             onClick = onScan,
+            modifier = Modifier.weight(1f),
         )
         ActionTile(
             iconRes = R.drawable.ic_add_circle,
-            tint = FujupayColors.ActionBlue,
             label = "チャージ",
+            labelColor = FujupayColors.ActionBlue,
             onClick = onCharge,
+            modifier = Modifier.weight(1f),
         )
     }
 }
@@ -71,35 +76,31 @@ fun ActionTiles(
 @Composable
 private fun ActionTile(
     iconRes: Int,
-    tint: Color,
     label: String,
+    labelColor: Color,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(FujupayColors.Surface)
+            .clickable(onClick = onClick)
+            .padding(top = 6.dp, bottom = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(CircleShape)
-                .background(FujupayColors.Surface)
-                .clickable(onClick = onClick),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = label,
-                tint = tint,
-                modifier = Modifier.size(28.dp),
-            )
-        }
+        Image(
+            painter = painterResource(iconRes),
+            contentDescription = label,
+            modifier = Modifier.size(28.dp),
+        )
         Text(
             text = label,
             style = TextStyle(
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = FujupayColors.TextSecondary,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = labelColor,
             ),
         )
     }

@@ -6,12 +6,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -42,14 +41,14 @@ fun BalanceCard(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 8.dp,
+                elevation = 6.dp,
                 shape = RoundedCornerShape(32.dp),
                 clip = false,
             )
             .clip(RoundedCornerShape(32.dp))
             .background(FujupayColors.Surface)
-            .padding(horizontal = 24.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+            .padding(30.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         BarcodeImage(
             content = publicId,
@@ -59,7 +58,7 @@ fun BalanceCard(
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             QrCodeImage(
                 content = publicId,
@@ -67,35 +66,34 @@ fun BalanceCard(
             )
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
                     text = "現在の残高",
                     style = TextStyle(
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
                         color = FujupayColors.TextSecondary,
                     ),
                 )
                 Row(
                     verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
                     Text(
                         text = if (revealed) formatBalanceFuju(balanceFuju) else MASKED_BALANCE,
                         style = TextStyle(
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = FujupayColors.TextPrimary,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.Black,
                         ),
                     )
-                    Spacer(Modifier.width(4.dp))
                     Text(
                         text = "円",
                         style = TextStyle(
-                            fontSize = 14.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
-                            color = FujupayColors.TextPrimary,
+                            color = Color.Black,
                         ),
                     )
                 }
@@ -115,18 +113,18 @@ private fun RevealToggle(
 ) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(FujupayColors.Background)
+            .clip(RoundedCornerShape(35.dp))
+            .background(FujupayColors.BrandPink.copy(alpha = 0.1f))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 11.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = if (revealed) "隠す" else "表示",
             style = TextStyle(
                 fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = FujupayColors.TextSecondary,
+                fontWeight = FontWeight.Medium,
+                color = FujupayColors.BrandPink,
             ),
         )
     }
