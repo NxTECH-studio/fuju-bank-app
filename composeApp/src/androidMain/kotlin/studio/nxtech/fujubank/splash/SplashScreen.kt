@@ -18,17 +18,16 @@ import androidx.compose.ui.unit.dp
 import studio.nxtech.fujubank.R
 
 /**
- * 起動スプラッシュ (Figma node 175-2457) を Compose 側で再現する画面。
+ * 起動スプラッシュ (Figma node 504-5945) を Compose 側で再現する画面。
  *
  * Material splash screen API は中央正方形アイコン 1 枚しか描画できず、Figma の
- * 横長合成 (icon + "fuju pay" wordmark + 背景装飾) を表現できないため、OS splash は
+ * 横長合成 (icon + "fuju 銀行" wordmark + 銀行建物装飾) を表現できないため、OS splash は
  * 背景色のみを表示し、本 Composable で Figma 通りのレイアウトを描く構成にする。
  *
  * 構成:
  * - 背景 `#F6F7F9` (`R.color.fuju_splash_bg`)
- * - 中央付近に Subtract 装飾 (3 枚のリング、Figma の `calc(50%+6.97px)` 相当に
- *   合わせて y を +7dp オフセット)
- * - 中央に icon + wordmark の合成ロゴ
+ * - 中央付近に銀行建物シルエット装飾 (Figma の `calc(50%-7.3px)` に合わせて y を -7dp)
+ * - 銀行建物の柱が並ぶ位置 (top:413, height:51.617) にロゴを重ねる (画面中央から +13dp)
  */
 @Composable
 fun SplashScreen() {
@@ -42,15 +41,17 @@ fun SplashScreen() {
             painter = painterResource(R.drawable.fuju_splash_decoration),
             contentDescription = null,
             modifier = Modifier
-                .width(252.dp)
-                .height(352.dp)
-                .offset(y = 7.dp),
+                .width(277.dp)
+                .height(273.dp)
+                .offset(y = (-7).dp),
             contentScale = ContentScale.Fit,
         )
         Image(
             painter = painterResource(R.drawable.fuju_logo),
-            contentDescription = "fuju pay",
-            modifier = Modifier.width(195.dp),
+            contentDescription = "fuju 銀行",
+            modifier = Modifier
+                .width(196.dp)
+                .offset(y = 13.dp),
             contentScale = ContentScale.Fit,
         )
     }
