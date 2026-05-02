@@ -21,25 +21,29 @@ struct RootTabView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            FujupayPalette.background.ignoresSafeArea()
+        // GeometryReader で端末の bottom safe area inset (= ホームインジケータ高さ) を
+        // 動的に取得し、コンテンツの bottom inset を「バー全体 84pt − インジケータ高さ」
+        // に合わせる。iPhone 系 (34pt) では 50pt、iPad 系 (0pt) では 84pt が確保され、
+        // どちらの端末でもバーの可視部分にコンテンツが潜り込まない。
+        GeometryReader { geo in
+            let visibleBarHeight = max(0, 84 - geo.safeAreaInsets.bottom)
+            ZStack(alignment: .bottom) {
+                FujupayPalette.background.ignoresSafeArea()
 
-            // 主コンテンツ：バー可視領域 (50pt) ぶんの bottom inset を `safeAreaInset` で
-            // 確保し、コンテンツがバーに被らないようにする。
-            content
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    Color.clear.frame(height: 50)
-                }
+                content
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        Color.clear.frame(height: visibleBarHeight)
+                    }
 
-            bottomBar
+                bottomBar
 
-            ToastOverlay(message: toast.message)
+                ToastOverlay(message: toast.message)
+            }
+            // ZStack 自体の bottom edge を画面下端に揃える。これがないと alignment .bottom
+            // が safe-area-bottom で止まり、バーが画面最下端まで届かない。
+            .ignoresSafeArea(edges: .bottom)
         }
-        // ZStack 自体の bottom edge を画面下端に揃える。これがないと alignment .bottom が
-        // safe-area-bottom (ホームインジケータの上端) で止まり、バーが画面最下端まで
-        // 届かない。これで bottomBar の白 bg が確実に端末ボトムまで貼られる。
-        .ignoresSafeArea(edges: .bottom)
     }
 
     @ViewBuilder
@@ -128,7 +132,8 @@ struct RootTabView: View {
         }
         .frame(height: 84)
         .frame(maxWidth: .infinity)
-        .ignoresSafeArea(edges: .bottom)
+        // ※ 親 ZStack に既に `.ignoresSafeArea(edges: .bottom)` を適用しているため、
+        //    ここでは不要 (重複適用するとレイアウト警告の原因)。
     }
 
     private func tabItem(

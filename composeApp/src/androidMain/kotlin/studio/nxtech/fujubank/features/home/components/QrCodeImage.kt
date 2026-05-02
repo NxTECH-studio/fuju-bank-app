@@ -17,9 +17,11 @@ fun QrCodeImage(
     modifier: Modifier = Modifier,
 ) {
     val painter = rememberQrCodePainter(content)
+    // contentDescription に content (publicId) を含めると TalkBack で公開 ID が
+    // 読み上げられるため、固定文言にする。
     Image(
         painter = painter,
-        contentDescription = "QR code: $content",
+        contentDescription = "支払い用 QR コード",
         modifier = modifier,
     )
 }
