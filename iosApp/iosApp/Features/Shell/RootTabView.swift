@@ -21,9 +21,9 @@ struct RootTabView: View {
     }
 
     var body: some View {
-        // フッター（ボトムナビ + 中央 FAB）はホーム画面のみ表示する。
-        // 取引履歴 / 送る・もらう / アカウントなどサブ画面ではコンテンツを画面下端まで使えるよう非表示にする。
-        let showBottomBar = destination == .home
+        // フッター（ボトムナビ + 中央 FAB）はメインタブ（ホーム / アカウント）でのみ表示する。
+        // 取引履歴 / 送る・もらう のサブ画面ではコンテンツを画面下端まで使えるよう非表示にする。
+        let showBottomBar = destination == .home || destination == .account
         // GeometryReader で端末の bottom safe area inset (= ホームインジケータ高さ) を
         // 動的に取得し、コンテンツの bottom inset を「バー全体 84pt − インジケータ高さ」
         // に合わせる。iPhone 系 (34pt) では 50pt、iPad 系 (0pt) では 84pt が確保され、

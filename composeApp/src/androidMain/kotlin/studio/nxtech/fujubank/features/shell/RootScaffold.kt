@@ -70,9 +70,9 @@ fun RootScaffold() {
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
 
-    // フッター（ボトムナビ + 中央 FAB）はホーム画面のみ表示する。
-    // 取引履歴 / 送る・もらう / アカウントなどサブ画面ではコンテンツを画面下端まで使えるよう非表示にする。
-    val showBottomBar = destination == RootDestination.Home
+    // フッター（ボトムナビ + 中央 FAB）はメインタブ（ホーム / アカウント）でのみ表示する。
+    // 取引履歴 / 送る・もらう のサブ画面ではコンテンツを画面下端まで使えるよう非表示にする。
+    val showBottomBar = destination == RootDestination.Home || destination == RootDestination.Account
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = FujupayColors.Background,
