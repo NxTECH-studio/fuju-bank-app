@@ -58,6 +58,7 @@ class LedgerRepositoryTest {
         val repo = LedgerRepository(
             ledgerApi = api,
             idempotencyKeyFactory = { "idem_repo_new" },
+            useDummyData = false,
         )
 
         val result = repo.transfer(
@@ -97,6 +98,7 @@ class LedgerRepositoryTest {
         val repo = LedgerRepository(
             ledgerApi = api,
             idempotencyKeyFactory = { "idem_repo_new" },
+            useDummyData = false,
         )
 
         val result = repo.transfer(
@@ -155,6 +157,7 @@ class LedgerRepositoryTest {
         val repo = LedgerRepository(
             ledgerApi = api,
             idempotencyKeyFactory = { "idem_repo_generated" },
+            useDummyData = false,
         )
 
         val first = repo.transfer(
@@ -180,5 +183,40 @@ class LedgerRepositoryTest {
             listOf<String?>("idem_repo_generated", "idem_repo_generated"),
             capturedKeys.toList(),
         )
+    }
+
+    @Test
+    fun transfer_dummy_mode_returns_success_without_calling_api() = runTest {
+        val engine = MockEngine { error("API must not be called in dummy mode") }
+        val api = LedgerApi(httpClient(engine))
+        val repo = LedgerRepository(
+            ledgerApi = api,
+            idempotencyKeyFactory = { "idem_dummy_key" },
+            useDummyData = true,
+        )
+
+        val result = repo.transfer(from = "usr_from", to = "usr_to", amount = 1_000)
+
+        val success = assertIs<TransferResult.Success>(result)
+        // 1_234_567 - 1_000 = 1_233_567
+        assertEquals(1_233_567L, success.newBalance)
+        // ダミー ID は "txn_dummy_send_" + idempotencyKey の先頭 8 文字
+        assertEquals("txn_dummy_send_idem_dum", success.transactionId)
+    }
+
+    @Test
+    fun transfer_dummy_mode_insufficient_balance_when_amount_exceeds_threshold() = runTest {
+        val engine = MockEngine { error("API must not be called in dummy mode") }
+        val api = LedgerApi(httpClient(engine))
+        val repo = LedgerRepository(
+            ledgerApi = api,
+            idempotencyKeyFactory = { "idem_dummy_key" },
+            useDummyData = true,
+        )
+
+        val result = repo.transfer(from = "usr_from", to = "usr_to", amount = 10_000_000)
+
+        val failure = assertIs<TransferResult.Failure>(result)
+        assertEquals(ApiErrorCode.INSUFFICIENT_BALANCE, failure.error.code)
     }
 }

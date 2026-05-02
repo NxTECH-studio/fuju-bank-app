@@ -4,6 +4,7 @@ import org.koin.mp.KoinPlatform
 import studio.nxtech.fujubank.BuildKonfig
 import studio.nxtech.fujubank.data.remote.api.UserApi
 import studio.nxtech.fujubank.data.repository.AuthRepository
+import studio.nxtech.fujubank.data.repository.LedgerRepository
 import studio.nxtech.fujubank.data.repository.ProfileRepository
 import studio.nxtech.fujubank.data.repository.UserRepository
 import studio.nxtech.fujubank.session.SessionStore
@@ -37,3 +38,5 @@ fun signupCompletionSignal(): SignupCompletionSignal = KoinPlatform.getKoin().ge
 fun signupWelcomePreferences(): SignupWelcomePreferences = KoinPlatform.getKoin().get()
 
 fun profileRepository(): ProfileRepository = KoinPlatform.getKoin().get()
+
+fun ledgerRepository(): LedgerRepository = KoinPlatform.getKoin().get()
