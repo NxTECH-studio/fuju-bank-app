@@ -53,7 +53,7 @@ struct BalanceCardView: View {
         .frame(maxWidth: .infinity)
         .background(FujupayPalette.surface)
         .clipShape(RoundedRectangle(cornerRadius: 32))
-        .shadow(color: Color(red: 30/255, green: 34/255, blue: 42/255).opacity(0.02), radius: 6, x: 0, y: 4)
+        .shadow(color: FujupayPalette.shadowTint.opacity(0.02), radius: 6, x: 0, y: 4)
     }
 
     private var displayValue: String {

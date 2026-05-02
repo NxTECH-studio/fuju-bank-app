@@ -88,7 +88,7 @@ struct RootTabView: View {
             .overlay(
                 Rectangle()
                     .frame(height: 1)
-                    .foregroundColor(Color(red: 239/255, green: 239/255, blue: 239/255)),
+                    .foregroundColor(FujupayPalette.bottomBarBorder),
                 alignment: .top
             )
 
@@ -109,7 +109,7 @@ struct RootTabView: View {
                 .frame(width: 64, height: 64)
                 .background(FujupayPalette.brandPink)
                 .clipShape(Circle())
-                .shadow(color: Color(red: 30/255, green: 34/255, blue: 42/255).opacity(0.18), radius: 6, x: 0, y: 4)
+                .shadow(color: FujupayPalette.shadowTint.opacity(0.18), radius: 6, x: 0, y: 4)
             }
             .buttonStyle(.plain)
             .offset(y: -13)

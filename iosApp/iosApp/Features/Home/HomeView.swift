@@ -9,7 +9,7 @@ import Shared
 ///
 /// ボトムタブ + 中央 FAB は親の `RootTabView` が描画する。
 struct HomeView: View {
-    @StateObject var viewModel = HomeViewModel()
+    @StateObject private var viewModel = HomeViewModel()
     var onTransactionHistory: () -> Void = {}
     var onSendReceive: () -> Void = {}
     var onShowToast: (String) -> Void = { _ in }

@@ -23,8 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import studio.nxtech.fujubank.theme.FujupayColors
-import studio.nxtech.fujubank.util.MASKED_BALANCE
 import studio.nxtech.fujubank.util.formatBalanceFuju
+import studio.nxtech.fujubank.util.maskedBalance
 
 /**
  * 残高カード（バーコード + QR + 残高 + 表示トグル）。Figma `89:12356` のメインカード。
@@ -81,7 +81,7 @@ fun BalanceCard(
                     horizontalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
                     Text(
-                        text = if (revealed) formatBalanceFuju(balanceFuju) else MASKED_BALANCE,
+                        text = if (revealed) formatBalanceFuju(balanceFuju) else maskedBalance(),
                         style = TextStyle(
                             fontSize = 20.sp,
                             fontWeight = FontWeight.SemiBold,

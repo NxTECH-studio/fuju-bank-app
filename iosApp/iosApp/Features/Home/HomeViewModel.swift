@@ -31,6 +31,9 @@ final class HomeViewModel: ObservableObject {
     }
 
     deinit {
+        // deinit は @MainActor 隔離外で実行されるが、Kotlinx.coroutines の Job.cancel は
+        // thread-safe なため、ここから直接 cancel しても安全。Swift 6 strict-concurrency
+        // が有効になった場合は `nonisolated(unsafe)` か Task ラップに切替える。
         inFlight?.cancel(cause: nil)
     }
 

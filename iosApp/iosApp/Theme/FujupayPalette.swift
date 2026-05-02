@@ -14,4 +14,8 @@ enum FujupayPalette {
     static let actionPurple = Color(red: 0x9E / 255, green: 0x1E / 255, blue: 0xFF / 255)
     static let actionGreen = Color(red: 0x0C / 255, green: 0xD8 / 255, blue: 0x0C / 255)
     static let actionBlue = Color(red: 0x1E / 255, green: 0x83 / 255, blue: 0xFF / 255)
+    /// drop-shadow rgba(30, 34, 42, ...) 系のシャドウベース色 (透明度は呼び出し側で指定)。
+    static let shadowTint = Color(red: 30 / 255, green: 34 / 255, blue: 42 / 255)
+    /// ボトムバー上端の細いボーダー。
+    static let bottomBarBorder = Color(red: 0xEF / 255, green: 0xEF / 255, blue: 0xEF / 255)
 }
