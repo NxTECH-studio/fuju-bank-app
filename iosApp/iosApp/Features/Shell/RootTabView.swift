@@ -81,8 +81,14 @@ struct RootTabView: View {
             .frame(height: 50)
             .frame(maxWidth: .infinity)
             // バーの白い bg はホームインジケータ領域 (下 safe area) まで延ばし、
-            // タブだけ safe area 内に置く。bg にだけ ignoresSafeArea を効かせる。
-            .background(FujupayPalette.surface.ignoresSafeArea(edges: .bottom))
+            // タブだけ safe area 内に置く。Color に直接 .ignoresSafeArea を付けると
+            // safeAreaInset コンテキスト下では効かないことがあるため、Rectangle を
+            // 明示的に背景レイヤーとして用意する。
+            .background(
+                Rectangle()
+                    .fill(FujupayPalette.surface)
+                    .ignoresSafeArea(edges: .bottom),
+            )
             .overlay(
                 Rectangle()
                     .frame(height: 1)

@@ -20,13 +20,20 @@ struct BalanceCardView: View {
                     Text("現在の残高")
                         .font(.system(size: 12, weight: .regular))
                         .foregroundStyle(FujupayPalette.textSecondary)
+                    // SF Pro は数字+カンマ+ハイフンが幅広で、20pt のままだと 1 行に
+                    // 収まらず改行されることがある。lineLimit(1) で改行を防ぎ、
+                    // minimumScaleFactor で必要なら自動縮小する。
                     HStack(alignment: .lastTextBaseline, spacing: 5) {
                         Text(displayValue)
                             .font(.system(size: 20, weight: .semibold))
                             .foregroundStyle(Color.black)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                         Text("ふじゅ〜")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(Color.black)
+                            .lineLimit(1)
+                            .fixedSize()
                     }
                 }
                 Spacer()

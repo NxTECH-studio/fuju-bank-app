@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Figma 89:12356 取引履歴 (purple) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
+    android:width="32dp"
     android:height="32dp"
     android:viewportWidth="22.6723"
     android:viewportHeight="32.1939">

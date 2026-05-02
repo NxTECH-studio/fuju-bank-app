@@ -27,7 +27,7 @@ struct ActionTilesView: View {
                     .resizable()
                     .renderingMode(.original)
                     .scaledToFit()
-                    .frame(width: 28, height: 28)
+                    .frame(width: 32, height: 32)
                 Text(label)
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(labelColor)
