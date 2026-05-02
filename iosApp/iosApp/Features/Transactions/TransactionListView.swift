@@ -83,11 +83,14 @@ struct TransactionListView: View {
                 .frame(maxWidth: .infinity)
                 .refreshable { await refreshAsync() }
             } else {
+                // 行間の区切り線は SwiftUI 標準の `Divider` 系で出すと色制御が難しいため、
+                // 各行の bottom に薄い Rectangle を貼って表現する。最終行には付けない。
+                let lastId = items.last?.id
                 List {
-                    ForEach(Array(items.enumerated()), id: \.element.id) { index, transaction in
+                    ForEach(items, id: \.id) { transaction in
                         VStack(spacing: 12) {
                             TransactionRowView(transaction: transaction)
-                            if index < items.count - 1 {
+                            if transaction.id != lastId {
                                 Rectangle()
                                     .fill(FujupayPalette.transactionDivider)
                                     .frame(height: 2)
@@ -106,12 +109,10 @@ struct TransactionListView: View {
         }
     }
 
-    /// SwiftUI `.refreshable` は `async` を期待する。Kotlin 側のコールバック型 API を
-    /// `withCheckedContinuation` で待ち合わせず、状態の遷移をポーリングするのは複雑なため、
-    /// シンプルに `refresh()` をキックして即座に return する。引きおろしジェスチャの
-    /// インジケータは表示されるが、新しい結果が反映されたタイミングで自動的に閉じる。
+    /// SwiftUI `.refreshable` は `async` 完了を待つので、ViewModel 側で
+    /// `withCheckedContinuation` を使って fetch 完了までサスペンドする。
     @MainActor
     private func refreshAsync() async {
-        viewModel.refresh()
+        await viewModel.refreshAwait()
     }
 }

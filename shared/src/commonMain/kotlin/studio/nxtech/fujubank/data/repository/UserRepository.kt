@@ -2,6 +2,8 @@ package studio.nxtech.fujubank.data.repository
 
 import kotlinx.coroutines.delay
 import studio.nxtech.fujubank.BuildKonfig
+import studio.nxtech.fujubank.data.remote.ApiError
+import studio.nxtech.fujubank.data.remote.ApiErrorCode
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.remote.api.UserApi
 import studio.nxtech.fujubank.data.remote.api.UserMeApi
@@ -54,6 +56,18 @@ class UserRepository(
             // 通信を伴わない UI 確認用フェイクデータ。loading 状態を観察できるよう少しだけ待つ。
             delay(300)
             return NetworkResult.Success(dummyTransactions())
+        }
+        // 防御的ガード: release ビルドで万が一 userId が空文字 / 空白で渡ってきた場合に
+        // `/users//transactions` のような不正パスで API を叩かないよう ApiError として弾く。
+        // 上位 (ViewModel / facade) でも SessionStore でガードしているが二重に守る。
+        if (userId.isBlank()) {
+            return NetworkResult.Failure(
+                ApiError(
+                    code = ApiErrorCode.UNAUTHENTICATED,
+                    message = "userId is blank",
+                    httpStatus = 0,
+                ),
+            )
         }
         return userApi.transactions(userId).map { response ->
             response.transactions.map { it.toDomain(myUserId = userId) }

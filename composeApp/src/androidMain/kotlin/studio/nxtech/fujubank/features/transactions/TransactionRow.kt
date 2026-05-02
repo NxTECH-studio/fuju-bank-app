@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -112,13 +113,16 @@ private fun Avatar(color: Color) {
 
 @Composable
 private fun AmountText(sign: String, amount: Long, color: Color) {
-    val display: AnnotatedString = buildAnnotatedString {
-        withStyle(SpanStyle(fontSize = 32.sp)) {
-            append(sign)
-            append(formatBalanceFuju(amount))
-        }
-        withStyle(SpanStyle(fontSize = 16.sp)) {
-            append("ふじゅ〜")
+    // sign / amount が変わらなければ AnnotatedString を再計算しない。
+    val display: AnnotatedString = remember(sign, amount) {
+        buildAnnotatedString {
+            withStyle(SpanStyle(fontSize = 32.sp)) {
+                append(sign)
+                append(formatBalanceFuju(amount))
+            }
+            withStyle(SpanStyle(fontSize = 16.sp)) {
+                append("ふじゅ〜")
+            }
         }
     }
     Text(

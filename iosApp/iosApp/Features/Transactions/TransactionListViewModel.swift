@@ -37,10 +37,20 @@ final class TransactionListViewModel: ObservableObject {
     }
 
     func refresh() {
-        load(initial: false)
+        load(initial: false, completion: nil)
     }
 
-    private func load(initial: Bool) {
+    /// `.refreshable` 用の async 版 refresh。fetch 完了まで待つことで、引きおろしジェスチャの
+    /// インジケータがジョブ完了前に閉じないようにする。
+    func refreshAwait() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            load(initial: false) {
+                continuation.resume()
+            }
+        }
+    }
+
+    private func load(initial: Bool, completion: (@MainActor () -> Void)? = nil) {
         inFlight?.cancel(cause: nil)
         if !initial, case let .loaded(items, _) = state {
             state = .loaded(transactions: items, refreshing: true)
@@ -50,7 +60,10 @@ final class TransactionListViewModel: ObservableObject {
             sessionStore: sessionStore,
         ) { [weak self] outcome in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self else {
+                    completion?()
+                    return
+                }
                 switch outcome {
                 case let loaded as TransactionsLoadOutcome.Loaded:
                     self.state = .loaded(transactions: loaded.transactions, refreshing: false)
@@ -63,6 +76,7 @@ final class TransactionListViewModel: ObservableObject {
                 default:
                     self.state = .error(message: "未知のエラーが発生しました")
                 }
+                completion?()
             }
         }
     }
