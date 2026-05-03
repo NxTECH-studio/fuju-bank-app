@@ -1,31 +1,25 @@
 import SwiftUI
 
-/// 通知ベル（48pt タップ領域 + 24pt アイコン + 赤ドット）。
+/// 通知ベル（48pt タップ領域 + 24pt アイコン + 赤ドット）。Figma 銀行版 `709:8658` /
+/// `697:7601` / `702:6440` 共通の右上ヘッダーアイコン。
 ///
-/// ホーム画面・取引履歴画面どちらからも参照される共通コンポーネント。
-/// Figma では `89:12356` (home) と `410:20343` (transaction history) の右上に配置される。
+/// アイコンは Figma `notification-bell.svg`（ベル本体は `#B0B0B0`、赤ドット円は内蔵）
+/// をそのまま `NotificationBell` アセットとして使用する。SVG に赤ドットが含まれている
+/// ため、Swift 側で別途オーバーレイは描かない。
+///
+/// 既存 `BellOutline` と異なり、銀行版は赤ドットの色 / 縁の太さが Figma 仕様で固定済み
+/// なので、独自の重ね描きをしないほうが見た目が一致する。
 struct NotificationBellButton: View {
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
-            ZStack(alignment: .topTrailing) {
-                Image("BellOutline")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-                // 赤ドット（白縁付き）。Figma の circle r=3.5 stroke 2 相当。
-                Circle()
-                    .fill(FujuBankPalette.background)
-                    .frame(width: 9, height: 9)
-                    .overlay(
-                        Circle()
-                            .fill(Color.red)
-                            .frame(width: 6, height: 6)
-                    )
-                    .offset(x: 4, y: -2)
-            }
-            .frame(width: 48, height: 48)
+            Image("NotificationBell")
+                .resizable()
+                .renderingMode(.original)
+                .scaledToFit()
+                .frame(width: 24, height: 24)
+                .frame(width: 48, height: 48)
         }
         .buttonStyle(.plain)
     }

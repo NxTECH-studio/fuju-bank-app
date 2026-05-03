@@ -1,65 +1,43 @@
 import SwiftUI
 import Shared
 
-/// バーコード / QR / 残高 / 表示トグルをまとめた白いカード。Figma `89:12356` 準拠。
+/// 残高カード — Figma `709:8658` 準拠のシンプル表示版。
+///
+/// - 高さ 154pt、白背景、角丸 32、わずかな drop-shadow。
+/// - 左寄せに「現在の残高」ラベル(14pt medium) と、48pt Bold の数値 + 20pt Bold の単位
+///   「ふじゅ〜」をベースライン揃えで横並び。
+/// - 旧 fujupay デザインにあった QR / バーコード / マスクトグル / publicId 表示は新銀行版で撤去。
 struct BalanceCardView: View {
-    let publicId: String
     let balanceFuju: Int64
-    let revealed: Bool
-    let onToggleReveal: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Code128BarcodeImage(content: publicId)
-                .frame(height: 63)
-                .frame(maxWidth: .infinity)
-            HStack(spacing: 12) {
-                QRCodeImage(content: publicId)
-                    .frame(width: 66, height: 66)
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("現在の残高")
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundStyle(FujuBankPalette.textSecondary)
-                    // SF Pro は数字+カンマ+ハイフンが幅広で、20pt のままだと 1 行に
-                    // 収まらず改行されることがある。lineLimit(1) で改行を防ぎ、
-                    // minimumScaleFactor で必要なら自動縮小する。
-                    HStack(alignment: .lastTextBaseline, spacing: 5) {
-                        Text(displayValue)
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(Color.black)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                        Text(CurrencyFormatter.shared.UNIT)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(Color.black)
-                            .lineLimit(1)
-                            .fixedSize()
-                    }
+        HStack(alignment: .center, spacing: 0) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("現在の残高")
+                    .font(FujuBankTypography.body)
+                    .foregroundStyle(FujuBankPalette.textPrimary)
+
+                HStack(alignment: .lastTextBaseline, spacing: 8) {
+                    Text(CurrencyFormatter.shared.formatAmount(amount: balanceFuju))
+                        .font(FujuBankTypography.amount)
+                        .foregroundStyle(FujuBankPalette.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                    Text(CurrencyFormatter.shared.UNIT)
+                        .font(FujuBankTypography.amountUnit)
+                        .foregroundStyle(FujuBankPalette.textPrimary)
+                        .padding(.bottom, 6)
+                        .fixedSize()
                 }
-                Spacer()
-                Button(action: onToggleReveal) {
-                    Text(revealed ? "隠す" : "表示")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(FujuBankPalette.brandPink)
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 7)
-                        .background(FujuBankPalette.brandPink.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 35))
-                }
-                .buttonStyle(.plain)
             }
+            Spacer(minLength: 0)
         }
-        .padding(30)
+        .padding(.horizontal, 36)
+        .padding(.bottom, 6)
         .frame(maxWidth: .infinity)
+        .frame(height: 154)
         .background(FujuBankPalette.surface)
         .clipShape(RoundedRectangle(cornerRadius: 32))
-        .shadow(color: FujuBankPalette.shadowTint.opacity(0.02), radius: 6, x: 0, y: 4)
-    }
-
-    private var displayValue: String {
-        if revealed {
-            return CurrencyFormatter.shared.formatAmount(amount: balanceFuju)
-        }
-        return BalanceFormatterKt.maskedBalance()
+        .shadow(color: FujuBankPalette.shadowTint.opacity(0.06), radius: 4, x: 0, y: 2)
     }
 }
