@@ -1,0 +1,14 @@
+<!-- Figma 709:8658 (icons / bxs-chevron-right) 準拠の chevron-right。
+     ホーム画面ヘッダー横のロゴメニュー三角と「もっとみる」リンク矢印で兼用するため fillColor は透過の白で出して、Compose 側で `ColorFilter.tint` を当てて使う。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:width="14dp"
+    android:height="14dp"
+    android:viewportWidth="14"
+    android:viewportHeight="14">
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M9.36833,6.38167C9.53219,6.54573 9.62423,6.76812 9.62423,7C9.62423,7.23188 9.53219,7.45427 9.36833,7.61833L6.069,10.9188C5.90485,11.0829 5.68225,11.175 5.45017,11.175C5.21808,11.1749 4.99553,11.0827 4.83146,10.9185C4.66739,10.7544 4.57525,10.5318 4.5753,10.2997C4.57536,10.0676 4.6676,9.84507 4.83175,9.681L7.51275,7L4.83175,4.319C4.67228,4.15405 4.58398,3.93306 4.58587,3.70364C4.58775,3.47421 4.67967,3.25471 4.84183,3.0924C5.00398,2.93009 5.2234,2.83796 5.45282,2.83586C5.68225,2.83376 5.90331,2.92185 6.06842,3.08117L9.36892,6.38108L9.36833,6.38167Z"
+        tools:ignore="VectorPath" />
+</vector>

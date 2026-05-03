@@ -1,15 +1,12 @@
 package studio.nxtech.fujubank.features.home.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,116 +14,75 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import studio.nxtech.fujubank.format.CurrencyFormatter
 import studio.nxtech.fujubank.theme.FujuBankColors
-import studio.nxtech.fujubank.util.maskedBalance
 
 /**
- * 残高カード（バーコード + QR + 残高 + 表示トグル）。Figma `89:12356` のメインカード。
+ * 残高カード — Figma `709:8658` 準拠のシンプル表示版。
+ *
+ * - 高さ 154dp、白背景、角丸 32dp、わずかな drop-shadow。
+ * - 左寄せに「現在の残高」ラベル(14sp medium) と、48sp Bold の数値 + 20sp Bold の単位「ふじゅ〜」をベースライン揃えで横並び。
+ * - 旧デザインにあった QR / バーコード / マスクトグル / publicId 表示は新デザインで撤去された。
+ *   （`HomeViewModel.toggleReveal()` は現状残しているが、本画面からは呼ばれない）
  */
 @Composable
 fun BalanceCard(
-    publicId: String,
     balanceFuju: Long,
-    revealed: Boolean,
-    onToggleReveal: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    Row(
         modifier = modifier
             .fillMaxWidth()
+            .height(154.dp)
             .shadow(
-                elevation = 6.dp,
+                elevation = 2.dp,
                 shape = RoundedCornerShape(32.dp),
                 clip = false,
             )
             .clip(RoundedCornerShape(32.dp))
             .background(FujuBankColors.Surface)
-            .padding(30.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+            .padding(horizontal = 36.dp, vertical = 0.dp)
+            .padding(bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        BarcodeImage(
-            content = publicId,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(63.dp),
-        )
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.Start,
         ) {
-            QrCodeImage(
-                content = publicId,
-                modifier = Modifier.size(66.dp),
+            Text(
+                text = "現在の残高",
+                style = TextStyle(
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = FujuBankColors.TextPrimary,
+                ),
             )
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+            Row(
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    text = "現在の残高",
+                    text = CurrencyFormatter.formatAmount(balanceFuju),
                     style = TextStyle(
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Normal,
-                        color = FujuBankColors.TextSecondary,
+                        fontSize = 48.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = FujuBankColors.TextPrimary,
                     ),
                 )
-                Row(
-                    verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    Text(
-                        text = if (revealed) CurrencyFormatter.formatAmount(balanceFuju) else maskedBalance(),
-                        style = TextStyle(
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.Black,
-                        ),
-                    )
-                    Text(
-                        text = CurrencyFormatter.UNIT,
-                        style = TextStyle(
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.Black,
-                        ),
-                    )
-                }
+                Text(
+                    text = CurrencyFormatter.UNIT,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                    style = TextStyle(
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = FujuBankColors.TextPrimary,
+                    ),
+                )
             }
-            RevealToggle(
-                revealed = revealed,
-                onClick = onToggleReveal,
-            )
         }
     }
 }
-
-@Composable
-private fun RevealToggle(
-    revealed: Boolean,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(35.dp))
-            .background(FujuBankColors.BrandPink.copy(alpha = 0.1f))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 11.dp, vertical = 7.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = if (revealed) "隠す" else "表示",
-            style = TextStyle(
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = FujuBankColors.BrandPink,
-            ),
-        )
-    }
-}
-

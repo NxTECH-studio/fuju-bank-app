@@ -10,14 +10,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import studio.nxtech.fujubank.R
+import studio.nxtech.fujubank.theme.FujuBankColors
 
 /**
- * ホーム画面ヘッダー：左 48×48 空 / 中央 fujupay ロゴ（fuju キャラクター + ワードマーク）/
- * 右 通知ベル（赤ドット）。Figma `89:12356` 準拠。
+ * ホーム画面ヘッダー：左 48dp 空 / 中央 fuju 銀行 ロゴ + chevron-down / 右 通知ベル。Figma `709:8658` 準拠。
  */
 @Composable
 fun FujuBankHeader(
@@ -32,12 +34,27 @@ fun FujuBankHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Box(modifier = Modifier.size(48.dp))
-        Image(
-            painter = painterResource(R.drawable.ic_logo_fujupay),
-            contentDescription = "fujupay",
-            modifier = Modifier.height(29.dp),
-            contentScale = ContentScale.Fit,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Image(
+                painter = painterResource(R.drawable.ic_logo_fuju_bank),
+                contentDescription = "fuju 銀行",
+                modifier = Modifier.height(28.dp),
+                contentScale = ContentScale.Fit,
+            )
+            // Figma の chevron は chevron-right を 90 度回転して下向きにしているため
+            // 単一の `ic_chevron_right` を回転して再利用する。
+            Image(
+                painter = painterResource(R.drawable.ic_chevron_right),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(14.dp)
+                    .rotate(90f),
+                colorFilter = ColorFilter.tint(FujuBankColors.TextPrimary),
+            )
+        }
         NotificationBellButton(onClick = onNotificationClick)
     }
 }
