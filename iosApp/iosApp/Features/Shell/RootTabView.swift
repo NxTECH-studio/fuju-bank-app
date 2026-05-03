@@ -18,6 +18,9 @@ struct RootTabView: View {
     @State private var destination: Destination = .home
     /// 取引詳細に遷移する際の対象。プロセス中は `@State` で保持し、別取引タップ時に上書きする。
     @State private var selectedTransaction: Shared.Transaction?
+    /// アカウントタブ配下の `NavigationStack` のパス。タブを切り替えても保持し、戻ってきたとき
+    /// に元の階層を復元する（Android の手動スタックと挙動を揃える狙い）。
+    @State private var accountPath: [AccountDestination] = []
 
     enum Destination: Equatable {
         case home, account, transactionHistory, transactionDetail
@@ -65,7 +68,26 @@ struct RootTabView: View {
                 onShowToast: { message in toast.send(message) },
             )
         case .account:
-            AccountPlaceholderView()
+            // アカウントタブは NavigationStack をルートにし、ハブ → 子画面（通知設定 / 準備中）の
+            // 遷移を `navigationDestination(for:)` に集約する。`accountPath` を `RootTabView` 側で
+            // 保持することでタブ切り替え時も階層がリセットされない。
+            NavigationStack(path: $accountPath) {
+                AccountHubView(
+                    onSelectDestination: { dest in accountPath.append(dest) },
+                )
+                .navigationDestination(for: AccountDestination.self) { dest in
+                    switch dest {
+                    case .notifications:
+                        NotificationSettingsView(
+                            onNotificationTap: { toast.send("通知機能は実装中です") },
+                        )
+                    case .privacy:
+                        AccountComingSoonView(title: "プライバシー設定")
+                    case .accountEdit:
+                        AccountComingSoonView(title: "アカウント情報変更")
+                    }
+                }
+            }
         case .transactionHistory:
             TransactionListView(
                 onBack: { destination = .home },
