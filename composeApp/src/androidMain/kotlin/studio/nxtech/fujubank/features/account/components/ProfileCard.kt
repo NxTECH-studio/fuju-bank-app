@@ -6,9 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -89,7 +87,6 @@ fun ProfileCard(
                 contentDescription = "表示名を編集",
                 modifier = Modifier.size(18.dp),
             )
-            Spacer(Modifier.height(0.dp))
         }
         Text(
             text = "ID: $accountId",

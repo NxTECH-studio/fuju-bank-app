@@ -13,6 +13,10 @@ import kotlinx.coroutines.flow.asStateFlow
  *
  * `SignupWelcomePreferences` と同じく `multiplatform-settings` を使い、
  * 値の変化は `StateFlow` で配信して Android / iOS いずれの UI からも購読できるようにする。
+ *
+ * 書き込み API（[setDepositEnabled] / [setTransferEnabled]）は UI スレッドからの単一スレッド呼び出しを
+ * 前提とする。`putBoolean` と `StateFlow.value` の更新が個別の atomic 操作で構成されているため、
+ * 並行呼び出しでは Settings 永続値と StateFlow 観測値の順序が逆転する可能性がある。
  */
 class NotificationSettingsPreferences(private val settings: Settings) {
     private val _depositEnabled = MutableStateFlow(settings.getBoolean(KEY_DEPOSIT, true))

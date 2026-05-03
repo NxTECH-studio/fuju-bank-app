@@ -18,13 +18,13 @@ val accountModule = module {
     // signupModule で `single<Settings> { Settings() }` 済みなので get() で同一インスタンスを取る
     single { NotificationSettingsPreferences(get<Settings>()) }
     single<AccountProfileProvider> {
-        // 現状はダミー固定。実 API 連携時には `BuildKonfig.USE_DUMMY_PROFILE = false`
-        // の場合に Remote 実装を返すよう分岐させる想定。
+        // 現状はダミー固定。実 API 連携時に Remote 実装を追加して USE_DUMMY_PROFILE=false の
+        // 分岐で返す想定。release ビルド (USE_DUMMY_PROFILE=false) で Dummy が黙って混入しない
+        // よう、未実装時は明示的に失敗させる。
         if (BuildKonfig.USE_DUMMY_PROFILE) {
             DummyAccountProfileProvider()
         } else {
-            // Remote 実装は実 API 確定時に追加する（本タスクではダミーへフォールバック）
-            DummyAccountProfileProvider()
+            error("RemoteAccountProfileProvider is not implemented yet")
         }
     }
 }

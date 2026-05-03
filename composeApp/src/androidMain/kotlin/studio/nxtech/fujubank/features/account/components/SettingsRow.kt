@@ -72,8 +72,8 @@ fun SettingsRow(
  */
 @Composable
 fun SettingsCard(
-    modifier: Modifier = Modifier,
     rows: List<SettingsRowSpec>,
+    modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
