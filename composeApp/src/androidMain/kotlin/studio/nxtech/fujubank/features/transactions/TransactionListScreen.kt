@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -35,16 +34,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import studio.nxtech.fujubank.R
+import studio.nxtech.fujubank.domain.model.Transaction
 import studio.nxtech.fujubank.features.home.components.NotificationBellButton
 import studio.nxtech.fujubank.theme.FujuBankColors
 
 /**
- * 取引履歴画面 — Figma `410:20343` 準拠。
+ * 取引履歴画面 — Figma `697:7601` 準拠。
  *
- * - ヘッダー: 戻る `<` / タイトル「取引履歴」/ 通知ベル
- * - 本文: LazyColumn + PullToRefreshBox。空状態は中央寄せ文言。
+ * - ヘッダー: 戻る `<` (左 48dp) / タイトル「取引履歴」(中央 17sp Bold) / 通知ベル (右 48dp)
+ * - 本文: LazyColumn + PullToRefreshBox。各カードは [TransactionRow]、間隔 2dp。
  *
- * MVP では pagination を持たず、サーバーが返す件数を全件表示する。
  * 親 (RootScaffold) のボトムナビは表示したまま、戻るで Home に復帰する。
  */
 @Composable
@@ -52,6 +51,7 @@ fun TransactionListScreen(
     viewModel: TransactionListViewModel,
     onBack: () -> Unit,
     onNotificationClick: () -> Unit,
+    onTransactionClick: (Transaction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -74,6 +74,7 @@ fun TransactionListScreen(
                 is TransactionListUiState.Loaded -> LoadedContent(
                     state = current,
                     onRefresh = viewModel::refresh,
+                    onTransactionClick = onTransactionClick,
                 )
             }
         }
@@ -85,18 +86,18 @@ private fun Header(
     onBack: () -> Unit,
     onNotificationClick: () -> Unit,
 ) {
-    // 横余白はホーム画面と揃えるため 16dp（HomeScreen の Column と同値）。
-    // タイトルは中央寄せ、左右に 48dp の戻るボタン / 通知ベルを配置する。
+    // Figma 697:7601 contents wrapper の p-10 に合わせて水平・垂直 10dp。
+    // タイトルは中央寄せ、左右に 48dp の戻るボタン / 通知ベル。
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 10.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = "取引履歴",
             style = TextStyle(
-                fontSize = 16.sp,
+                fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
                 color = FujuBankColors.TextPrimary,
             ),
@@ -164,6 +165,7 @@ private fun ErrorContent(message: String, onRetry: () -> Unit) {
 private fun LoadedContent(
     state: TransactionListUiState.Loaded,
     onRefresh: () -> Unit,
+    onTransactionClick: (Transaction) -> Unit,
 ) {
     PullToRefreshBox(
         isRefreshing = state.refreshing,
@@ -175,14 +177,13 @@ private fun LoadedContent(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 items(state.items, key = { it.id }) { transaction ->
-                    TransactionRow(transaction = transaction)
-                    HorizontalDivider(
-                        color = FujuBankColors.TransactionDivider,
-                        thickness = 2.dp,
+                    TransactionRow(
+                        transaction = transaction,
+                        onClick = { onTransactionClick(transaction) },
                     )
                 }
             }

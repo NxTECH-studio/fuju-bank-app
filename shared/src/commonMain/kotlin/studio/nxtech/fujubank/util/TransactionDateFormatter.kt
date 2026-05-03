@@ -32,3 +32,29 @@ fun formatTransactionDate(
         append("分")
     }
 }
+
+/**
+ * Figma 銀行版（`697:7601` / `702:6440`）準拠の取引日時表記:
+ * `yyyy/M/d HH:mm:ss`（例: `2025/3/4 12:03:03`）。
+ *
+ * 月・日はゼロ埋めしないが、時・分・秒は 2 桁ゼロ埋め。
+ */
+fun formatTransactionDateTimeSlash(
+    instant: Instant,
+    timeZone: TimeZone = TimeZone.currentSystemDefault(),
+): String {
+    val ldt = instant.toLocalDateTime(timeZone)
+    return buildString {
+        append(ldt.year)
+        append('/')
+        append(ldt.month.number)
+        append('/')
+        append(ldt.day)
+        append(' ')
+        append(ldt.hour.toString().padStart(2, '0'))
+        append(':')
+        append(ldt.minute.toString().padStart(2, '0'))
+        append(':')
+        append(ldt.second.toString().padStart(2, '0'))
+    }
+}

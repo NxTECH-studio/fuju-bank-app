@@ -12,22 +12,21 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -41,10 +40,13 @@ import org.koin.mp.KoinPlatform
 import studio.nxtech.fujubank.R
 import studio.nxtech.fujubank.data.repository.ProfileRepository
 import studio.nxtech.fujubank.data.repository.UserRepository
+import studio.nxtech.fujubank.domain.model.Transaction
 import studio.nxtech.fujubank.features.account.AccountPlaceholderScreen
 import studio.nxtech.fujubank.features.home.HomeScreen
 import studio.nxtech.fujubank.features.home.HomeViewModel
 import studio.nxtech.fujubank.features.placeholder.ComingSoonScreen
+import studio.nxtech.fujubank.features.transactions.TransactionDetailScreen
+import studio.nxtech.fujubank.features.transactions.TransactionDetailViewModel
 import studio.nxtech.fujubank.features.transactions.TransactionListScreen
 import studio.nxtech.fujubank.features.transactions.TransactionListViewModel
 import studio.nxtech.fujubank.navigation.RootDestination
@@ -52,12 +54,11 @@ import studio.nxtech.fujubank.session.SessionStore
 import studio.nxtech.fujubank.theme.FujuBankColors
 
 /**
- * ログイン後のルートシェル。Scaffold の bottomBar に Figma `89:12356` `43:258` 準拠の
- * カスタムボトムナビ（白背景 / pt-8 px-48 / 84dp）と、その上に重なる中央 FAB（pink 円形 + 内側ラベル）を
- * Box で重ね合わせる。
+ * ログイン後のルートシェル。Scaffold の bottomBar に Figma `709:8658` / `697:7601` / `702:6440`
+ * 共通のボトムナビ（白背景 / pt-8 px-48 / 84dp / 2 タブ均等配置）を描画する。
  *
- * MVP では Navigation Compose を導入せず、[RootDestination] を `rememberSaveable` で
- * 保持して切替える。A4 / A5 で本格的な NavGraph に置き換える想定。
+ * MVP では Navigation Compose を導入せず、[RootDestination] を `rememberSaveable` で保持して切替える。
+ * 取引詳細遷移時に対象の `Transaction` を別途 `remember` で保持する（Saver の実装コストを避ける）。
  */
 @Composable
 fun RootScaffold() {
@@ -65,24 +66,31 @@ fun RootScaffold() {
         stateSaver = RootDestinationSaver,
     ) { mutableStateOf(RootDestination.Home) }
 
+    // 取引詳細に遷移する際の対象。プロセス再生成時には失われ、自動で履歴へ戻す挙動になる。
+    var selectedTransaction by remember { mutableStateOf<Transaction?>(null) }
+
     val context = LocalContext.current
     val showToast: (String) -> Unit = { message ->
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
 
-    // フッター（ボトムナビ + 中央 FAB）はメインタブ（ホーム / アカウント）でのみ表示する。
-    // 取引履歴 / 送る・もらう のサブ画面ではコンテンツを画面下端まで使えるよう非表示にする。
-    val showBottomBar = destination == RootDestination.Home || destination == RootDestination.Account
+    // フッター（ボトムナビ）はメインタブとサブ画面 (履歴/詳細) で表示する。
+    val showBottomBar = destination != RootDestination.Send
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = FujuBankColors.Background,
         bottomBar = {
             if (showBottomBar) {
-                BottomNavWithFab(
+                BottomNav(
                     selected = destination,
-                    onSelectHome = { destination = RootDestination.Home },
-                    onSelectAccount = { destination = RootDestination.Account },
-                    onPayClick = { showToast("支払い機能は実装中です") },
+                    onSelectHome = {
+                        selectedTransaction = null
+                        destination = RootDestination.Home
+                    },
+                    onSelectAccount = {
+                        selectedTransaction = null
+                        destination = RootDestination.Account
+                    },
                 )
             }
         },
@@ -126,7 +134,34 @@ fun RootScaffold() {
                         viewModel = viewModel,
                         onBack = { destination = RootDestination.Home },
                         onNotificationClick = { showToast("通知機能は実装中です") },
+                        onTransactionClick = { transaction ->
+                            selectedTransaction = transaction
+                            destination = RootDestination.TransactionDetail
+                        },
                     )
+                }
+                RootDestination.TransactionDetail -> {
+                    val tx = selectedTransaction
+                    if (tx == null) {
+                        // プロセス再生成等で対象 Transaction が失われた場合は履歴へ戻す。
+                        // composition 中の副作用は描画 1 回ぶん遅延させたいため LaunchedEffect で実行する。
+                        LaunchedEffect(Unit) {
+                            destination = RootDestination.TransactionHistory
+                        }
+                    } else {
+                        // VM key を transaction.id にして、別取引タップ時に新しい VM が生成されるようにする
+                        val viewModel: TransactionDetailViewModel = viewModel(
+                            key = "TransactionDetail/${tx.id}",
+                            factory = viewModelFactory {
+                                initializer { TransactionDetailViewModel(transaction = tx) }
+                            },
+                        )
+                        TransactionDetailScreen(
+                            viewModel = viewModel,
+                            onBack = { destination = RootDestination.TransactionHistory },
+                            onNotificationClick = { showToast("通知機能は実装中です") },
+                        )
+                    }
                 }
                 RootDestination.Send -> ComingSoonScreen(
                     title = "送る・もらう",
@@ -138,91 +173,53 @@ fun RootScaffold() {
 }
 
 @Composable
-private fun BottomNavWithFab(
+private fun BottomNav(
     selected: RootDestination,
     onSelectHome: () -> Unit,
     onSelectAccount: () -> Unit,
-    onPayClick: () -> Unit,
 ) {
+    // ホーム家族に属する画面（履歴・詳細）でもホームタブを selected 表示にする
     val homeFamily = selected == RootDestination.Home ||
         selected == RootDestination.TransactionHistory ||
+        selected == RootDestination.TransactionDetail ||
         selected == RootDestination.Send
-    // 親 Box の高さは 84dp(バー) + 13dp(FAB せり出し) = 97dp。FAB を offset で
-    // バーの外に出すと Compose の hit test が layout bounds 外を拾わずタップが
-    // 取れなくなるため、FAB をこの Box 内に収めてバー側を 13dp 下げる。
-    Box(modifier = Modifier.fillMaxWidth().height(97.dp)) {
-        // 下段 84dp バー（上端 13dp 下げる）。pt-8 px-48 / 中央は FAB スペース。
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(84.dp)
-                .background(FujuBankColors.Surface)
-                .border(width = 1.dp, color = FujuBankColors.BottomBarBorder)
-                .padding(top = 8.dp, start = 48.dp, end = 48.dp),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            // 左：ホーム（右寄せ、右に 64dp 余白で中央 FAB と離す）
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 64.dp),
-                contentAlignment = Alignment.CenterEnd,
-            ) {
-                BottomTab(
-                    iconRes = R.drawable.ic_home,
-                    label = "ホーム",
-                    selected = homeFamily,
-                    onClick = onSelectHome,
-                )
-            }
-            // 右：アカウント（左寄せ、左に 64dp 余白）
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 64.dp),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                BottomTab(
-                    iconRes = R.drawable.ic_account_circle,
-                    label = "アカウント",
-                    selected = selected == RootDestination.Account,
-                    onClick = onSelectAccount,
-                )
-            }
-        }
-        // 中央 pink 円形 FAB（親 Box の TopCenter に置き、バー上端から 13dp 上にせり出す）。
-        // 64dp 円の中に 28dp アイコン + 9sp ラベルを縦並びで中央寄せ。
+    // Figma `709:8658` 等の bottomBar: 84dp、白背景、上端に 1dp ボーダー、pt-8 px-48、
+    // 2 タブが均等の weight=1 で並び、それぞれ内側 64dp の余白で中央へ寄せる
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(84.dp)
+            .background(FujuBankColors.Surface)
+            .border(width = 1.dp, color = FujuBankColors.BottomBarBorder)
+            .padding(top = 8.dp, start = 48.dp, end = 48.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
         Box(
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .size(64.dp)
-                .shadow(elevation = 6.dp, shape = CircleShape, clip = false)
-                .clip(CircleShape)
-                .background(FujuBankColors.BrandPink)
-                .clickable(onClick = onPayClick),
-            contentAlignment = Alignment.Center,
+                .weight(1f)
+                .padding(end = 64.dp),
+            contentAlignment = Alignment.CenterEnd,
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(1.dp),
-            ) {
-                // Text "支払い" でラベル読み上げするので Image 側は cd=null にして二重読み上げを避ける。
-                Image(
-                    painter = painterResource(R.drawable.ic_pay_qr),
-                    contentDescription = null,
-                    modifier = Modifier.size(28.dp),
-                )
-                Text(
-                    text = "支払い",
-                    style = TextStyle(
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                    ),
-                )
-            }
+            BottomTab(
+                iconRes = R.drawable.ic_home,
+                label = "ホーム",
+                selected = homeFamily,
+                onClick = onSelectHome,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 64.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            BottomTab(
+                iconRes = R.drawable.ic_account_circle,
+                label = "アカウント",
+                selected = selected == RootDestination.Account,
+                onClick = onSelectAccount,
+            )
         }
     }
 }
@@ -234,9 +231,7 @@ private fun BottomTab(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val labelColor = if (selected) Color.Black else FujuBankColors.TextTertiary
-    // Figma 上では Frame 幅 32dp に対して「アカウント」テキストが 40dp と幅を超えており、
-    // 横にはみ出す前提のレイアウト。Column の幅は固定せず、ラベル幅まで広げて改行を防ぐ。
+    val tabColor = if (selected) Color.Black else FujuBankColors.TextTertiary
     Column(
         modifier = Modifier.clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -245,6 +240,7 @@ private fun BottomTab(
             painter = painterResource(iconRes),
             contentDescription = label,
             modifier = Modifier.size(32.dp),
+            colorFilter = ColorFilter.tint(tabColor),
         )
         Text(
             text = label,
@@ -253,7 +249,7 @@ private fun BottomTab(
             style = TextStyle(
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Bold,
-                color = labelColor,
+                color = tabColor,
             ),
         )
     }
@@ -265,6 +261,7 @@ private val RootDestinationSaver = androidx.compose.runtime.saveable.Saver<RootD
             RootDestination.Home -> "home"
             RootDestination.Account -> "account"
             RootDestination.TransactionHistory -> "transactionHistory"
+            RootDestination.TransactionDetail -> "transactionDetail"
             RootDestination.Send -> "send"
         }
     },
@@ -273,6 +270,8 @@ private val RootDestinationSaver = androidx.compose.runtime.saveable.Saver<RootD
             "home" -> RootDestination.Home
             "account" -> RootDestination.Account
             "transactionHistory" -> RootDestination.TransactionHistory
+            // 詳細はプロセス再生成時に対象 Transaction を保持しないため、復元時は履歴に降格させる
+            "transactionDetail" -> RootDestination.TransactionHistory
             "send" -> RootDestination.Send
             else -> null
         }
