@@ -81,9 +81,7 @@ private struct AmountCard: View {
         let appearance = AmountAppearance(direction: transaction.direction)
         HStack(spacing: 0) {
             Spacer(minLength: 0)
-            HStack(alignment: .lastTextBaseline, spacing: 8) {
-                // `+` / `-` 記号 (40pt) は数値 (48pt) の行高内で中央に揃える。
-                // 数値・単位は底揃え、記号だけ alignmentGuide で行内中央に上書きする。
+            HStack(alignment: .center, spacing: 8) {
                 Text(appearance.sign)
                     .font(FujuBankTypography.amountSign)
                     .foregroundStyle(appearance.color)
@@ -93,14 +91,12 @@ private struct AmountCard: View {
                 Text(CurrencyFormatter.shared.UNIT)
                     .font(FujuBankTypography.amountUnit)
                     .foregroundStyle(appearance.color)
-                    .padding(.bottom, 6)
             }
             .lineLimit(1)
             .minimumScaleFactor(0.5)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 36)
-        .padding(.bottom, 6)
         .frame(maxWidth: .infinity)
         .frame(height: 110)
         .background(FujuBankPalette.surface)
