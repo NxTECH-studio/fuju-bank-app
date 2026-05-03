@@ -4,15 +4,16 @@ package studio.nxtech.fujubank.navigation
  * RootScaffold が扱うトップレベルのナビゲーション宛先。
  *
  * - [Home] / [Account] はボトムタブで切替える 2 つのタブ画面。
- * - [TransactionHistory] / [Send] はホームの 4 アクションから push される画面（A4 / A5）。
+ * - [TransactionHistory] / [TransactionDetail] / [Send] はサブ画面（戻るで Home / TransactionHistory に復帰）。
  *
  * MVP では Navigation Compose を導入せず、`var current by remember`
- * の形で簡易にスタックを表現する。A4 / A5 の本実装時に Navigation Compose に
- * 切り替える想定。
+ * の形で簡易にスタックを表現する。タップ対象の `Transaction` は別途 `remember`
+ * で保持し、本 enum には含めない（rememberSaveable Saver の複雑さを避ける）。
  */
 sealed interface RootDestination {
     data object Home : RootDestination
     data object Account : RootDestination
     data object TransactionHistory : RootDestination
+    data object TransactionDetail : RootDestination
     data object Send : RootDestination
 }
