@@ -16,4 +16,13 @@ sealed interface RootDestination {
     data object TransactionHistory : RootDestination
     data object TransactionDetail : RootDestination
     data object Send : RootDestination
+
+    /** 通知設定（Figma `718:7332`）。Account タブ配下のサブ画面。 */
+    data object NotificationSettings : RootDestination
+
+    /** プライバシー設定（準備中画面）。Account タブ配下のサブ画面。 */
+    data object PrivacySettings : RootDestination
+
+    /** アカウント情報変更（準備中画面）。Account タブ配下のサブ画面。 */
+    data object AccountEdit : RootDestination
 }

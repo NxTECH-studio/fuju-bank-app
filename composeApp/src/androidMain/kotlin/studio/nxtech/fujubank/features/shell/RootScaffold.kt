@@ -38,10 +38,16 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import org.koin.mp.KoinPlatform
 import studio.nxtech.fujubank.R
+import studio.nxtech.fujubank.account.AccountProfileProvider
+import studio.nxtech.fujubank.account.NotificationSettingsPreferences
 import studio.nxtech.fujubank.data.repository.ProfileRepository
 import studio.nxtech.fujubank.data.repository.UserRepository
 import studio.nxtech.fujubank.domain.model.Transaction
-import studio.nxtech.fujubank.features.account.AccountPlaceholderScreen
+import studio.nxtech.fujubank.features.account.AccountComingSoonScreen
+import studio.nxtech.fujubank.features.account.AccountHubScreen
+import studio.nxtech.fujubank.features.account.AccountHubViewModel
+import studio.nxtech.fujubank.features.account.NotificationSettingsScreen
+import studio.nxtech.fujubank.features.account.NotificationSettingsViewModel
 import studio.nxtech.fujubank.features.home.HomeScreen
 import studio.nxtech.fujubank.features.home.HomeViewModel
 import studio.nxtech.fujubank.features.placeholder.ComingSoonScreen
@@ -118,7 +124,47 @@ fun RootScaffold() {
                         onShowToast = showToast,
                     )
                 }
-                RootDestination.Account -> AccountPlaceholderScreen()
+                RootDestination.Account -> {
+                    val viewModel: AccountHubViewModel = viewModel(
+                        factory = viewModelFactory {
+                            initializer {
+                                AccountHubViewModel(
+                                    profileProvider = KoinPlatform.getKoin().get<AccountProfileProvider>(),
+                                )
+                            }
+                        },
+                    )
+                    AccountHubScreen(
+                        viewModel = viewModel,
+                        onNavigateNotifications = { destination = RootDestination.NotificationSettings },
+                        onNavigatePrivacy = { destination = RootDestination.PrivacySettings },
+                        onNavigateAccountEdit = { destination = RootDestination.AccountEdit },
+                    )
+                }
+                RootDestination.NotificationSettings -> {
+                    val viewModel: NotificationSettingsViewModel = viewModel(
+                        factory = viewModelFactory {
+                            initializer {
+                                NotificationSettingsViewModel(
+                                    preferences = KoinPlatform.getKoin().get<NotificationSettingsPreferences>(),
+                                )
+                            }
+                        },
+                    )
+                    NotificationSettingsScreen(
+                        viewModel = viewModel,
+                        onBack = { destination = RootDestination.Account },
+                        onNotificationClick = { showToast("通知機能は実装中です") },
+                    )
+                }
+                RootDestination.PrivacySettings -> AccountComingSoonScreen(
+                    title = "プライバシー設定",
+                    onBack = { destination = RootDestination.Account },
+                )
+                RootDestination.AccountEdit -> AccountComingSoonScreen(
+                    title = "アカウント情報",
+                    onBack = { destination = RootDestination.Account },
+                )
                 RootDestination.TransactionHistory -> {
                     val viewModel: TransactionListViewModel = viewModel(
                         factory = viewModelFactory {
@@ -183,6 +229,11 @@ private fun BottomNav(
         selected == RootDestination.TransactionHistory ||
         selected == RootDestination.TransactionDetail ||
         selected == RootDestination.Send
+    // アカウント家族に属する画面（通知設定・準備中サブ画面）でもアカウントタブを selected 表示にする
+    val accountFamily = selected == RootDestination.Account ||
+        selected == RootDestination.NotificationSettings ||
+        selected == RootDestination.PrivacySettings ||
+        selected == RootDestination.AccountEdit
     // Figma `709:8658` 等の bottomBar: 84dp、白背景、上端に 1dp ボーダー、pt-8 px-48、
     // 2 タブが均等の weight=1 で並び、それぞれ内側 64dp の余白で中央へ寄せる
     Row(
@@ -217,7 +268,7 @@ private fun BottomNav(
             BottomTab(
                 iconRes = R.drawable.ic_account_circle,
                 label = "アカウント",
-                selected = selected == RootDestination.Account,
+                selected = accountFamily,
                 onClick = onSelectAccount,
             )
         }
@@ -263,6 +314,9 @@ private val RootDestinationSaver = androidx.compose.runtime.saveable.Saver<RootD
             RootDestination.TransactionHistory -> "transactionHistory"
             RootDestination.TransactionDetail -> "transactionDetail"
             RootDestination.Send -> "send"
+            RootDestination.NotificationSettings -> "notificationSettings"
+            RootDestination.PrivacySettings -> "privacySettings"
+            RootDestination.AccountEdit -> "accountEdit"
         }
     },
     restore = { key ->
@@ -273,6 +327,9 @@ private val RootDestinationSaver = androidx.compose.runtime.saveable.Saver<RootD
             // 詳細はプロセス再生成時に対象 Transaction を保持しないため、復元時は履歴に降格させる
             "transactionDetail" -> RootDestination.TransactionHistory
             "send" -> RootDestination.Send
+            "notificationSettings" -> RootDestination.NotificationSettings
+            "privacySettings" -> RootDestination.PrivacySettings
+            "accountEdit" -> RootDestination.AccountEdit
             else -> null
         }
     },
