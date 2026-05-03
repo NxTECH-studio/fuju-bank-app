@@ -14,7 +14,25 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-    
+
+    // iOS ターゲット。framework 名は `ComposeApp` で iosApp 側からは
+    // `import ComposeApp` で読み込む。`Shared` framework と並行リンクする構成のため
+    // baseName を別名にして衝突を避ける。isStatic = true は `shared` 側と揃えて
+    // 同一プロセス内で重複初期化を起こさないようにする（Koin 等が static singleton）。
+    listOf(
+        iosArm64(),
+        iosSimulatorArm64(),
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "ComposeApp"
+            isStatic = true
+            // Kotlin/Native の bundle ID 自動推論が `iosMain` のソースしか持たない時点では
+            // 失敗するため明示する。`shared` 側の Shared framework と衝突しないよう
+            // `.composeapp` サフィックスを付けて区別する。
+            binaryOption("bundleId", "studio.nxtech.fujubank.composeapp")
+        }
+    }
+
     sourceSets {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
