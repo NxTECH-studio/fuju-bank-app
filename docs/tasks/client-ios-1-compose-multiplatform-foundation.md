@@ -106,3 +106,62 @@ fun MainViewController(): UIViewController = ComposeUIViewController { App() }
 - 既存 Android 実装: `composeApp/src/androidMain/kotlin/studio/nxtech/fujubank/App.kt`
 - 既存 iOS エントリ: `iosApp/iosApp/iOSApp.swift`
 - Compose Multiplatform iOS ガイド: https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-multiplatform-and-swiftui-integration.html
+
+---
+
+## 失敗経緯と方針変更（2026-05-03 追記）
+
+### 結論
+
+本タスクは `feature/client-ios-1-compose-multiplatform-foundation` ブランチで実装したが、**iOS 起動不能**となったため revert した。原因は KMP プロジェクトに Kotlin/Native framework を 2 つ（`Shared.framework` と `ComposeApp.framework`）静的リンクで同居させたことによる構造的問題であり、Task 1 のスコープ内の局所的バグではない。framework 統合戦略の再設計が必要であるため、後続タスク（Task 3）に持ち越す。
+
+### 何をやって何が起きたか
+
+実装した内容（revert 済み）:
+
+- `composeApp/build.gradle.kts` に `iosArm64()` / `iosSimulatorArm64()` ターゲットを追加し、`binaries.framework { baseName = "ComposeApp"; isStatic = true }` を設定
+- `composeApp/src/iosMain/kotlin/.../MainViewController.kt` を新設し `ComposeUIViewController { App() }` を返す関数を実装
+- `iosApp/iosApp/iOSApp.swift` から環境変数フラグで Compose 経路に切替可能にする SwiftUI ラッパーを追加
+- 既存の `Shared.framework` (isStatic = true) はそのまま温存し、`ComposeApp.framework` も並行して embed する構成
+
+発生した症状:
+
+- ビルド自体は通る（ld の duplicate symbol は **warning** 止まりで error にならない）
+- ただし iOS Simulator で起動すると、`SplashGate` のブートストラップ（Koin 経由のセッション復元 → ホームへの遷移判定）が完了せず、スプラッシュ画面で**永久停止**
+- ld のログには `_Kotlin_*` / `_ktypew:*` 等の Kotlin/Native ランタイムシンボルの重複警告が大量に出力されていた
+
+### 根本原因
+
+Kotlin/Native の静的 framework (`isStatic = true`) は、その framework 内に **Kotlin/Native ランタイム（GC、型情報テーブル `_ktypew:*`、ランタイムサポート関数 `_Kotlin_*` 等）を内包**してビルドされる。これにより:
+
+1. `Shared.framework` と `ComposeApp.framework` の両方に同じ Kotlin/Native ランタイム実装が含まれる
+2. iOS アプリにこれらを 2 つ同時に embed すると、リンク時にランタイムシンボルが重複する（ld は warning として通すが、実行時には**どちらの実装が使われるかが未定義**）
+3. 実行時に Kotlin/Native ランタイムの内部状態が **2 つに分裂**し、片方の framework で `initKoin` した Koin コンテナをもう片方から参照できない / GC やオブジェクト識別が破綻する等の問題が発生
+4. 結果として Koin のシングルトン解決が両 framework 間で食い違い、`SplashGate` が依存性を解決できず無限待機状態になる
+
+これは 2 つの framework のどちらかにバグがあるわけではなく、**「複数の Kotlin/Native 静的 framework を 1 つの iOS アプリに同居させる構成そのもの」が KMP の制約に反している**ことが原因である。Kotlin/Native の公式ドキュメントでも「同一プロセスに複数の Kotlin framework を持つことは推奨されない」旨が記載されている。
+
+### 対応
+
+- `feature/client-ios-1-compose-multiplatform-foundation` ブランチでの変更を **revert**（main には未マージ）
+- 現状の main は Task 1 着手前の状態（`composeApp` は Android 専用、iOS は SwiftUI のみ）に戻っている
+
+### 後続タスクへの引継ぎ
+
+方針を「KMP は iOS/Android 両対応必須」を維持しつつ、**Android 先行 → 後続で iOS** の段階的アプローチに変更:
+
+- **Task 2 (Android 先行)**: [`client-bank-2-home-screen-figma-redesign-android.md`](./client-bank-2-home-screen-figma-redesign-android.md)
+  - スコープを「Figma `709-8658` のデザイン適用」に絞り、`composeApp/src/androidMain/.../features/home/HomeScreen.kt` の改修のみで完結させる
+  - commonMain 移植や iOS 対応は含めない。最短で Figma 反映の体感を得ることを優先
+- **Task 3 (iOS 化対応)**: [`client-bank-3-ios-multiplatform-integration.md`](./client-bank-3-ios-multiplatform-integration.md)
+  - **framework 統合戦略の再設計**を含む。最低でも以下 3 案を比較検討する:
+    - 案A: CMP UI を `:shared` に取り込む（framework は 1 つに統合）
+    - 案B: `:composeApp` から `:shared` を依存し、`ComposeApp.framework` だけを iOS に embed して `Shared` の API を再エクスポートする
+    - 案C: `isStatic = false`（dynamic framework）化で延命する（runtime 二重ロードリスクは残る）
+  - そのうえでホーム画面の commonMain 移植 + iOS 動作確認まで実施
+
+### 教訓
+
+- **KMP で複数の Kotlin framework を同一 iOS アプリに同居させる場合、事前に framework 統合戦略を決定する必要がある**。`:shared` と `:composeApp` のように Kotlin/Native ターゲットを持つモジュールが複数あるとき、それぞれを独立した framework として export する素朴な構成は、ランタイム重複により実行時に破綻する。
+- ld の duplicate symbol が **warning 止まりでビルドが通ってしまう** ため、CI / ローカルビルドだけでは問題に気付けない。実機 / Simulator 起動と Koin 等のシングルトン挙動を含む実行時検証が必須。
+- 段階的アプローチ（まず Android で見た目を確定 → そのあと iOS 化）の方が、framework 統合戦略の検討時間を確保しつつ、Figma 適用の成果は早く得られる。仕様変更や設計検討と実装作業を直列化せず並行できる構造を優先する。
