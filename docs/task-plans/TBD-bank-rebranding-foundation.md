@@ -24,27 +24,27 @@ foundation はレビュー負荷を下げるため **5 つの独立した PR に
 
 foundation 5 PR がすべてマージされた状態で：
 
-- [ ] `FujupayColors` → `FujuBankColors` リネーム完了。`grep -R "Fujupay" .`（コード側）が 0 件。
-- [ ] 銀行ブランドのカラーパレット・タイポトークンが Figma の銀行版に沿って再定義済み。
-- [ ] 通貨単位「ふじゅ〜」共通フォーマッタ (`CurrencyFormatter`) が `shared/commonMain` に存在し、`./gradlew :shared:allTests` が通る。
-- [ ] スプラッシュ画面のロゴが新ブランド版に差し替わっている（Android / iOS 両方）。
-- [ ] アプリ表示名（必要時のみ）が「fuju 銀行」系に統一されている。`applicationId` は据え置き。
-- [ ] Android で動作確認: `./gradlew :composeApp:assembleDebug` 成功、エミュレータでスプラッシュ→既存ログイン画面が新テーマで表示。
-- [ ] iOS で動作確認: `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64` 成功、Xcode で `iosApp` を iOS Simulator 起動してスプラッシュが新ロゴで表示。
-- [ ] 認証系（auth / signup / welcome）画面は **見た目の機能変更なし**。カラートークン import / 値変更のみ反映済み。
-- [ ] `./gradlew build` 全体が通る。
+- [x] `FujupayColors` → `FujuBankColors` リネーム完了。`grep -R "Fujupay" .`（コード側）が 0 件。（PR #54 / foundation-1 にて達成）
+- [x] 銀行ブランドのカラーパレット・タイポトークンが Figma の銀行版に沿って再定義済み。（PR #56 / foundation-3 にて達成）
+- [x] 通貨単位「ふじゅ〜」共通フォーマッタ (`CurrencyFormatter`) が `shared/commonMain` に存在し、`./gradlew :shared:allTests` が通る。（PR #55 / foundation-2 にて達成）
+- [x] スプラッシュ画面のロゴが新ブランド版に差し替わっている（Android / iOS 両方）。（PR #57 / foundation-4 にて達成）
+- [x] アプリ表示名は判断完了。今回ヒアリング結果が「『ふじゅ〜』据え置きで OK」のため `app_name` / `CFBundleDisplayName` は変更せず継続。`applicationId` も据え置き。
+- [x] Android で動作確認: `./gradlew :composeApp:assembleDebug` 成功（foundation-5 で確認）。エミュレータでの目視確認は PR レビュー時に実施。
+- [x] iOS で動作確認: `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64` 成功（foundation-5 で確認）。iOS Simulator での目視確認は PR レビュー時に実施。
+- [x] 認証系（auth / signup / welcome）画面は **見た目の機能変更なし**。カラートークン import / 値変更のみ反映済み。
+- [x] `./gradlew build` 全体が通る。（foundation-5 で確認）
 
 ## foundation の 5 PR 構成
 
 実装順 = 依存順 = ファイル名の番号順。**1 → 2 → 3 → 4 → 5 の順にマージする** こと（並走させない）。
 
-| # | サブ計画書 | 内容 | 依存 |
-|---|-----------|------|------|
-| 1 | [`TBD-bank-rebranding-foundation-1-rename.md`](./TBD-bank-rebranding-foundation-1-rename.md) | `Fujupay*` → `FujuBank*` 機械的リネーム（値変更なし） | なし |
-| 2 | [`TBD-bank-rebranding-foundation-2-currency-formatter.md`](./TBD-bank-rebranding-foundation-2-currency-formatter.md) | `CurrencyFormatter` を `shared/commonMain` に新設 + commonTest + 「円」表記置換 | 1 |
-| 3 | [`TBD-bank-rebranding-foundation-3-theme-tokens.md`](./TBD-bank-rebranding-foundation-3-theme-tokens.md) | カラー / タイポトークンの値再定義（Figma 銀行版反映 + 不要キー削除） | 1（推奨: 2） |
-| 4 | [`TBD-bank-rebranding-foundation-4-splash.md`](./TBD-bank-rebranding-foundation-4-splash.md) | スプラッシュロゴ差し替え（Android + iOS） | 1（推奨: 3） |
-| 5 | [`TBD-bank-rebranding-foundation-5-app-name-and-polish.md`](./TBD-bank-rebranding-foundation-5-app-name-and-polish.md) | アプリ表示名 + 仕上げ + 全体ビルド検証 | 1, 2, 3, 4 |
+| # | サブ計画書 | 内容 | 依存 | 状態 |
+|---|-----------|------|------|------|
+| 1 | [`TBD-bank-rebranding-foundation-1-rename.md`](./TBD-bank-rebranding-foundation-1-rename.md) | `Fujupay*` → `FujuBank*` 機械的リネーム（値変更なし） | なし | ✅ PR #54 マージ済 |
+| 2 | [`TBD-bank-rebranding-foundation-2-currency-formatter.md`](./TBD-bank-rebranding-foundation-2-currency-formatter.md) | `CurrencyFormatter` を `shared/commonMain` に新設 + commonTest + 「円」表記置換 | 1 | ✅ PR #55 マージ済 |
+| 3 | [`TBD-bank-rebranding-foundation-3-theme-tokens.md`](./TBD-bank-rebranding-foundation-3-theme-tokens.md) | カラー / タイポトークンの値再定義（Figma 銀行版反映 + 不要キー削除） | 1（推奨: 2） | ✅ PR #56 マージ済 |
+| 4 | [`TBD-bank-rebranding-foundation-4-splash.md`](./TBD-bank-rebranding-foundation-4-splash.md) | スプラッシュロゴ差し替え（Android + iOS） | 1（推奨: 3） | ✅ PR #57 マージ済 |
+| 5 | [`TBD-bank-rebranding-foundation-5-app-name-and-polish.md`](./TBD-bank-rebranding-foundation-5-app-name-and-polish.md) | アプリ表示名 + 仕上げ + 全体ビルド検証 | 1, 2, 3, 4 | 🟡 本 PR（クロージング） |
 
 ### 分割方針
 

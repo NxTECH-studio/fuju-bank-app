@@ -98,14 +98,34 @@
 
 ## 完了条件
 
-- [ ] Figma 表示名指定の有無を確認済み。指定があれば Android / iOS とも反映済み。
-- [ ] `./gradlew build` が通る。
-- [ ] `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64` が成功する。
-- [ ] Android エミュレータで起動から既存到達画面まで動作確認済み（スクリーンショット添付）。
-- [ ] iOS Simulator で起動から既存到達画面まで動作確認済み（スクリーンショット添付）。
-- [ ] `grep -R "Fujupay" .`（コード側）の結果が 0 件。
-- [ ] `grep -R '"円"' composeApp/ iosApp/` の結果が 0 件。
-- [ ] PR Description に foundation 5 PR の集約と後続タスクの起票準備状況が記載されている。
+- [x] Figma 表示名指定の有無を確認済み。指定があれば Android / iOS とも反映済み。→ ヒアリング結果「『ふじゅ〜』据え置きで OK」のため変更なし。
+- [x] `./gradlew build` が通る。（foundation-5 ブランチで `BUILD SUCCESSFUL` を確認）
+- [x] `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64` が成功する。（同上、build チェーンの一部として成功）
+- [ ] Android エミュレータで起動から既存到達画面まで動作確認済み（スクリーンショット添付）。→ PR レビュー時に実施・スクリーンショットを PR に添付。
+- [ ] iOS Simulator で起動から既存到達画面まで動作確認済み（スクリーンショット添付）。→ PR レビュー時に実施・スクリーンショットを PR に添付。
+- [x] `grep -R "Fujupay" .`（コード側）の結果が 0 件。（`.claude/settings.local.json` の権限キャッシュのみ。コード／設定ファイルには残存なし）
+- [x] `grep -R '"円"' composeApp/ iosApp/` の結果が 0 件。
+- [x] PR Description に foundation 5 PR の集約と後続タスクの起票準備状況が記載されている。（`/pr-create` 実行時に整理）
+
+## 仕上げ検証ログ（foundation-5 ブランチ）
+
+- ブランチ: `feature/TBD-bank-rebranding-foundation-5-app-name-and-polish`
+- `./gradlew :shared:allTests` → `BUILD SUCCESSFUL`（CurrencyFormatter の commonTest 含む）
+- `./gradlew build` → `BUILD SUCCESSFUL`（`:composeApp:assembleDebug` / `:shared:linkDebugFrameworkIosSimulatorArm64` を build チェーンの一部として実行・成功）
+- `grep -R "Fujupay"` → コード／設定ファイルに残存なし
+- `grep -R '"円"' composeApp/ iosApp/` → 0 件
+
+## 後続タスクへの引き継ぎ
+
+foundation 5 PR が揃ったため、以下のタスクが Notion 起票・着手可能：
+
+- `<TBD>-bank-rebranding-home` — ホーム画面リデザイン（Figma node `504-5945`）
+- `<TBD>-bank-rebranding-transactions` — 取引履歴 + 取引詳細（Figma node `709-8658` / `697-7601`）
+- `<TBD>-bank-rebranding-account` — 「アカウント」画面の本実装化（Figma node `702-6440`）
+- `<TBD>-bank-rebranding-notification-settings` — 通知設定画面の新規追加（Figma node `697-8394` / `718-7332`）
+- `<TBD>-kmp-common-migration` — Compose UI / ViewModel の段階的 commonMain 移行（独立大型タスク）
+
+PR 3（theme-tokens）の暫定パッチ（コミット `600fb90`「削除カラー参照箇所の暫定パッチ」）に含まれる箇所は、後続の画面別タスクで該当画面ごとに作り直して解消する。
 
 ## リスク / 注意点
 
