@@ -2,6 +2,7 @@ package studio.nxtech.fujubank.features.transactions
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -198,67 +199,84 @@ private fun DetailTransactionRow(transaction: Transaction) {
             ?.let { "${it.takeLast(SHORT_ID_LEN)} に送りました" }
             ?: "送金"
     }
-    // Figma `702:6440` ではアバターを画像 + 左上 X バッジで「アーティファクトの出典が X」と表現するが、
-     // 本実装はアーティファクト画像を取得していないため、取引履歴一覧 (`TransactionRow`) と同じく
-     // 「白アバター + 中央 X ロゴ」の単一表現に揃える。X バッジは画像変種が入る将来タスクで復活させる。
-    Column(
+    // Figma `702:6440` 準拠: アバター = アーティファクト画像、左上 X バッジ = SNS 出典 (X) という
+     // 役割分担。アーティファクト画像取得は将来タスクのため、アバターは `AvatarArtifact` 色のプレースホルダで仮置きし、
+     // SNS 出典バッジは Figma 通り左上 8dp に絶対配置で描画する。
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .shadow(elevation = 4.dp, clip = false)
             .background(FujuBankColors.Surface)
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        horizontalAlignment = Alignment.End,
     ) {
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.Top,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.End,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(54.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(FujuBankColors.Surface),
-                contentAlignment = Alignment.Center,
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.Top,
             ) {
-                Image(
-                    painter = painterResource(R.drawable.ic_x_logo),
-                    contentDescription = null,
-                    modifier = Modifier.size(32.dp),
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(FujuBankColors.AvatarArtifact),
                 )
+                Column(
+                    modifier = Modifier.padding(top = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = title,
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = FujuBankColors.TextPrimary,
+                        ),
+                    )
+                    Text(
+                        text = "18秒みつめられた",
+                        style = TextStyle(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = FujuBankColors.TextSecondary,
+                        ),
+                    )
+                }
             }
-            Column(
-                modifier = Modifier.padding(top = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = title,
-                    style = TextStyle(
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = FujuBankColors.TextPrimary,
-                    ),
-                )
-                Text(
-                    text = "18秒みつめられた",
-                    style = TextStyle(
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Normal,
-                        color = FujuBankColors.TextSecondary,
-                    ),
-                )
-            }
+            Text(
+                text = formatTransactionDateTimeSlash(transaction.occurredAt),
+                modifier = Modifier.fillMaxWidth(),
+                style = TextStyle(
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = FujuBankColors.TextSecondary,
+                ),
+            )
         }
-        Text(
-            text = formatTransactionDateTimeSlash(transaction.occurredAt),
-            modifier = Modifier.fillMaxWidth(),
-            style = TextStyle(
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Normal,
-                color = FujuBankColors.TextSecondary,
-            ),
-        )
+        // SNS 出典バッジ (X)。Figma の `absolute left-8 top-8` を Box の TopStart 配置で再現。
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .size(24.dp)
+                .clip(RoundedCornerShape(4.5.dp))
+                .background(FujuBankColors.Surface)
+                .border(
+                    width = 1.dp,
+                    color = FujuBankColors.Hairline,
+                    shape = RoundedCornerShape(4.5.dp),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painter = painterResource(R.drawable.ic_x_logo),
+                contentDescription = "X (旧 Twitter)",
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }
 
