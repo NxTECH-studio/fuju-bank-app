@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import studio.nxtech.fujubank.format.CurrencyFormatter
 import studio.nxtech.fujubank.theme.FujuBankColors
+import studio.nxtech.fujubank.theme.NotoSansJP
 
 /**
  * 残高カード — Figma `709:8658` 準拠のシンプル表示版。
@@ -56,6 +57,7 @@ fun BalanceCard(
             Text(
                 text = "現在の残高",
                 style = TextStyle(
+                    fontFamily = NotoSansJP,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = FujuBankColors.TextPrimary,
@@ -68,6 +70,7 @@ fun BalanceCard(
                 Text(
                     text = CurrencyFormatter.formatAmount(balanceFuju),
                     style = TextStyle(
+                        fontFamily = NotoSansJP,
                         fontSize = 48.sp,
                         fontWeight = FontWeight.Bold,
                         color = FujuBankColors.TextPrimary,
@@ -77,6 +80,7 @@ fun BalanceCard(
                     text = CurrencyFormatter.UNIT,
                     modifier = Modifier.padding(bottom = 6.dp),
                     style = TextStyle(
+                        fontFamily = NotoSansJP,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = FujuBankColors.TextPrimary,

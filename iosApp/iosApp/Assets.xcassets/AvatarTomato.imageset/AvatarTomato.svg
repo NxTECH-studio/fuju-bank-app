@@ -1,0 +1,13 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- 銀行版 Figma 697:8394 のウィンクするトマトアバター。
+       Android `ic_avatar_tomato.xml` と同じパス・色を 1:1 で複製。 -->
+  <path fill="#FF1E5E" d="M32 12 C46 12 56 22 56 38 C56 52 46 60 32 60 C18 60 8 52 8 38 C8 22 18 12 32 12 Z"/>
+  <path fill="#3FA64C" d="M28 8 L36 8 L40 16 L24 16 Z"/>
+  <path fill="#3FA64C" d="M22 12 L42 12 L44 18 L20 18 Z"/>
+  <!-- 左目（ウィンク：横線） -->
+  <path fill="#111111" d="M22 32 L28 32 L28 34 L22 34 Z"/>
+  <!-- 右目（点） -->
+  <circle fill="#111111" cx="40" cy="30" r="2"/>
+  <!-- 口 -->
+  <path fill="#111111" d="M28 42 L34 42 L34 44 L28 44 Z"/>
+</svg>

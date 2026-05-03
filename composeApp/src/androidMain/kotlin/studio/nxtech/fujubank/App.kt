@@ -38,6 +38,7 @@ import studio.nxtech.fujubank.signup.SignupWelcomePreferences
 import studio.nxtech.fujubank.splash.SplashConfig
 import studio.nxtech.fujubank.splash.SplashScreen
 import studio.nxtech.fujubank.theme.FujuBankColors
+import studio.nxtech.fujubank.theme.FujuBankMaterialTypography
 
 /**
  * Android アプリのルート Composable。
@@ -97,7 +98,7 @@ fun App() {
     val showRoot = bypassAuth ||
         (sessionState is SessionState.Authenticated && !(welcomePending && !welcomeAlreadyShown))
 
-    MaterialTheme {
+    MaterialTheme(typography = FujuBankMaterialTypography) {
         if (!splashFinished) {
             SplashScreen()
         } else if (showRoot) {

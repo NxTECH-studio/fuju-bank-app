@@ -35,6 +35,7 @@ import studio.nxtech.fujubank.domain.model.TransactionDirection
 import studio.nxtech.fujubank.features.home.components.NotificationBellButton
 import studio.nxtech.fujubank.format.CurrencyFormatter
 import studio.nxtech.fujubank.theme.FujuBankColors
+import studio.nxtech.fujubank.theme.NotoSansJP
 import studio.nxtech.fujubank.util.formatTransactionDateTimeSlash
 
 /**
@@ -79,6 +80,7 @@ private fun Header(onBack: () -> Unit, onNotificationClick: () -> Unit) {
         Text(
             text = "取引詳細",
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
                 color = FujuBankColors.TextPrimary,
@@ -159,6 +161,7 @@ private fun AmountCard(transaction: Transaction) {
             Text(
                 text = sign,
                 style = TextStyle(
+                    fontFamily = NotoSansJP,
                     fontSize = 40.sp,
                     fontWeight = FontWeight.Bold,
                     color = amountColor,
@@ -167,6 +170,7 @@ private fun AmountCard(transaction: Transaction) {
             Text(
                 text = CurrencyFormatter.formatAmount(transaction.amount),
                 style = TextStyle(
+                    fontFamily = NotoSansJP,
                     fontSize = 48.sp,
                     fontWeight = FontWeight.Bold,
                     color = amountColor,
@@ -175,6 +179,7 @@ private fun AmountCard(transaction: Transaction) {
             Text(
                 text = CurrencyFormatter.UNIT,
                 style = TextStyle(
+                    fontFamily = NotoSansJP,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = amountColor,
@@ -230,6 +235,7 @@ private fun DetailTransactionRow(transaction: Transaction) {
                     Text(
                         text = title,
                         style = TextStyle(
+                            fontFamily = NotoSansJP,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = FujuBankColors.TextPrimary,
@@ -238,6 +244,7 @@ private fun DetailTransactionRow(transaction: Transaction) {
                     Text(
                         text = TRANSACTION_ROW_SUBTITLE_PLACEHOLDER,
                         style = TextStyle(
+                            fontFamily = NotoSansJP,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Normal,
                             color = FujuBankColors.TextSecondary,
@@ -249,6 +256,7 @@ private fun DetailTransactionRow(transaction: Transaction) {
                 text = formatTransactionDateTimeSlash(transaction.occurredAt),
                 modifier = Modifier.fillMaxWidth(),
                 style = TextStyle(
+                    fontFamily = NotoSansJP,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Normal,
                     color = FujuBankColors.TextSecondary,
@@ -291,6 +299,7 @@ private fun EmotionMetadataCard() {
         Text(
             text = "感情データ (metadata)",
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = FujuBankColors.TextPrimary,
@@ -311,6 +320,7 @@ private fun EmotionMetadataRow(label: String, value: String) {
         Text(
             text = label,
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Normal,
                 color = FujuBankColors.TextTertiary,
@@ -319,6 +329,7 @@ private fun EmotionMetadataRow(label: String, value: String) {
         Text(
             text = value,
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = FujuBankColors.TextPrimary,

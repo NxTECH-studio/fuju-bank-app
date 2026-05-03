@@ -58,6 +58,7 @@ import studio.nxtech.fujubank.features.transactions.TransactionListViewModel
 import studio.nxtech.fujubank.navigation.RootDestination
 import studio.nxtech.fujubank.session.SessionStore
 import studio.nxtech.fujubank.theme.FujuBankColors
+import studio.nxtech.fujubank.theme.NotoSansJP
 
 /**
  * ログイン後のルートシェル。Scaffold の bottomBar に Figma `709:8658` / `697:7601` / `702:6440`
@@ -298,6 +299,7 @@ private fun BottomTab(
             maxLines = 1,
             softWrap = false,
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Bold,
                 color = tabColor,

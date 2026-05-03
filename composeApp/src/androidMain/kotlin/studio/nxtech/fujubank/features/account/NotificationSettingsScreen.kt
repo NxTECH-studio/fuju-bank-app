@@ -36,6 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import studio.nxtech.fujubank.R
 import studio.nxtech.fujubank.features.home.components.NotificationBellButton
 import studio.nxtech.fujubank.theme.FujuBankColors
+import studio.nxtech.fujubank.theme.NotoSansJP
 
 /**
  * 通知設定画面 — Figma `718:7332` 準拠（Android 先行）。
@@ -97,6 +98,7 @@ private fun Header(
         Text(
             text = "通知設定",
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
                 color = FujuBankColors.TextPrimary,
@@ -186,6 +188,7 @@ private fun ToggleRow(
             Text(
                 text = title,
                 style = TextStyle(
+                    fontFamily = NotoSansJP,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = FujuBankColors.TextPrimary,
@@ -194,6 +197,7 @@ private fun ToggleRow(
             Text(
                 text = description,
                 style = TextStyle(
+                    fontFamily = NotoSansJP,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Normal,
                     color = FujuBankColors.TextTertiary,

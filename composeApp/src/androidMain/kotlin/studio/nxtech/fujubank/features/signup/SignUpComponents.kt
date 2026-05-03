@@ -42,6 +42,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import studio.nxtech.fujubank.R
+import studio.nxtech.fujubank.theme.NotoSansJP
 
 /**
  * サインアップ 3 画面で共通利用する UI 部品群。
@@ -145,6 +146,7 @@ internal fun BankTextField(
                     Text(
                         text = placeholder,
                         style = TextStyle(
+                            fontFamily = NotoSansJP,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = SignUpTokens.Placeholder,
@@ -180,6 +182,7 @@ internal fun PrimaryButton(
         Text(
             text = text,
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
             ),
@@ -206,6 +209,7 @@ internal fun DividerWithLabel(label: String) {
         Text(
             text = label,
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Normal,
                 color = SignUpTokens.DividerLabel,
@@ -242,6 +246,7 @@ internal fun GoogleSignInButton(onClick: () -> Unit) {
         Text(
             text = "Googleで続ける",
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = SignUpTokens.PrimaryText,
@@ -292,6 +297,7 @@ internal fun LoginRedirectLink(onLoginClick: () -> Unit) {
     val annotated = buildAnnotatedString {
         withStyle(
             SpanStyle(
+                fontFamily = NotoSansJP,
                 color = SignUpTokens.SecondaryText,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
@@ -301,6 +307,7 @@ internal fun LoginRedirectLink(onLoginClick: () -> Unit) {
         }
         withStyle(
             SpanStyle(
+                fontFamily = NotoSansJP,
                 color = SignUpTokens.Primary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
@@ -323,6 +330,7 @@ internal fun LegalAgreementText() {
     val annotated = buildAnnotatedString {
         withStyle(
             SpanStyle(
+                fontFamily = NotoSansJP,
                 color = SignUpTokens.SecondaryText,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
@@ -332,6 +340,7 @@ internal fun LegalAgreementText() {
         }
         withStyle(
             SpanStyle(
+                fontFamily = NotoSansJP,
                 color = SignUpTokens.LinkBlue,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
@@ -342,6 +351,7 @@ internal fun LegalAgreementText() {
         }
         withStyle(
             SpanStyle(
+                fontFamily = NotoSansJP,
                 color = SignUpTokens.SecondaryText,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
@@ -351,6 +361,7 @@ internal fun LegalAgreementText() {
         }
         withStyle(
             SpanStyle(
+                fontFamily = NotoSansJP,
                 color = SignUpTokens.LinkBlue,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
@@ -361,6 +372,7 @@ internal fun LegalAgreementText() {
         }
         withStyle(
             SpanStyle(
+                fontFamily = NotoSansJP,
                 color = SignUpTokens.SecondaryText,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,

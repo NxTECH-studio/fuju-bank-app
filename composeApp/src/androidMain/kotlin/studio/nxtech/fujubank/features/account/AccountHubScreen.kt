@@ -23,6 +23,7 @@ import studio.nxtech.fujubank.features.account.components.ProfileCard
 import studio.nxtech.fujubank.features.account.components.SettingsCard
 import studio.nxtech.fujubank.features.account.components.SettingsRowSpec
 import studio.nxtech.fujubank.theme.FujuBankColors
+import studio.nxtech.fujubank.theme.NotoSansJP
 
 /**
  * アカウントハブ画面 — Figma `697:8394` 準拠（Android 先行）。
@@ -86,6 +87,7 @@ private fun SectionLabel(text: String) {
             .padding(start = 4.dp)
             .semantics { heading() },
         style = TextStyle(
+            fontFamily = NotoSansJP,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             color = FujuBankColors.TextPrimary,

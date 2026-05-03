@@ -2,6 +2,8 @@ package studio.nxtech.fujubank.di
 
 import org.koin.mp.KoinPlatform
 import studio.nxtech.fujubank.BuildKonfig
+import studio.nxtech.fujubank.account.AccountProfileProvider
+import studio.nxtech.fujubank.account.NotificationSettingsPreferences
 import studio.nxtech.fujubank.data.remote.api.UserApi
 import studio.nxtech.fujubank.data.repository.AuthRepository
 import studio.nxtech.fujubank.data.repository.ProfileRepository
@@ -37,3 +39,7 @@ fun signupCompletionSignal(): SignupCompletionSignal = KoinPlatform.getKoin().ge
 fun signupWelcomePreferences(): SignupWelcomePreferences = KoinPlatform.getKoin().get()
 
 fun profileRepository(): ProfileRepository = KoinPlatform.getKoin().get()
+
+fun accountProfileProvider(): AccountProfileProvider = KoinPlatform.getKoin().get()
+
+fun notificationSettingsPreferences(): NotificationSettingsPreferences = KoinPlatform.getKoin().get()

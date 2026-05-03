@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import studio.nxtech.fujubank.theme.FujuBankColors
+import studio.nxtech.fujubank.theme.NotoSansJP
 
 /**
  * 取引履歴 / 送る・もらう など、A3 ではまだ未実装の画面の汎用プレースホルダ。
@@ -37,6 +38,7 @@ fun ComingSoonScreen(
         Text(
             text = title,
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = FujuBankColors.TextPrimary,
@@ -45,6 +47,7 @@ fun ComingSoonScreen(
         Text(
             text = "この画面は別タスクで実装します",
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 14.sp,
                 color = FujuBankColors.TextSecondary,
             ),
@@ -53,6 +56,7 @@ fun ComingSoonScreen(
         Text(
             text = "戻る",
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = FujuBankColors.BrandPink,

@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import studio.nxtech.fujubank.R
 import studio.nxtech.fujubank.format.CurrencyFormatter
 import studio.nxtech.fujubank.theme.FujuBankColors
+import studio.nxtech.fujubank.theme.NotoSansJP
 
 /**
  * ホーム画面の「最近の取引履歴」セクション — Figma `709:8658` 準拠。
@@ -68,6 +69,7 @@ private fun SectionHeader(onMore: () -> Unit) {
         Text(
             text = "最近の取引履歴",
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = FujuBankColors.TextPrimary,
@@ -81,6 +83,7 @@ private fun SectionHeader(onMore: () -> Unit) {
             Text(
                 text = "もっとみる",
                 style = TextStyle(
+                    fontFamily = NotoSansJP,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = FujuBankColors.LinkBlue,
@@ -119,6 +122,7 @@ private fun RecentTransactionCard(item: RecentTransactionItem) {
             Text(
                 text = item.title,
                 style = TextStyle(
+                    fontFamily = NotoSansJP,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = FujuBankColors.TextPrimary,
@@ -127,6 +131,7 @@ private fun RecentTransactionCard(item: RecentTransactionItem) {
             Text(
                 text = "${item.sign}${CurrencyFormatter.formatAmount(item.amount)} ${CurrencyFormatter.UNIT}",
                 style = TextStyle(
+                    fontFamily = NotoSansJP,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = FujuBankColors.BrandPink,
@@ -137,6 +142,7 @@ private fun RecentTransactionCard(item: RecentTransactionItem) {
             text = item.timestamp,
             modifier = Modifier.fillMaxWidth(),
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Normal,
                 color = FujuBankColors.TextSecondary,
