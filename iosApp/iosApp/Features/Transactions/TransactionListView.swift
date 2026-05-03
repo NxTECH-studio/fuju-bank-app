@@ -35,8 +35,11 @@ struct TransactionListView: View {
 
             HStack {
                 Button(action: onBack) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .semibold))
+                    Image("ChevronLeft")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 24, height: 24)
                         .foregroundStyle(FujuBankPalette.textPrimary)
                         .frame(width: 48, height: 48)
                 }
