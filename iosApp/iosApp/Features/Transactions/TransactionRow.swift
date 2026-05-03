@@ -1,97 +1,102 @@
 import SwiftUI
 import Shared
 
-/// 取引履歴の 1 行 — Figma `410:20343` 準拠。
+/// 取引履歴の 1 行 — Figma `697:7601` 準拠（銀行版）。
 ///
-/// - 50pt 円形アイコン（暫定プレースホルダ）
-/// - タイトル（取引相手 or 「発行」）と日時を 1 段目に並べる
-/// - 下段に金額を 32pt で大きく表示し、`+` / `-` 記号と「ふじゅ〜」16pt サフィックス
+/// - 白カード（角丸 0、影 drop-shadow）。一覧側は `Arrangement.spacedBy(2)` 相当の空きを開ける。
+/// - 上段: 54pt アバター（白背景 + 中央 32pt X ロゴ）+ タイトル + サブタイトル
+/// - 下段: 左に日時（yyyy/M/d HH:mm:ss）、右にピンクの金額（`+42 ふじゅ〜` / `-...`）
 ///
-/// 金額の色:
-/// - Mint / Incoming: 緑（#0CD80C）
-/// - Outgoing: 黒（#111111）
+/// バックエンドからアーティファクト画像を取れる仕組みが整うまでは X ロゴで仮置きし、画像取得後に
+/// 「画像 + 左上 X バッジ」バリアントを差し込めるようにこの 1 ファイルにまとめておく。
+///
+/// サブタイトル「18秒みつめられた」は Figma 上の固定文。視線データ統合は後続タスク。
 struct TransactionRowView: View {
     let transaction: Shared.Transaction
 
     var body: some View {
         let variant = TransactionRowVariant(transaction: transaction)
-        VStack(alignment: .trailing, spacing: 0) {
-            HStack(alignment: .top, spacing: 14) {
-                Circle()
-                    .fill(variant.avatarColor)
-                    .frame(width: 50, height: 50)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .top, spacing: 16) {
-                        Text(variant.title)
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(FujuBankPalette.textPrimary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Text(TransactionDateFormatterIosKt.formatTransactionDateForIos(instant: transaction.occurredAt))
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(FujuBankPalette.transactionMeta)
-                    }
-                    if let subtitle = variant.subtitle {
-                        Text(subtitle)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(FujuBankPalette.transactionMeta)
-                    }
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                ArtifactAvatar()
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(variant.title)
+                        .font(FujuBankTypography.title)
+                        .foregroundStyle(FujuBankPalette.textPrimary)
+                    Text(TransactionDisplay.subtitlePlaceholder)
+                        .font(FujuBankTypography.caption)
+                        .foregroundStyle(FujuBankPalette.textSecondary)
                 }
+                .padding(.top, 4)
+                Spacer(minLength: 0)
             }
-            amountText(variant: variant)
+            HStack(alignment: .bottom) {
+                Text(formatTimestamp(transaction))
+                    .font(FujuBankTypography.caption)
+                    .foregroundStyle(FujuBankPalette.textSecondary)
+                Spacer()
+                Text("\(variant.sign)\(CurrencyFormatter.shared.formatAmount(amount: transaction.amount)) \(CurrencyFormatter.shared.UNIT)")
+                    .font(FujuBankTypography.rowAmount)
+                    .foregroundStyle(variant.amountColor)
+            }
         }
     }
 
-    private func amountText(variant: TransactionRowVariant) -> some View {
-        let formatted = CurrencyFormatter.shared.formatAmount(amount: transaction.amount)
-        return (
-            Text("\(variant.sign)\(formatted)")
-                .font(.system(size: 32, weight: .bold))
-            + Text(CurrencyFormatter.shared.UNIT)
-                .font(.system(size: 16, weight: .bold))
-        )
-        .foregroundStyle(variant.amountColor)
+    private func formatTimestamp(_ transaction: Shared.Transaction) -> String {
+        // Figma `697:7601` は `yyyy/M/d HH:mm:ss` 表記。共通実装は shared 側
+        // `formatTransactionDateTimeSlash`。Swift から呼ぶ際は `TransactionDateFormatterIos.kt`
+        // の引数無しラッパ `formatTransactionDateTimeSlashForIos` を経由して TimeZone デフォルトを
+        // 使う（kotlinx.datetime の `TimeZone.Companion` シンボルを Swift 側で直接触らない）。
+        TransactionDateFormatterIosKt.formatTransactionDateTimeSlashForIos(instant: transaction.occurredAt)
+    }
+
+}
+
+/// 54pt の白角丸ボックスに 32pt の X ロゴを中央配置したアーティファクトプレースホルダ。
+/// Figma `697:7601` の Credit 9/10/11 等の「画像が無いアーティファクト」表示にあたる。
+private struct ArtifactAvatar: View {
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(FujuBankPalette.surface)
+                .frame(width: 54, height: 54)
+            Image("XLogo")
+                .resizable()
+                .renderingMode(.original)
+                .scaledToFit()
+                .frame(width: 32, height: 32)
+        }
     }
 }
 
 private struct TransactionRowVariant {
     let title: String
-    let subtitle: String?
     let sign: String
     let amountColor: Color
-    let avatarColor: Color
 
     init(transaction: Shared.Transaction) {
         // Kotlin/Native の enum は Swift の enum ではなくクラスプロパティとして公開されるため、
         // パターンマッチではなく等価比較で分岐する。
         let direction = transaction.direction
         if direction == TransactionDirection.mint {
-            self.title = "発行"
-            self.subtitle = transaction.artifactId.flatMap { id in
-                let short = String(id.suffix(SHORT_ID_LEN))
-                return "アーティファクト \(short)"
-            }
+            let suffix = transaction.artifactId
+                .map { String($0.suffix(TransactionDisplay.shortIdLength)) }
+            self.title = suffix.map { "アーティファクト \($0)" } ?? "発行"
             self.sign = "+"
-            self.amountColor = FujuBankPalette.actionGreen
-            self.avatarColor = FujuBankPalette.avatarArtifact
+            self.amountColor = FujuBankPalette.brandPink
         } else if direction == TransactionDirection.incoming {
-            let from = transaction.counterpartyUserId.map { String($0.suffix(SHORT_ID_LEN)) } ?? "相手"
-            self.title = "\(from)からもらいました"
-            self.subtitle = nil
+            let from = transaction.counterpartyUserId
+                .map { String($0.suffix(TransactionDisplay.shortIdLength)) }
+            self.title = from.map { "\($0) からもらいました" } ?? "入金"
             self.sign = "+"
-            self.amountColor = FujuBankPalette.actionGreen
-            self.avatarColor = FujuBankPalette.avatarPerson
+            self.amountColor = FujuBankPalette.brandPink
         } else {
-            let to = transaction.counterpartyUserId.map { String($0.suffix(SHORT_ID_LEN)) } ?? "相手"
-            self.title = "\(to)に送りました"
-            self.subtitle = nil
+            let to = transaction.counterpartyUserId
+                .map { String($0.suffix(TransactionDisplay.shortIdLength)) }
+            self.title = to.map { "\($0) に送りました" } ?? "送金"
             self.sign = "-"
             self.amountColor = FujuBankPalette.textPrimary
-            self.avatarColor = FujuBankPalette.avatarPerson
         }
     }
 }
-
-// 表示優先度の暫定対処: 取引相手やアーティファクトの名前解決 API が無いため、
-// 末尾 6 文字に縮めて表示する。本番では UserApi / ArtifactRepository で解決する想定。
-private let SHORT_ID_LEN = 6
 

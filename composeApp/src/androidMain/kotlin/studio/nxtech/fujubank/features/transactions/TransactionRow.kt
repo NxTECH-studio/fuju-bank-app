@@ -169,8 +169,3 @@ private data class TransactionRowVariant(
     }
 }
 
-// バックエンドの視線データ統合前のため、Figma `697:7601` の文字列をそのまま全行に当てる
-private const val TRANSACTION_ROW_SUBTITLE_PLACEHOLDER = "18秒みつめられた"
-
-// 取引相手やアーティファクトの名前解決 API が無いため、id の末尾 6 文字に縮めて表示する
-private const val SHORT_ID_LEN = 6

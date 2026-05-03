@@ -145,20 +145,19 @@ private fun AmountCard(transaction: Transaction) {
             .shadow(elevation = 2.dp, shape = RoundedCornerShape(32.dp), clip = false)
             .clip(RoundedCornerShape(32.dp))
             .background(FujuBankColors.Surface)
-            .padding(horizontal = 36.dp)
-            .padding(bottom = 6.dp),
+            .padding(horizontal = 36.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
-        // 「+」/「-」記号 (40sp) は数値 (48sp) の行高内で中央に揃える。
-        // 数値・単位は底揃え、記号だけ Modifier.align(CenterVertically) で行内中央に上書きする。
+        // 各テキストを bounding box の中央で揃え、行全体をカード中央に置く。
+        // 旧実装は Bottom 揃え + bottom padding で baseline を整えていたが、
+        // 結果として全体が上に寄って見える状態だったため Center に統一した。
         Row(
-            verticalAlignment = Alignment.Bottom,
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
                 text = sign,
-                modifier = Modifier.align(Alignment.CenterVertically),
                 style = TextStyle(
                     fontSize = 40.sp,
                     fontWeight = FontWeight.Bold,
@@ -175,7 +174,6 @@ private fun AmountCard(transaction: Transaction) {
             )
             Text(
                 text = CurrencyFormatter.UNIT,
-                modifier = Modifier.padding(bottom = 6.dp),
                 style = TextStyle(
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
@@ -238,7 +236,7 @@ private fun DetailTransactionRow(transaction: Transaction) {
                         ),
                     )
                     Text(
-                        text = "18秒みつめられた",
+                        text = TRANSACTION_ROW_SUBTITLE_PLACEHOLDER,
                         style = TextStyle(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Normal,
@@ -329,4 +327,3 @@ private fun EmotionMetadataRow(label: String, value: String) {
     }
 }
 
-private const val SHORT_ID_LEN = 6
