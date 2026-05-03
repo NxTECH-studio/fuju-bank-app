@@ -23,7 +23,7 @@ struct TransactionRowView: View {
                     Text(variant.title)
                         .font(FujuBankTypography.title)
                         .foregroundStyle(FujuBankPalette.textPrimary)
-                    Text(TransactionRowView.subtitlePlaceholder)
+                    Text(TransactionDisplay.subtitlePlaceholder)
                         .font(FujuBankTypography.caption)
                         .foregroundStyle(FujuBankPalette.textSecondary)
                 }
@@ -50,8 +50,6 @@ struct TransactionRowView: View {
         TransactionDateFormatterIosKt.formatTransactionDateTimeSlashForIos(instant: transaction.occurredAt)
     }
 
-    /// バックエンドの視線データ統合前のため、Figma `697:7601` の文字列をそのまま全行に当てる。
-    fileprivate static let subtitlePlaceholder = "18秒みつめられた"
 }
 
 /// 54pt の白角丸ボックスに 32pt の X ロゴを中央配置したアーティファクトプレースホルダ。
@@ -82,19 +80,19 @@ private struct TransactionRowVariant {
         let direction = transaction.direction
         if direction == TransactionDirection.mint {
             let suffix = transaction.artifactId
-                .map { String($0.suffix(SHORT_ID_LEN)) }
+                .map { String($0.suffix(TransactionDisplay.shortIdLength)) }
             self.title = suffix.map { "アーティファクト \($0)" } ?? "発行"
             self.sign = "+"
             self.amountColor = FujuBankPalette.brandPink
         } else if direction == TransactionDirection.incoming {
             let from = transaction.counterpartyUserId
-                .map { String($0.suffix(SHORT_ID_LEN)) }
+                .map { String($0.suffix(TransactionDisplay.shortIdLength)) }
             self.title = from.map { "\($0) からもらいました" } ?? "入金"
             self.sign = "+"
             self.amountColor = FujuBankPalette.brandPink
         } else {
             let to = transaction.counterpartyUserId
-                .map { String($0.suffix(SHORT_ID_LEN)) }
+                .map { String($0.suffix(TransactionDisplay.shortIdLength)) }
             self.title = to.map { "\($0) に送りました" } ?? "送金"
             self.sign = "-"
             self.amountColor = FujuBankPalette.textPrimary
@@ -102,5 +100,3 @@ private struct TransactionRowVariant {
     }
 }
 
-// 取引相手やアーティファクトの名前解決 API が無いため、id の末尾 6 文字に縮めて表示する。
-private let SHORT_ID_LEN = 6

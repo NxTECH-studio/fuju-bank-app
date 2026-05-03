@@ -236,7 +236,7 @@ private fun DetailTransactionRow(transaction: Transaction) {
                         ),
                     )
                     Text(
-                        text = "18秒みつめられた",
+                        text = TRANSACTION_ROW_SUBTITLE_PLACEHOLDER,
                         style = TextStyle(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Normal,
@@ -327,4 +327,3 @@ private fun EmotionMetadataRow(label: String, value: String) {
     }
 }
 
-private const val SHORT_ID_LEN = 6

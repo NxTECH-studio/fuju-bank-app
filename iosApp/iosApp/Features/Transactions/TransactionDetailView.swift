@@ -137,7 +137,7 @@ private struct DetailTransactionRow: View {
                         Text(title)
                             .font(FujuBankTypography.title)
                             .foregroundStyle(FujuBankPalette.textPrimary)
-                        Text("18秒みつめられた")
+                        Text(TransactionDisplay.subtitlePlaceholder)
                             .font(FujuBankTypography.caption)
                             .foregroundStyle(FujuBankPalette.textSecondary)
                     }
@@ -179,13 +179,13 @@ private struct DetailTransactionRow: View {
     private func makeTitle(for transaction: Shared.Transaction) -> String {
         let direction = transaction.direction
         if direction == TransactionDirection.mint {
-            let suffix = transaction.artifactId.map { String($0.suffix(SHORT_ID_LEN)) }
+            let suffix = transaction.artifactId.map { String($0.suffix(TransactionDisplay.shortIdLength)) }
             return suffix.map { "アーティファクト \($0)" } ?? "発行"
         } else if direction == TransactionDirection.incoming {
-            let from = transaction.counterpartyUserId.map { String($0.suffix(SHORT_ID_LEN)) }
+            let from = transaction.counterpartyUserId.map { String($0.suffix(TransactionDisplay.shortIdLength)) }
             return from.map { "\($0) からもらいました" } ?? "入金"
         } else {
-            let to = transaction.counterpartyUserId.map { String($0.suffix(SHORT_ID_LEN)) }
+            let to = transaction.counterpartyUserId.map { String($0.suffix(TransactionDisplay.shortIdLength)) }
             return to.map { "\($0) に送りました" } ?? "送金"
         }
     }
@@ -221,4 +221,3 @@ private struct EmotionMetadataCard: View {
     }
 }
 
-private let SHORT_ID_LEN = 6
