@@ -1,0 +1,33 @@
+<!-- Figma 697:8394 プロフィールカードのウィンクするトマトアバター。
+     正式アセットが Figma から書き出せるまでの仮実装：
+     - 赤ピンクの本体（円）+ 緑のヘタ + 顔（左目ウィンク・右目・小さな口）
+     - ウィンドウサイズは 64x64、Compose 側で size を合わせて使う -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="64dp"
+    android:height="64dp"
+    android:viewportWidth="64"
+    android:viewportHeight="64">
+    <!-- トマト本体 -->
+    <path
+        android:fillColor="#FF1E5E"
+        android:pathData="M32,12 C46,12 56,22 56,38 C56,52 46,60 32,60 C18,60 8,52 8,38 C8,22 18,12 32,12 Z" />
+    <!-- ヘタ（緑） -->
+    <path
+        android:fillColor="#3FA64C"
+        android:pathData="M28,8 L36,8 L40,16 L24,16 Z" />
+    <path
+        android:fillColor="#3FA64C"
+        android:pathData="M22,12 L42,12 L44,18 L20,18 Z" />
+    <!-- 左目（ウィンク：横線） -->
+    <path
+        android:fillColor="#111111"
+        android:pathData="M22,32 L28,32 L28,34 L22,34 Z" />
+    <!-- 右目（点） -->
+    <path
+        android:fillColor="#111111"
+        android:pathData="M40,30 m-2,0 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0" />
+    <!-- 口 -->
+    <path
+        android:fillColor="#111111"
+        android:pathData="M28,42 L34,42 L34,44 L28,44 Z" />
+</vector>
