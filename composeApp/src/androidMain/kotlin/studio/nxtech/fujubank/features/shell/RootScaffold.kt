@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -142,8 +143,11 @@ fun RootScaffold() {
                 RootDestination.TransactionDetail -> {
                     val tx = selectedTransaction
                     if (tx == null) {
-                        // プロセス再生成等で対象 Transaction が失われた場合は履歴へ戻す
-                        destination = RootDestination.TransactionHistory
+                        // プロセス再生成等で対象 Transaction が失われた場合は履歴へ戻す。
+                        // composition 中の副作用は描画 1 回ぶん遅延させたいため LaunchedEffect で実行する。
+                        LaunchedEffect(Unit) {
+                            destination = RootDestination.TransactionHistory
+                        }
                     } else {
                         // VM key を transaction.id にして、別取引タップ時に新しい VM が生成されるようにする
                         val viewModel: TransactionDetailViewModel = viewModel(

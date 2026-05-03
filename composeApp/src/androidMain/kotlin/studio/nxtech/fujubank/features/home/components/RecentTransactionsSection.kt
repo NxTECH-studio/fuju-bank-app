@@ -1,5 +1,6 @@
 package studio.nxtech.fujubank.features.home.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -85,7 +86,7 @@ private fun SectionHeader(onMore: () -> Unit) {
                     color = FujuBankColors.LinkBlue,
                 ),
             )
-            androidx.compose.foundation.Image(
+            Image(
                 painter = painterResource(R.drawable.ic_chevron_right),
                 contentDescription = null,
                 modifier = Modifier.size(14.dp),

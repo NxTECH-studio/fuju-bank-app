@@ -200,8 +200,8 @@ private fun DetailTransactionRow(transaction: Transaction) {
             ?: "送金"
     }
     // Figma `702:6440` 準拠: アバター = アーティファクト画像、左上 X バッジ = SNS 出典 (X) という
-     // 役割分担。アーティファクト画像取得は将来タスクのため、アバターは `AvatarArtifact` 色のプレースホルダで仮置きし、
-     // SNS 出典バッジは Figma 通り左上 8dp に絶対配置で描画する。
+    // 役割分担。アーティファクト画像取得は将来タスクのため、アバターは `AvatarArtifact` 色のプレースホルダで仮置きし、
+    // SNS 出典バッジは Figma 通り左上 8dp に絶対配置で描画する。
     Box(
         modifier = Modifier
             .fillMaxWidth()
