@@ -18,7 +18,8 @@ class SharedModuleTest {
         assertTrue(ledgerModule in modules)
         assertTrue(artifactModule in modules)
         assertTrue(signupModule in modules)
-        val staticModules = setOf(authModule, userModule, ledgerModule, artifactModule, signupModule)
+        assertTrue(accountModule in modules)
+        val staticModules = setOf(authModule, userModule, ledgerModule, artifactModule, signupModule, accountModule)
         assertTrue(
             modules.any { it !in staticModules },
             "realtimeModule (dynamic) should also be included",
