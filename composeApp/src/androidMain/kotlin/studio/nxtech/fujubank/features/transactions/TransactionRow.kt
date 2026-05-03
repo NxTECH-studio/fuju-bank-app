@@ -28,6 +28,7 @@ import studio.nxtech.fujubank.domain.model.Transaction
 import studio.nxtech.fujubank.domain.model.TransactionDirection
 import studio.nxtech.fujubank.format.CurrencyFormatter
 import studio.nxtech.fujubank.theme.FujuBankColors
+import studio.nxtech.fujubank.theme.NotoSansJP
 import studio.nxtech.fujubank.util.formatTransactionDateTimeSlash
 
 /**
@@ -76,6 +77,7 @@ fun TransactionRow(
                     Text(
                         text = variant.title,
                         style = TextStyle(
+                            fontFamily = NotoSansJP,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = FujuBankColors.TextPrimary,
@@ -84,6 +86,7 @@ fun TransactionRow(
                     Text(
                         text = TRANSACTION_ROW_SUBTITLE_PLACEHOLDER,
                         style = TextStyle(
+                            fontFamily = NotoSansJP,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Normal,
                             color = FujuBankColors.TextSecondary,
@@ -101,6 +104,7 @@ fun TransactionRow(
                 text = formatTransactionDateTimeSlash(transaction.occurredAt),
                 modifier = Modifier.weight(1f),
                 style = TextStyle(
+                    fontFamily = NotoSansJP,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Normal,
                     color = FujuBankColors.TextSecondary,
@@ -109,6 +113,7 @@ fun TransactionRow(
             Text(
                 text = "${variant.sign}${CurrencyFormatter.formatAmount(transaction.amount)} ${CurrencyFormatter.UNIT}",
                 style = TextStyle(
+                    fontFamily = NotoSansJP,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = variant.amountColor,

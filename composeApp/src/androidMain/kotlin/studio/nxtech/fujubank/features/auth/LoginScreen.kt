@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import studio.nxtech.fujubank.R
+import studio.nxtech.fujubank.theme.NotoSansJP
 
 /**
  * ログイン画面（Android）— Figma node 302-2698 準拠。
@@ -180,6 +181,7 @@ private fun LoginCard(
             Text(
                 text = "ログイン",
                 style = TextStyle(
+                    fontFamily = NotoSansJP,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF111111),
@@ -188,6 +190,7 @@ private fun LoginCard(
             Text(
                 text = "メールまたは公開IDを入力",
                 style = TextStyle(
+                    fontFamily = NotoSansJP,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color(0xFF6E6F72),
@@ -273,6 +276,7 @@ private fun FlatTextField(
                     Text(
                         text = placeholder,
                         style = TextStyle(
+                            fontFamily = NotoSansJP,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFFDADBDF),
@@ -304,6 +308,7 @@ private fun DividerWithLabel(label: String) {
         Text(
             text = label,
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Normal,
                 color = Color(0xFFC5C5CB),
@@ -340,6 +345,7 @@ private fun GoogleButton() {
         Text(
             text = "Googleで続ける",
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Color(0xFF111111),
@@ -355,6 +361,7 @@ private fun SignupLink(onClick: () -> Unit) {
     val annotated = buildAnnotatedString {
         withStyle(
             SpanStyle(
+                fontFamily = NotoSansJP,
                 color = Color(0xFF6E6F72),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
@@ -364,6 +371,7 @@ private fun SignupLink(onClick: () -> Unit) {
         }
         withStyle(
             SpanStyle(
+                fontFamily = NotoSansJP,
                 color = Color(0xFFFF1E9E),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
@@ -410,6 +418,7 @@ private fun BottomCta(
         Text(
             text = if (isSubmitting) "ログイン中..." else "ログイン",
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
             ),
@@ -441,6 +450,7 @@ private fun DebugSkipButton(
         Text(
             text = "[DEBUG] ログインせず進む",
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Normal,
             ),

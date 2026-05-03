@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import studio.nxtech.fujubank.R
 import studio.nxtech.fujubank.theme.FujuBankColors
+import studio.nxtech.fujubank.theme.NotoSansJP
 
 /**
  * アカウントハブ画面（Figma `697:8394`）の「設定」セクション内の 1 行。
@@ -52,6 +53,7 @@ fun SettingsRow(
         Text(
             text = label,
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = FujuBankColors.TextPrimary,

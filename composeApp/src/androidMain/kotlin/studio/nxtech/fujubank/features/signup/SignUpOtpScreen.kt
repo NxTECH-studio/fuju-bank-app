@@ -36,6 +36,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import studio.nxtech.fujubank.theme.NotoSansJP
 
 /**
  * Screen 2: 二段階認証 OTP（Figma `383-14941` / `383-16473`）。
@@ -93,6 +94,7 @@ private fun SignUpOtpContent(
                 Text(
                     text = "二段階認証",
                     style = TextStyle(
+                        fontFamily = NotoSansJP,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = SignUpTokens.PrimaryText,
@@ -101,6 +103,7 @@ private fun SignUpOtpContent(
                 Text(
                     text = "登録したメールに6桁のコードを送信しました",
                     style = TextStyle(
+                        fontFamily = NotoSansJP,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Normal,
                         color = SignUpTokens.SubText,
@@ -124,7 +127,7 @@ private fun SignUpOtpContent(
                     onValueChange = onOtpChange,
                     singleLine = true,
                     cursorBrush = SolidColor(Color.Transparent),
-                    textStyle = TextStyle(color = Color.Transparent, fontSize = 1.sp),
+                    textStyle = TextStyle(fontFamily = NotoSansJP, color = Color.Transparent, fontSize = 1.sp),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -195,6 +198,7 @@ private fun OtpBox(
                 Text(
                     text = char.toString(),
                     style = TextStyle(
+                        fontFamily = NotoSansJP,
                         fontSize = 36.sp,
                         fontWeight = FontWeight.Bold,
                         color = SignUpTokens.OtpUnderlineActive,

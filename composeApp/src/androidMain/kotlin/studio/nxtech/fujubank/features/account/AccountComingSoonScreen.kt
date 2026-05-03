@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import studio.nxtech.fujubank.R
 import studio.nxtech.fujubank.theme.FujuBankColors
+import studio.nxtech.fujubank.theme.NotoSansJP
 
 /**
  * アカウントタブ配下の準備中画面。プライバシー設定 / アカウント情報変更の遷移先で使用する。
@@ -54,6 +55,7 @@ fun AccountComingSoonScreen(
             Text(
                 text = "準備中です",
                 style = TextStyle(
+                    fontFamily = NotoSansJP,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     color = FujuBankColors.TextSecondary,
@@ -74,6 +76,7 @@ private fun Header(title: String, onBack: () -> Unit) {
         Text(
             text = title,
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
                 color = FujuBankColors.TextPrimary,

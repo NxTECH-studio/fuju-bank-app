@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 import kotlinx.coroutines.delay
 import studio.nxtech.fujubank.R
+import studio.nxtech.fujubank.theme.NotoSansJP
 
 /**
  * サインアップ完了直後に 1 度だけ表示する Welcome シーケンス（Figma node 383-16889 → 383-17075）。
@@ -78,6 +79,7 @@ fun WelcomeScreen(onFinish: () -> Unit) {
             text = "ようこそ",
             modifier = Modifier.alpha(textAlpha),
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 40.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF111111),

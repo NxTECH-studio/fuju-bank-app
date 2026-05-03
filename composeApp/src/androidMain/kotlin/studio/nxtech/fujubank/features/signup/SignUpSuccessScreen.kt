@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import studio.nxtech.fujubank.theme.NotoSansJP
 
 /**
  * Screen 3: 認証成功（Figma `383-16105`）。完了 CTA で Welcome に戻る（モック挙動）。
@@ -44,6 +45,7 @@ fun SignUpSuccessScreen(onFinish: () -> Unit) {
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp),
                 style = TextStyle(
+                    fontFamily = NotoSansJP,
                     fontSize = 40.sp,
                     fontWeight = FontWeight.Bold,
                     color = SignUpTokens.PrimaryText,

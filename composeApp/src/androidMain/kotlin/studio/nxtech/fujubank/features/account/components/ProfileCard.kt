@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import studio.nxtech.fujubank.R
 import studio.nxtech.fujubank.theme.FujuBankColors
+import studio.nxtech.fujubank.theme.NotoSansJP
 
 /**
  * アカウントハブ画面（Figma `697:8394`）のプロフィールカード。
@@ -77,6 +78,7 @@ fun ProfileCard(
             Text(
                 text = displayName,
                 style = TextStyle(
+                    fontFamily = NotoSansJP,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = FujuBankColors.TextPrimary,
@@ -91,6 +93,7 @@ fun ProfileCard(
         Text(
             text = "ID: $accountId",
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Normal,
                 color = FujuBankColors.TextTertiary,

@@ -37,6 +37,7 @@ import studio.nxtech.fujubank.R
 import studio.nxtech.fujubank.domain.model.Transaction
 import studio.nxtech.fujubank.features.home.components.NotificationBellButton
 import studio.nxtech.fujubank.theme.FujuBankColors
+import studio.nxtech.fujubank.theme.NotoSansJP
 
 /**
  * 取引履歴画面 — Figma `697:7601` 準拠。
@@ -97,6 +98,7 @@ private fun Header(
         Text(
             text = "取引履歴",
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
                 color = FujuBankColors.TextPrimary,
@@ -142,6 +144,7 @@ private fun ErrorContent(message: String, onRetry: () -> Unit) {
         Text(
             text = message,
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = FujuBankColors.TextPrimary,
@@ -203,6 +206,7 @@ private fun EmptyContent() {
         Text(
             text = "まだ取引がありません",
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = FujuBankColors.TextSecondary,

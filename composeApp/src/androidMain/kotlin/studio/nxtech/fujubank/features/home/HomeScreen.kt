@@ -27,6 +27,7 @@ import studio.nxtech.fujubank.features.home.components.FujuBankHeader
 import studio.nxtech.fujubank.features.home.components.RecentTransactionItem
 import studio.nxtech.fujubank.features.home.components.RecentTransactionsSection
 import studio.nxtech.fujubank.theme.FujuBankColors
+import studio.nxtech.fujubank.theme.NotoSansJP
 
 /**
  * ホーム画面 — Figma `709:8658` 準拠（Android 先行）。
@@ -94,6 +95,7 @@ private fun ErrorContent(
         Text(
             text = message,
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = FujuBankColors.TextPrimary,

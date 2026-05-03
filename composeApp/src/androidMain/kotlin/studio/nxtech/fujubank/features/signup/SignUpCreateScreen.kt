@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import studio.nxtech.fujubank.theme.NotoSansJP
 
 private const val LOG_TAG = "SignUpCreateScreen"
 
@@ -92,6 +93,7 @@ private fun SignUpCreateContent(
                     Text(
                         text = "アカウントの作成",
                         style = TextStyle(
+                            fontFamily = NotoSansJP,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = SignUpTokens.PrimaryText,
@@ -100,6 +102,7 @@ private fun SignUpCreateContent(
                     Text(
                         text = "メールを入力",
                         style = TextStyle(
+                            fontFamily = NotoSansJP,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                             color = SignUpTokens.SecondaryText,

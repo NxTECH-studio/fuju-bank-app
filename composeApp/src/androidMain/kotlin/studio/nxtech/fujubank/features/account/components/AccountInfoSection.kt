@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import studio.nxtech.fujubank.theme.FujuBankColors
+import studio.nxtech.fujubank.theme.NotoSansJP
 
 /**
  * アカウントハブ画面（Figma `697:8394`）の「アカウント情報」セクション。
@@ -62,6 +63,7 @@ private fun InfoRow(label: String, value: String) {
         Text(
             text = label,
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Normal,
                 color = FujuBankColors.TextTertiary,
@@ -70,6 +72,7 @@ private fun InfoRow(label: String, value: String) {
         Text(
             text = value,
             style = TextStyle(
+                fontFamily = NotoSansJP,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = FujuBankColors.TextPrimary,
