@@ -2,19 +2,16 @@ package studio.nxtech.fujubank.features.transactions
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -152,26 +149,21 @@ private fun AmountCard(transaction: Transaction) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
+        // 「+」/「-」記号 (40sp) は数値 (48sp) の行高内で中央に揃える。
+        // 数値・単位は底揃え、記号だけ Modifier.align(CenterVertically) で行内中央に上書きする。
         Row(
             verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // 「+」/「-」記号は 40sp で、48sp の数値より上にせり出さないよう vertical-center に揃える
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(28.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = sign,
-                    style = TextStyle(
-                        fontSize = 40.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = amountColor,
-                    ),
-                )
-            }
+            Text(
+                text = sign,
+                modifier = Modifier.align(Alignment.CenterVertically),
+                style = TextStyle(
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = amountColor,
+                ),
+            )
             Text(
                 text = CurrencyFormatter.formatAmount(transaction.amount),
                 style = TextStyle(
@@ -206,92 +198,67 @@ private fun DetailTransactionRow(transaction: Transaction) {
             ?.let { "${it.takeLast(SHORT_ID_LEN)} に送りました" }
             ?: "送金"
     }
-    Box(
+    // Figma `702:6440` ではアバターを画像 + 左上 X バッジで「アーティファクトの出典が X」と表現するが、
+     // 本実装はアーティファクト画像を取得していないため、取引履歴一覧 (`TransactionRow`) と同じく
+     // 「白アバター + 中央 X ロゴ」の単一表現に揃える。X バッジは画像変種が入る将来タスクで復活させる。
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(elevation = 4.dp, shape = RoundedCornerShape(0.dp), clip = false)
+            .shadow(elevation = 4.dp, clip = false)
             .background(FujuBankColors.Surface)
             .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.End,
     ) {
-        Column(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalAlignment = Alignment.End,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(FujuBankColors.Surface),
+                contentAlignment = Alignment.Center,
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(54.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(FujuBankColors.Surface),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Image(
-                            painter = painterResource(R.drawable.ic_x_logo),
-                            contentDescription = null,
-                            modifier = Modifier.size(32.dp),
-                        )
-                    }
-                    Column(
-                        modifier = Modifier.padding(top = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                    ) {
-                        Text(
-                            text = title,
-                            style = TextStyle(
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = FujuBankColors.TextPrimary,
-                            ),
-                        )
-                        Text(
-                            text = "18秒みつめられた",
-                            style = TextStyle(
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Normal,
-                                color = FujuBankColors.TextSecondary,
-                            ),
-                        )
-                    }
-                }
+                Image(
+                    painter = painterResource(R.drawable.ic_x_logo),
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                )
             }
-            Text(
-                text = formatTransactionDateTimeSlash(transaction.occurredAt),
-                modifier = Modifier.fillMaxWidth(),
-                style = TextStyle(
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = FujuBankColors.TextSecondary,
-                ),
-            )
+            Column(
+                modifier = Modifier.padding(top = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = title,
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = FujuBankColors.TextPrimary,
+                    ),
+                )
+                Text(
+                    text = "18秒みつめられた",
+                    style = TextStyle(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = FujuBankColors.TextSecondary,
+                    ),
+                )
+            }
         }
-        // X バッジ: カード左上に絶対配置（Figma `702:6440` の `absolute left-8 top-8`）
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .size(24.dp)
-                .clip(RoundedCornerShape(4.5.dp))
-                .background(FujuBankColors.Surface)
-                .border(
-                    width = 1.dp,
-                    color = FujuBankColors.Hairline,
-                    shape = RoundedCornerShape(4.5.dp),
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Image(
-                painter = painterResource(R.drawable.ic_x_logo),
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-            )
-        }
+        Text(
+            text = formatTransactionDateTimeSlash(transaction.occurredAt),
+            modifier = Modifier.fillMaxWidth(),
+            style = TextStyle(
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Normal,
+                color = FujuBankColors.TextSecondary,
+            ),
+        )
     }
 }
 
