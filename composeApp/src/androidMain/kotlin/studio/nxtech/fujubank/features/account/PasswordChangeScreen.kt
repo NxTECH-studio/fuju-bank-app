@@ -67,10 +67,12 @@ fun PasswordChangeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     // 送信成功フラグの立ち上がりで toast → ハブへ戻る。
+    // ViewModel は Activity スコープに残るので、消費後にフラグを reset して再訪時の二重発火を防ぐ。
     LaunchedEffect(uiState.isSubmitted) {
         if (uiState.isSubmitted) {
             onSuccess()
             onBack()
+            viewModel.consumeSubmitted()
         }
     }
 
@@ -116,7 +118,7 @@ fun PasswordChangeScreen(
                     style = TextStyle(
                         fontFamily = NotoSansJP,
                         fontSize = 12.sp,
-                        color = Color(0xFFD32F2F),
+                        color = FujuBankColors.Error,
                     ),
                 )
             }

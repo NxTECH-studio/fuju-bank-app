@@ -47,6 +47,17 @@ class PasswordChangeViewModel : ViewModel() {
         }
     }
 
+    /**
+     * 成功イベントを Screen 側が消費し終わったら呼ぶ。
+     * ViewModel は Activity スコープに残るため、再訪時に `isSubmitted` が true のままだと
+     * `LaunchedEffect` が再発火して即座に戻ってしまう。消費後に false に戻して再入力を可能にする。
+     */
+    fun consumeSubmitted() {
+        _uiState.update {
+            PasswordChangeUiState()
+        }
+    }
+
     private companion object {
         const val SUBMIT_DELAY_MS = 800L
     }
