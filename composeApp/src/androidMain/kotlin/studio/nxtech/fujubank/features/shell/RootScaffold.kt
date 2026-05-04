@@ -86,7 +86,13 @@ fun RootScaffold() {
     }
 
     // フッター（ボトムナビ）はメインタブとサブ画面 (履歴/詳細) で表示する。
-    val showBottomBar = destination != RootDestination.Send
+    // 法的文書 (プライバシーポリシー / 利用規約) は本文が長く、フッターに被って読めなくなるため非表示。
+    val showBottomBar = when (destination) {
+        RootDestination.Send,
+        RootDestination.PrivacyPolicy,
+        RootDestination.TermsOfService -> false
+        else -> true
+    }
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = FujuBankColors.Background,
