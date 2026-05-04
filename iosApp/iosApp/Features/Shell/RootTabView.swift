@@ -34,13 +34,23 @@ struct RootTabView: View {
         }
     }
 
+    /// 法的文書のフルスクリーン表示中はボトムナビを隠す。本文が長く、フッターに被って
+    /// 読めなくなるため。Android 側はそもそも tabBar 構造がないため対応不要。
+    private var isBottomBarHidden: Bool {
+        guard destination == .account else { return false }
+        switch accountPath.last {
+        case .privacyPolicy, .termsOfService: return true
+        default: return false
+        }
+    }
+
     var body: some View {
-        // ボトムナビは全画面で表示する（Android RootScaffold は send 画面でのみ非表示にしていたが、
-        // iOS 銀行版では send 画面が削除されたため常時表示でよい）。
+        // ボトムナビは原則全画面で表示する（Android RootScaffold は send 画面でのみ非表示にしていたが、
+        // iOS 銀行版では send 画面が削除されたため常時表示でよい）。例外として法的文書画面のみ非表示。
         GeometryReader { geo in
             // バー全体 84pt のうち端末の bottom safe area inset (= ホームインジケータ高さ)
             // ぶんを差し引いた残りを「可視タブ領域」とみなしてコンテンツの inset を確保する。
-            let visibleBarHeight = max(0, 84 - geo.safeAreaInsets.bottom)
+            let visibleBarHeight = isBottomBarHidden ? 0 : max(0, 84 - geo.safeAreaInsets.bottom)
             ZStack(alignment: .bottom) {
                 FujuBankPalette.background.ignoresSafeArea()
 
@@ -50,7 +60,9 @@ struct RootTabView: View {
                         Color.clear.frame(height: visibleBarHeight)
                     }
 
-                bottomBar
+                if !isBottomBarHidden {
+                    bottomBar
+                }
 
                 ToastOverlay(message: toast.message)
             }
