@@ -2,8 +2,8 @@ package studio.nxtech.fujubank.features.account.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -30,19 +30,19 @@ import studio.nxtech.fujubank.theme.NotoSansJP
  * アカウントハブ画面（Figma `697:8394`）の「アカウント情報」セクション。
  *
  * 白角丸カード内に「表示名」と「メールアドレス」の 2 行を配置する。
- * 各行はラベル（小さなグレー）+ 値（黒）の縦積み。
- *
- * カード右上には編集鉛筆アイコン（[R.drawable.ic_edit_pencil]）を重ね、タップで
- * [onEditClick] を呼ぶ。実装は [AccountHubScreen] 側で `AccountInfoEditSheet` を開く。
+ * 各行はラベル（小さなグレー）+ 値（黒）の縦積みで、行右端に編集鉛筆アイコン
+ * （[R.drawable.ic_edit_pencil]）を配置する。タップで該当フィールド単独の
+ * 編集シートを開く。
  */
 @Composable
 fun AccountInfoSection(
     displayName: String,
     email: String,
-    onEditClick: () -> Unit,
+    onEditDisplayName: () -> Unit,
+    onEditEmail: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
@@ -53,60 +53,74 @@ fun AccountInfoSection(
             .clip(RoundedCornerShape(20.dp))
             .background(FujuBankColors.Surface),
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            InfoRow(label = "表示名", value = displayName)
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                thickness = 1.dp,
-                color = FujuBankColors.Hairline,
-            )
-            InfoRow(label = "メールアドレス", value = email)
-        }
-        // 鉛筆アイコンはカード右上にオーバーレイ。タップ領域を 36dp 確保しつつ、
-        // 視覚サイズは ProfileCard と揃えて 18dp。
-        IconButton(
-            onClick = onEditClick,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .size(36.dp),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_edit_pencil),
-                contentDescription = "アカウント情報を編集",
-                modifier = Modifier.size(18.dp),
-                tint = FujuBankColors.TextTertiary,
-            )
-        }
+        InfoRow(
+            label = "表示名",
+            value = displayName,
+            onEditClick = onEditDisplayName,
+            editContentDescription = "表示名を編集",
+        )
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            thickness = 1.dp,
+            color = FujuBankColors.Hairline,
+        )
+        InfoRow(
+            label = "メールアドレス",
+            value = email,
+            onEditClick = onEditEmail,
+            editContentDescription = "メールアドレスを編集",
+        )
     }
 }
 
 @Composable
-private fun InfoRow(label: String, value: String) {
-    Column(
+private fun InfoRow(
+    label: String,
+    value: String,
+    onEditClick: () -> Unit,
+    editContentDescription: String,
+) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+            .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = label,
-            style = TextStyle(
-                fontFamily = NotoSansJP,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Normal,
-                color = FujuBankColors.TextTertiary,
-            ),
-        )
-        Text(
-            text = value,
-            style = TextStyle(
-                fontFamily = NotoSansJP,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = FujuBankColors.TextPrimary,
-            ),
-        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = label,
+                style = TextStyle(
+                    fontFamily = NotoSansJP,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = FujuBankColors.TextTertiary,
+                ),
+            )
+            Text(
+                text = value,
+                style = TextStyle(
+                    fontFamily = NotoSansJP,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = FujuBankColors.TextPrimary,
+                ),
+            )
+        }
+        IconButton(
+            onClick = onEditClick,
+            modifier = Modifier.size(36.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_edit_pencil),
+                contentDescription = editContentDescription,
+                modifier = Modifier.size(18.dp),
+                tint = FujuBankColors.TextTertiary,
+            )
+        }
     }
 }

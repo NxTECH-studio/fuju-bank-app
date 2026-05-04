@@ -37,8 +37,8 @@ import studio.nxtech.fujubank.theme.NotoSansJP
 /**
  * アカウント情報編集ボトムシート（Figma `697:8394` の編集 UI）。
  *
- * 表示名 / メールアドレスを編集して保存ボタンで [onSave] を呼び出す。
- * バリデーションは MVP として「表示名 1 文字以上」「メールに `@` を含む」の緩めの条件のみ。
+ * 表示名 / メールアドレスのいずれか単一フィールドを編集して保存するシート。
+ * 行ごとの鉛筆アイコンタップで開き、対応する 1 フィールドのみを編集する。
  *
  * - `skipPartiallyExpanded = true` で半開きを禁止し、全展開のみ。
  * - `imePadding` を root に付与してキーボードとの重なりを回避。
@@ -46,22 +46,24 @@ import studio.nxtech.fujubank.theme.NotoSansJP
  *
  * 閉じる経路:
  * - シート外タップ / バックジェスチャ → [onDismiss]
- * - 保存ボタン → `sheetState.hide()` の後に [onSave]（呼び出し側で `showSheet = false` に倒す）
+ * - 保存ボタン → `sheetState.hide()` の後に [onSave]（呼び出し側で state を倒す）
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountInfoEditSheet(
-    initialDisplayName: String,
-    initialEmail: String,
-    onSave: (displayName: String, email: String) -> Unit,
+    title: String,
+    label: String,
+    initialValue: String,
+    keyboardType: KeyboardType,
+    validate: (String) -> Boolean,
+    onSave: (value: String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
 
-    var displayName by rememberSaveable { mutableStateOf(initialDisplayName) }
-    var email by rememberSaveable { mutableStateOf(initialEmail) }
-    val isValid = displayName.isNotBlank() && email.contains("@")
+    var value by rememberSaveable { mutableStateOf(initialValue) }
+    val isValid = validate(value)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -77,7 +79,7 @@ fun AccountInfoEditSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                text = "アカウント情報を編集",
+                text = title,
                 style = TextStyle(
                     fontFamily = NotoSansJP,
                     fontSize = 17.sp,
@@ -86,41 +88,17 @@ fun AccountInfoEditSheet(
                 ),
             )
             OutlinedTextField(
-                value = displayName,
-                onValueChange = { displayName = it },
+                value = value,
+                onValueChange = { value = it },
                 modifier = Modifier.fillMaxWidth(),
                 label = {
                     Text(
-                        text = "表示名",
+                        text = label,
                         style = TextStyle(fontFamily = NotoSansJP),
                     )
                 },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = FujuBankColors.BrandPink,
-                    focusedLabelColor = FujuBankColors.BrandPink,
-                    cursorColor = FujuBankColors.BrandPink,
-                ),
-                textStyle = TextStyle(
-                    fontFamily = NotoSansJP,
-                    fontSize = 14.sp,
-                    color = FujuBankColors.TextPrimary,
-                ),
-            )
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = {
-                    Text(
-                        text = "メールアドレス",
-                        style = TextStyle(fontFamily = NotoSansJP),
-                    )
-                },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = FujuBankColors.BrandPink,
@@ -135,15 +113,12 @@ fun AccountInfoEditSheet(
             )
             Button(
                 onClick = {
-                    val newName = displayName
-                    val newEmail = email
-                    // シートを綺麗に畳んでから親へ通知する。`hide()` 完了後に親で showSheet=false に
-                    // 倒すと再合成で `ModalBottomSheet` 自体が外れる。
+                    val newValue = value
                     scope.launch {
                         sheetState.hide()
                     }.invokeOnCompletion {
                         if (!sheetState.isVisible) {
-                            onSave(newName, newEmail)
+                            onSave(newValue)
                         }
                     }
                 },

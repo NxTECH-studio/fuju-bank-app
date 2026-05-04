@@ -18,6 +18,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -34,11 +35,11 @@ import studio.nxtech.fujubank.theme.NotoSansJP
  *
  * 構成:
  * - プロフィールカード（円形アバター / ユーザー名 + 編集鉛筆 / ID）
- * - 「アカウント情報」セクション（表示名 / メールアドレス + 編集鉛筆）
+ * - 「アカウント情報」セクション（表示名 / メールアドレス、各行に編集鉛筆）
  * - 「設定」セクション（通知 / プライバシー設定）
  *
- * 「アカウント情報」セクションの鉛筆タップで [AccountInfoEditSheet] を開き、
- * 表示名 / メールアドレスをその場で編集できる（client-bank-10）。
+ * 各行の鉛筆タップで [AccountInfoEditSheet] を開き、対応するフィールド単独で
+ * 編集する（client-bank-10）。
  *
  * ボトムナビは [studio.nxtech.fujubank.features.shell.RootScaffold] が描画する。
  */
@@ -50,8 +51,8 @@ fun AccountHubScreen(
     modifier: Modifier = Modifier,
 ) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
-    // プロセス再生成時はシートを閉じた状態で復元する（編集途中の保持はオーバーキル）。
-    var showEditSheet by rememberSaveable { mutableStateOf(false) }
+    // 編集中フィールド。プロセス再生成時はシートを閉じた状態で復元する。
+    var editingField by rememberSaveable { mutableStateOf<AccountInfoField?>(null) }
 
     Column(
         modifier = modifier
@@ -70,7 +71,8 @@ fun AccountHubScreen(
         AccountInfoSection(
             displayName = profile.displayName,
             email = profile.email,
-            onEditClick = { showEditSheet = true },
+            onEditDisplayName = { editingField = AccountInfoField.DisplayName },
+            onEditEmail = { editingField = AccountInfoField.Email },
         )
 
         SectionLabel(text = "設定")
@@ -82,16 +84,32 @@ fun AccountHubScreen(
         )
     }
 
-    if (showEditSheet) {
-        AccountInfoEditSheet(
-            initialDisplayName = profile.displayName,
-            initialEmail = profile.email,
-            onSave = { name, mail ->
-                viewModel.updateProfile(name, mail)
-                showEditSheet = false
+    when (editingField) {
+        AccountInfoField.DisplayName -> AccountInfoEditSheet(
+            title = "表示名を編集",
+            label = "表示名",
+            initialValue = profile.displayName,
+            keyboardType = KeyboardType.Text,
+            validate = { it.isNotBlank() },
+            onSave = { newName ->
+                viewModel.updateDisplayName(newName)
+                editingField = null
             },
-            onDismiss = { showEditSheet = false },
+            onDismiss = { editingField = null },
         )
+        AccountInfoField.Email -> AccountInfoEditSheet(
+            title = "メールアドレスを編集",
+            label = "メールアドレス",
+            initialValue = profile.email,
+            keyboardType = KeyboardType.Email,
+            validate = { it.contains("@") },
+            onSave = { newEmail ->
+                viewModel.updateEmail(newEmail)
+                editingField = null
+            },
+            onDismiss = { editingField = null },
+        )
+        null -> Unit
     }
 }
 
