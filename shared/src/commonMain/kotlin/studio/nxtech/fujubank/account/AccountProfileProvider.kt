@@ -12,21 +12,11 @@ import kotlinx.coroutines.flow.asStateFlow
  * - 本タスクではダミー実装（[DummyAccountProfileProvider]）を Koin に登録
  * - 実 API 接続時には別実装（例: Repository を注入する `RemoteAccountProfileProvider`）
  *   を作って Koin の登録を差し替えるだけで UI 側は変えない
- *
- * client-bank-10 で `current()` を `profile: StateFlow<AccountProfile>` + [updateProfile]
- * に置換した。`current()` は iOS 側 VM（[ObservableAccountHubViewModel]）が追従する
- * client-bank-11 まで互換のため default 実装で残す。
  */
 interface AccountProfileProvider {
     val profile: StateFlow<AccountProfile>
 
     fun updateProfile(displayName: String, email: String)
-
-    /**
-     * iOS 側 VM 追従までの互換層。`profile.value` を返すだけ。
-     * client-bank-11 で削除する。
-     */
-    fun current(): AccountProfile = profile.value
 }
 
 /**

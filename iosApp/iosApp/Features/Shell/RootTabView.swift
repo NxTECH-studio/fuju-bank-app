@@ -83,8 +83,6 @@ struct RootTabView: View {
                         )
                     case .privacy:
                         AccountComingSoonView(title: "プライバシー設定")
-                    case .accountEdit:
-                        AccountComingSoonView(title: "アカウント情報変更")
                     }
                 }
             }
