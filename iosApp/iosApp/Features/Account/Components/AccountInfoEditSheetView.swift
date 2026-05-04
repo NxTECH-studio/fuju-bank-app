@@ -7,7 +7,9 @@ import UIKit
 /// - 1 つの `TextField` を中央に配置し、下部に「保存」ボタン
 /// - `validate(value)` が `false` の間は保存ボタンを disabled
 /// - シート外スワイプダウン or 「キャンセル」ボタンで閉じる
-/// - `presentationDetents([.medium, .large])` で半開きを許容しつつ、キーボード展開時は大きくなる
+/// - 入力欄 1 つ + 保存ボタンのみなので `.presentationDetents([.height(280)])` で
+///   コンパクトに固定。TextField フォーカス時は iOS が自動的にシートをキーボード上に
+///   押し上げる
 ///
 /// 入力値は `@State` で保持する。`.sheet(isPresented:)` で表示するたびに view が
 /// 再生成されるため `init` で `_value = State(initialValue:)` で初期化する標準パターンを採る。
@@ -88,6 +90,7 @@ struct AccountInfoEditSheetView: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.height(280)])
+        .presentationDragIndicator(.visible)
     }
 }
