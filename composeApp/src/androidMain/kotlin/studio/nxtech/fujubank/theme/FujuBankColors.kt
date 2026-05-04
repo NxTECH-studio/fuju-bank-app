@@ -48,4 +48,7 @@ object FujuBankColors {
 
     /** 取引相手アバターの暫定プレースホルダ（アーティファクト用）。 */
     val AvatarArtifact: Color = Color(0xFFC9D8E1)
+
+    /** フォーム入力エラーの注意テキスト色。Material のエラーレッドに準拠。 */
+    val Error: Color = Color(0xFFD32F2F)
 }
