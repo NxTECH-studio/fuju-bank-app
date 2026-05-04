@@ -20,9 +20,9 @@ final class ObservableAccountHubViewModel: ObservableObject {
     init() {
         let p = KoinIosKt.accountProfileProvider()
         self.provider = p
-        // Kotlin の generic StateFlow.value は Swift 側で `Any` として露出されるため
-        // AccountProfile に明示キャストする（共有モジュールの型保証で必ず成功する）。
-        self.profile = p.profile.value as! AccountProfile
+        // Kotlin generic な StateFlow.value は Swift 側で `Any` として露出されるため、
+        // 型保証された初期値取得用ブリッジ `currentAccountProfile` を経由して force cast を避ける。
+        self.profile = AccountIosKt.currentAccountProfile(provider: p)
 
         profileToken = AccountIosKt.observeAccountProfile(provider: p) { [weak self] next in
             // observeFlow は Dispatchers.Main で collect されるが、UI 反映は @MainActor で

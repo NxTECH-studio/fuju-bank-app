@@ -32,3 +32,16 @@ fun observeAccountProfile(
     provider: AccountProfileProvider,
     onChange: (AccountProfile) -> Unit,
 ): FlowToken = observeFlow(provider.profile) { value -> onChange(value) }
+
+/**
+ * VM の `init` で `@Published` の初期値を埋めるための同期取得 API。
+ *
+ * Kotlin generic `StateFlow<T>.value` は Swift 側で `Any` ベースに露出するため
+ * Swift 側で force cast (`as!`) が必要になる。この関数で型保証された
+ * [AccountProfile] を直接返すことで Swift 側のキャストを排除する。
+ *
+ * 観測自体は [observeAccountProfile] を使い、本関数は `@StateObject` 初期化時の
+ * 「最初の 1 回」だけ用いる用途を想定する。
+ */
+fun currentAccountProfile(provider: AccountProfileProvider): AccountProfile =
+    provider.profile.value
