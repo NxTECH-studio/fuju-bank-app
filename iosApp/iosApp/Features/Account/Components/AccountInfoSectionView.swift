@@ -3,19 +3,32 @@ import SwiftUI
 /// アカウントハブ画面（Figma `697:8394`）の「アカウント情報」セクション。
 ///
 /// Android `AccountInfoSection.kt` と 1:1。白角丸カード内に「表示名」と「メールアドレス」の
-/// 2 行を配置し、間に 1pt の hairline divider を挟む。
+/// 2 行を配置し、間に 1pt の hairline divider を挟む。各行右端に編集鉛筆アイコン
+/// (`EditPencil`) を配置し、タップで対応するフィールド単独の編集シートを開く。
 struct AccountInfoSectionView: View {
     let displayName: String
     let email: String
+    let onEditDisplayName: () -> Void
+    let onEditEmail: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
-            row(label: "表示名", value: displayName)
+            row(
+                label: "表示名",
+                value: displayName,
+                onEditTap: onEditDisplayName,
+                editAccessibilityLabel: "表示名を編集",
+            )
             Divider()
                 .frame(height: 1)
                 .overlay(FujuBankPalette.hairline)
                 .padding(.horizontal, 16)
-            row(label: "メールアドレス", value: email)
+            row(
+                label: "メールアドレス",
+                value: email,
+                onEditTap: onEditEmail,
+                editAccessibilityLabel: "メールアドレスを編集",
+            )
         }
         .frame(maxWidth: .infinity)
         .background(
@@ -25,17 +38,37 @@ struct AccountInfoSectionView: View {
         .shadow(color: FujuBankPalette.shadowTint.opacity(0.08), radius: 4, x: 0, y: 2)
     }
 
-    private func row(label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label)
-                .font(FujuBankTypography.caption)
-                .foregroundStyle(FujuBankPalette.textTertiary)
-            Text(value)
-                .font(FujuBankTypography.body)
-                .foregroundStyle(FujuBankPalette.textPrimary)
+    private func row(
+        label: String,
+        value: String,
+        onEditTap: @escaping () -> Void,
+        editAccessibilityLabel: String,
+    ) -> some View {
+        HStack(alignment: .center, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(FujuBankTypography.caption)
+                    .foregroundStyle(FujuBankPalette.textTertiary)
+                Text(value)
+                    .font(FujuBankTypography.body)
+                    .foregroundStyle(FujuBankPalette.textPrimary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button(action: onEditTap) {
+                Image("EditPencil")
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 18, height: 18)
+                    .foregroundStyle(FujuBankPalette.textTertiary)
+                    .frame(width: 36, height: 36)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(editAccessibilityLabel)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.leading, 16)
+        .padding(.trailing, 8)
+        .padding(.vertical, 8)
     }
 }
