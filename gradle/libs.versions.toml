@@ -22,7 +22,7 @@ androidxSecurityCrypto = "1.1.0-alpha06"
 androidxCoreSplashscreen = "1.0.1"
 buildKonfig = "0.17.1"
 multiplatformSettings = "1.3.0"
-qrose = "1.0.1"
+qrose = "1.1.2"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
