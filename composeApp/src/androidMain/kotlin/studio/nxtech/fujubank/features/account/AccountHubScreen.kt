@@ -90,9 +90,9 @@ fun AccountHubScreen(
             label = "表示名",
             initialValue = profile.displayName,
             keyboardType = KeyboardType.Text,
-            validate = { it.isNotBlank() },
+            validate = { it.trim().isNotBlank() },
             onSave = { newName ->
-                viewModel.updateDisplayName(newName)
+                viewModel.updateDisplayName(newName.trim())
                 editingField = null
             },
             onDismiss = { editingField = null },
@@ -102,9 +102,9 @@ fun AccountHubScreen(
             label = "メールアドレス",
             initialValue = profile.email,
             keyboardType = KeyboardType.Email,
-            validate = { it.contains("@") },
+            validate = { it.trim().contains("@") },
             onSave = { newEmail ->
-                viewModel.updateEmail(newEmail)
+                viewModel.updateEmail(newEmail.trim())
                 editingField = null
             },
             onDismiss = { editingField = null },
