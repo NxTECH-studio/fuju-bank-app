@@ -82,7 +82,19 @@ struct RootTabView: View {
                             onNotificationTap: { toast.send("通知機能は実装中です") },
                         )
                     case .privacy:
-                        AccountComingSoonView(title: "プライバシー設定")
+                        PrivacySettingsView(
+                            onSelectDestination: { dest in accountPath.append(dest) },
+                        )
+                    case .privacyPolicy:
+                        LegalDocumentView(
+                            title: PrivacyContent.shared.PRIVACY_POLICY_TITLE,
+                            bodyText: PrivacyContent.shared.PRIVACY_POLICY_BODY,
+                        )
+                    case .termsOfService:
+                        LegalDocumentView(
+                            title: PrivacyContent.shared.TERMS_OF_SERVICE_TITLE,
+                            bodyText: PrivacyContent.shared.TERMS_OF_SERVICE_BODY,
+                        )
                     }
                 }
             }
