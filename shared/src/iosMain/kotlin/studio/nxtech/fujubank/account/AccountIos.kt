@@ -23,6 +23,17 @@ fun observeTransferEnabled(
 ): FlowToken = observeFlow(preferences.transferEnabled) { value -> onChange(value) }
 
 /**
+ * Swift 側から `PrivacyPreferences.analyticsOptInEnabled` を観測するための薄い API。
+ *
+ * `observeDepositEnabled` / `observeTransferEnabled` と同じスタイル。subscribe 直後に現在値が
+ * 1 回 emit され、以降 [PrivacyPreferences.setAnalyticsOptInEnabled] による変更も流れてくる。
+ */
+fun observeAnalyticsOptInEnabled(
+    preferences: PrivacyPreferences,
+    onChange: (Boolean) -> Unit,
+): FlowToken = observeFlow(preferences.analyticsOptInEnabled) { value -> onChange(value) }
+
+/**
  * Swift 側から `AccountProfileProvider.profile` を観測するための薄い API。
  *
  * `observeDepositEnabled` / `observeTransferEnabled` と同パターン。subscribe 直後に現在値が
