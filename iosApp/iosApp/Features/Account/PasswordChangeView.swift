@@ -12,8 +12,9 @@ import UIKit
 /// 成功時 (`isSubmitted == true`) で [onSuccess] を呼び親側で toast 表示し、
 /// `dismiss()` で `AccountHubView` まで戻る。
 ///
-/// タブバーは `.toolbar(.hidden, for: .tabBar)` で非表示化し、`RootTabView` 側でも
-/// 自前ボトムバーを `accountPath.last == .passwordChange` で隠す（法的文書画面と同方針）。
+/// タブバーは `RootTabView.isBottomBarHidden` で `accountPath.last == .passwordChange`
+/// のときに非表示化する（法的文書画面と同方針）。`RootTabView` は自前ボトムバー構造で
+/// SwiftUI の `TabView` を使っていないため、`.toolbar(.hidden, for: .tabBar)` は不要。
 struct PasswordChangeView: View {
     @StateObject private var viewModel = ObservablePasswordChangeViewModel()
     @Environment(\.dismiss) private var dismiss
@@ -56,7 +57,6 @@ struct PasswordChangeView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(FujuBankPalette.background.ignoresSafeArea())
         .navigationBarHidden(true)
-        .toolbar(.hidden, for: .tabBar)
         .onChange(of: viewModel.isSubmitted) { _, newValue in
             // 成功フラグの立ち上がりで toast → ハブへ戻る。
             // ViewModel は `@StateObject` で本ビューに紐づくため、画面破棄で破棄され、
