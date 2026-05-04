@@ -1,25 +1,42 @@
-# 銀行アプリクライアント：プライバシー設定画面（仮実装）Android 実装
+# 銀行アプリクライアント：プライバシー設定画面 Android 実装
 
 ## 概要
 
-client-bank-4 で導入した準備中画面（`AccountComingSoonScreen("プライバシー設定")`）を本実装画面 `PrivacySettingsScreen` に置換する。トラッキング許諾トグル（アプリ利用状況の収集を許可）、プライバシーポリシー本文のスクロール表示、関連リンク（利用規約 / 特定商取引法表記）を Compose で構成し、トグル値は `multiplatform-settings` でローカル永続化する **仮実装レベル ii**。`:shared` 側に `PrivacyPreferences` を `NotificationSettingsPreferences` と同パターンで追加し、後続 iOS タスクが同じ shared API を再利用できる状態にする。
+client-bank-4 で導入した準備中画面（`AccountComingSoonScreen("プライバシー設定")`）を本実装画面 `PrivacySettingsScreen` に置換する。Figma 確定デザイン（[798:12559](https://www.figma.com/design/bzm13wVWQmgaFFmlEbJZ3k/NxTECH?node-id=798-12559&m=dev)）に従い、以下の 2 セクション構成で実装する:
+
+1. **トラッキング**: 「アプリのトラッキングを許可」トグル + サブ説明（既定値 `false`、`multiplatform-settings` でローカル永続化）
+2. **法的情報**: 「プライバシーポリシー」「利用規約」の 2 行リスト（タップで外部ブラウザを開く）
+
+`:shared` 側に `PrivacyPreferences` を `NotificationSettingsPreferences` と同パターンで追加し、`PrivacyContent`（URL 定数）を `commonMain` に置く。後続 iOS タスクおよびアカウントハブ「情報」セクション（後述）が同じ shared API を再利用できる状態にする。
 
 ## 背景・目的
 
 ### 経緯
 
-- client-bank-4 でアカウントハブ（Figma `697:8394`）の「設定」セクション 3 行のうち、「プライバシー設定」行のタップ先は `AccountComingSoonScreen("プライバシー設定")` で準備中表示のまま
+- client-bank-4 でアカウントハブの「設定」セクション 3 行のうち、「プライバシー設定」行のタップ先は `AccountComingSoonScreen("プライバシー設定")` で準備中表示のまま
 - 同タスクの「アウトオブスコープ」で「プライバシー設定の本実装」が次タスク以降と明記されていた
-- アナリティクス基盤や同意管理プラットフォーム（CMP）はまだ未導入のため、本タスクは「ユーザーの意思表明をローカルに保存する」ところまでで仮実装とする
-- プライバシーポリシー本文・利用規約本文は法務確定までダミー（プレースホルダ文）を埋め込み、後続タスクで差し替える
+- アナリティクス基盤や同意管理プラットフォーム（CMP）はまだ未導入だが、UI は Figma で確定したため、画面実装としては本実装に位置付ける（トグルの実 SDK 連動は別タスク）
+- 法務確定までプライバシーポリシー本文・利用規約本文は確定していないが、Figma で「法的情報」セクションの遷移先動線が **外部ブラウザ（外部 URL を開く）** であることを前提に、URL 定数（仮）を持って導線だけ完成させる
 
 ### 目的
 
-- 準備中表示を廃止し、プライバシー設定画面を表示する
-- トラッキング許諾トグル（既定値: false = オプトイン方式）を `multiplatform-settings` に永続化する
-- プライバシーポリシー本文をアプリ内に埋め込み、スクロール表示できるようにする
-- 関連リンク（利用規約 / 特定商取引法表記）は **外部 URL を開くダミー導線** として用意（URL は仮、後続タスクで差し替え）
-- shared API（`PrivacyPreferences`）を本タスクで凍結し、client-bank-5 マージ後の iOS 版タスクが同じ API を参照できる状態にする
+- 準備中表示を廃止し、`PrivacySettingsScreen` を表示する
+- トラッキング許諾トグル（既定値: `false` = オプトイン方式）を `multiplatform-settings` に永続化する
+- 「法的情報」セクションから外部ブラウザでプライバシーポリシー / 利用規約 URL を開ける状態にする（URL は仮、後続タスクで確定原稿の URL に差し替え）
+- shared API（`PrivacyPreferences` / `PrivacyContent`）を本タスクで凍結し、後続の iOS 版タスクおよびアカウントハブ刷新タスク（「情報」セクション、後述）が同じ API を参照できる状態にする
+
+### Figma 確定デザインの主な仕様
+
+[798:12559](https://www.figma.com/design/bzm13wVWQmgaFFmlEbJZ3k/NxTECH?node-id=798-12559&m=dev) より（参考スクリーンショット: [`docs/figma-assets/bank-redesign-798-12559.png`](../figma-assets/bank-redesign-798-12559.png)）:
+
+- ヘッダー: 戻る `<`（48dp 円形タップ領域）+ 中央タイトル「プライバシー設定」（17sp Bold）
+- セクション見出しは 12sp Bold、白カード外に左寄せ
+- 白カード: `rounded-[32px]`、`px:18 / py:20`、`gap:16`（カード間は外側 `gap:8`）
+- セクション 1「トラッキング」:
+  - 単一カード内に `アプリのトラッキングを許可`（14sp SemiBold）+ サブテキスト `利用状況の分析と改善に使用されます`（12sp Regular、`#8E8E93`）+ 右端トグル（44×24dp）
+- セクション 2「法的情報」:
+  - リストカード内に `プライバシーポリシー` / `利用規約` の 2 行、各行右端に chevron `>`（16dp）
+  - 行間に `Line2`（薄い divider）
 
 ## スコープ
 
@@ -27,25 +44,27 @@ client-bank-4 で導入した準備中画面（`AccountComingSoonScreen("プラ�
   - `PrivacyPreferences`（commonMain、新規）: `NotificationSettingsPreferences` と同パターン
     - `analyticsOptInEnabled: StateFlow<Boolean>`（既定値: `false`）
     - `setAnalyticsOptInEnabled(value: Boolean)`
-  - Koin 登録（`accountModule` に追加 or `privacyModule` 新設、既存パターンに合わせて `accountModule` 集約案）
-  - プライバシーポリシー本文 / 関連リンク URL の定数置き場（`PrivacyContent` または `PrivacyTexts` を `commonMain` に置き、Android / iOS で共有）
+  - `PrivacyContent`（commonMain、新規）: プライバシーポリシー / 利用規約の URL 定数
+  - Koin 登録（既存パターンに合わせて `accountModule` に集約）
 - **`PrivacySettingsScreen`（Android）**: 既存 `AccountComingSoonScreen("プライバシー設定")` を置換
   - ヘッダー: 戻る `<` + 「プライバシー設定」タイトル
-  - セクション 1「データ収集」: トラッキング許諾トグル（タイトル + サブテキスト「アプリ利用状況の収集を許可」相当）
-  - セクション 2「プライバシーポリシー」: 白角丸カード内に本文を `verticalScroll` でスクロール表示
-  - セクション 3「関連リンク」: 利用規約 / 特定商取引法表記の 2 行リスト、タップで `Intent.ACTION_VIEW` で外部 URL を開く
+  - セクション 1「トラッキング」: トラッキング許諾トグルカード（タイトル + サブテキスト + 右端トグル）
+  - セクション 2「法的情報」: 「プライバシーポリシー」「利用規約」の 2 行リストカード、各行タップで `Intent.ACTION_VIEW` 外部ブラウザ起動
 - **`PrivacySettingsViewModel`（Android）**: `PrivacyPreferences` の StateFlow を購読してトグル状態を公開
 - **`RootScaffold` 配線変更**
   - `RootDestination.PrivacySettings` の遷移先を `AccountComingSoonScreen("プライバシー設定")` から `PrivacySettingsScreen` に置換
 
 ### アウトオブスコープ
 
-- **iOS 実装**: client-bank-5 (iOS) が `main` にマージされた後、本タスクで凍結された `PrivacyPreferences` を参照する形で別タスク化（仮: `client-bank-11-privacy-settings-ios`）
+- **iOS 実装**: 本タスクで凍結された `PrivacyPreferences` / `PrivacyContent` を参照する形で [`client-bank-9-privacy-settings-ios`](./client-bank-9-privacy-settings-ios.md) にて別タスク化（client-bank-5 マージ済みのため即着手可）
 - **アナリティクス SDK の連動**: トグルの値を実際にアナリティクス送出ガードに使う処理は別タスク（SDK 導入時）。本タスクではトグル値の永続化と StateFlow 配信までで止める
 - **同意管理プラットフォーム (CMP) 連携 / GDPR 準拠の包括同意 UI**
-- **プライバシーポリシー / 利用規約の確定原稿差し込み**（プレースホルダ文を入れておき、原稿確定タスクで差し替え）
+- **プライバシーポリシー / 利用規約の確定原稿差し込み**: 仮 URL（`https://example.com/...`）を入れておき、原稿確定タスクで定数を差し替え
 - **アカウント削除 / データダウンロード等の DSAR 機能**
-- **アプリ内 WebView でのポリシー表示**（外部ブラウザで開くダミーで OK）
+- **アプリ内 WebView でのポリシー表示**: Figma デザイン通り外部ブラウザで開く方針
+- **アカウントハブ刷新**（[697:8394](https://www.figma.com/design/bzm13wVWQmgaFFmlEbJZ3k/NxTECH?node-id=697-8394&m=dev)、後述）の本実装は別タスク。本タスクでは shared `PrivacyContent` を凍結する範囲のみ責務を持つ
+- **「パスワード変更」行の本実装**: 新アカウントハブで「設定」セクションに追加されているが別タスク（仮: `client-bank-10-password-change-android`）
+- **「特定商取引法表記」**: 確定デザインに含まれないため対象外
 
 ## 着手条件
 
@@ -63,7 +82,7 @@ client-bank-4 で導入した準備中画面（`AccountComingSoonScreen("プラ�
 - モジュール: `:shared` / `:composeApp`
   - `:shared/commonMain`:
     - `account/PrivacyPreferences.kt` 新規
-    - `account/PrivacyContent.kt`（定数置き場）新規
+    - `account/PrivacyContent.kt`（URL 定数置き場）新規
     - `di/accountModule.kt` に `single { PrivacyPreferences(get<Settings>()) }` 追加
   - `:composeApp/androidMain`:
     - `features/account/PrivacySettingsScreen.kt` 新規
@@ -108,34 +127,28 @@ class PrivacyPreferences(private val settings: Settings) {
 
 ```kotlin
 object PrivacyContent {
-    /** プライバシーポリシー本文（仮）。法務確定後に差し替え。 */
-    const val POLICY_BODY: String = """
-        【プライバシーポリシー（仮）】
+    /** プライバシーポリシー URL（仮）。法務確定後に差し替え。 */
+    const val PRIVACY_POLICY_URL: String = "https://example.com/privacy-policy"
 
-        本ポリシーは、ふじゅ〜銀行アプリ（以下「本アプリ」）が...
-        ...（本文）...
-    """
-
-    /** 利用規約 URL（仮）。確定後に差し替え。 */
-    const val TERMS_OF_SERVICE_URL: String = "https://example.com/terms"
-
-    /** 特定商取引法表記 URL（仮）。確定後に差し替え。 */
-    const val SCT_LAW_URL: String = "https://example.com/sct"
+    /** 利用規約 URL（仮）。法務確定後に差し替え。 */
+    const val TERMS_OF_SERVICE_URL: String = "https://example.com/terms-of-service"
 }
 ```
 
-ポリシー本文は `commonMain` 内に文字列で持つ（Android / iOS 両対応のため、リソースではなく Kotlin 定数）。長文になるので `trimIndent()` を使用。
+ポリシー本文をアプリに埋め込まず、外部ブラウザで開く方針（Figma 確定デザイン準拠）。本文の保守はアプリリリースから切り離せるメリットあり。
 
-#### iOS 用に凍結する shared API
+#### iOS 用 / アカウントハブ刷新タスク用に凍結する shared API
 
-後続 iOS タスクで参照する API:
+後続タスクで参照する API:
 
 - `PrivacyPreferences` クラスとそのメソッド: `setAnalyticsOptInEnabled(value: Boolean)`
 - `PrivacyPreferences.analyticsOptInEnabled: StateFlow<Boolean>`
-- `PrivacyContent.POLICY_BODY` / `TERMS_OF_SERVICE_URL` / `SCT_LAW_URL`
+- `PrivacyContent.PRIVACY_POLICY_URL` / `TERMS_OF_SERVICE_URL`
 - Koin での `PrivacyPreferences` 取得経路（`SharedDI.resolve()`）
 
 iOS 側は `IosStateFlowWrapper(preferences.analyticsOptInEnabled)` で Combine `Publisher` に橋渡しし、SwiftUI `Toggle` の `Binding` に流す（client-bank-5 で確立したパターン踏襲）。
+
+アカウントハブ刷新タスクの「情報」セクションは、本タスクで凍結した `PrivacyContent.PRIVACY_POLICY_URL` / `TERMS_OF_SERVICE_URL` をそのまま参照する。
 
 ### Android 側設計
 
@@ -171,14 +184,15 @@ fun PrivacySettingsScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // セクション 1: データ収集
-            AnalyticsOptInCard(checked = optIn, onCheckedChange = viewModel::setAnalyticsOptInEnabled)
-            // セクション 2: プライバシーポリシー
-            PolicyBodyCard(body = PrivacyContent.POLICY_BODY)
-            // セクション 3: 関連リンク
-            RelatedLinksCard(
-                onTermsClick = { openUrl(context, PrivacyContent.TERMS_OF_SERVICE_URL) },
-                onSctClick = { openUrl(context, PrivacyContent.SCT_LAW_URL) },
+            // セクション 1: トラッキング
+            TrackingOptInSection(
+                checked = optIn,
+                onCheckedChange = viewModel::setAnalyticsOptInEnabled,
+            )
+            // セクション 2: 法的情報
+            LegalLinksSection(
+                onPrivacyPolicyClick = { openUrl(context, PrivacyContent.PRIVACY_POLICY_URL) },
+                onTermsOfServiceClick = { openUrl(context, PrivacyContent.TERMS_OF_SERVICE_URL) },
             )
         }
     }
@@ -190,19 +204,18 @@ private fun openUrl(context: Context, url: String) {
 }
 ```
 
+- **セクション見出し**: 12sp Bold、`px:8 py:8`、白カード外に左寄せ（Figma 準拠）
+- **トラッキングセクション**: `NotificationSettingsScreen` の `NotificationCard` / `ToggleRow` 相当を再利用 or 同パターンで書く。タイトル 14sp SemiBold + サブテキスト 12sp `#8E8E93`
+- **法的情報セクション**: `SettingsCard` / `SettingsRowSpec`（client-bank-4 で実装済み）の chevron `>` 行リストパターンを再利用可能か確認。可能なら同じコンポーネントを使ってアカウントハブと視覚的に揃える
+- カードは `rounded-[32px]`、`px:18 py:20`、`gap:16`（Figma 準拠）
+
 `Header` は `AccountComingSoonScreen` のものをコピー or 共通化（既に `NotificationSettingsScreen` でも同等パターンを持っているため、軽い重複は許容。リファクタは別タスク）。
-
-トグルカードのスタイルは `NotificationSettingsScreen.NotificationCard` / `ToggleRow` と完全に揃え、視覚的一貫性を担保する。
-
-ポリシーカードはシンプルに `Text` を白角丸カード内に配置。本文が長いので外側 `Column.verticalScroll` で全体スクロールに任せる（カード内独立スクロールは UX が悪いので避ける）。
-
-関連リンクカードは `SettingsCard` / `SettingsRowSpec`（client-bank-4 で実装済み）を再利用可能か確認。可能なら同じコンポーネントを使ってアカウントハブと視覚的に揃える。
 
 ## 実装手順
 
 1. **`:shared` 拡張**
    1. `shared/src/commonMain/kotlin/studio/nxtech/fujubank/account/PrivacyPreferences.kt` 新規
-   2. `shared/src/commonMain/kotlin/studio/nxtech/fujubank/account/PrivacyContent.kt` 新規（仮テキスト + 仮 URL）
+   2. `shared/src/commonMain/kotlin/studio/nxtech/fujubank/account/PrivacyContent.kt` 新規（仮 URL 2 件）
    3. `shared/src/commonMain/kotlin/studio/nxtech/fujubank/di/accountModule.kt` に `single { PrivacyPreferences(get<Settings>()) }` を追記
    4. `./gradlew :shared:allTests` 通過
    5. `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64` 通過
@@ -211,9 +224,9 @@ private fun openUrl(context: Context, url: String) {
    2. `NotificationSettingsViewModel` と同構造で実装
 3. **`PrivacySettingsScreen` 実装**
    1. `composeApp/src/androidMain/kotlin/studio/nxtech/fujubank/features/account/PrivacySettingsScreen.kt` 新規
-   2. ヘッダー / トラッキング許諾トグルカード / ポリシー本文カード / 関連リンクカードを構築
-   3. 関連リンクは `Intent.ACTION_VIEW` で外部ブラウザを開く
-   4. `SettingsCard` / `SettingsRowSpec` の再利用可否を確認し、可能なら使う
+   2. ヘッダー / トラッキングセクション / 法的情報セクションを構築
+   3. `SettingsCard` / `SettingsRowSpec` の再利用可否を確認し、可能なら使う
+   4. 法的情報の各行タップで `Intent.ACTION_VIEW` 外部ブラウザ起動
 4. **`RootScaffold` 配線変更**
    1. `RootDestination.PrivacySettings` の表示を `AccountComingSoonScreen("プライバシー設定")` から `PrivacySettingsScreen(viewModel = ...)` に置換
    2. VM 生成は他画面と同じ `viewModelFactory { initializer { ... } }` パターンで `PrivacyPreferences` を Koin から取得
@@ -222,8 +235,8 @@ private fun openUrl(context: Context, url: String) {
    2. アカウントハブから「プライバシー設定」タップ → `PrivacySettingsScreen` 表示
    3. トラッキング許諾トグルがオフで初期表示される（既定値）
    4. トグル操作 → アプリ再起動 → 値が保持される
-   5. ポリシー本文がスクロール表示される
-   6. 利用規約 / 特定商取引法表記タップで外部ブラウザが起動する（仮 URL）
+   5. 「プライバシーポリシー」タップで外部ブラウザが起動する（仮 URL）
+   6. 「利用規約」タップで外部ブラウザが起動する（仮 URL）
 6. **PR 作成**: `feature/client-bank-8-privacy-settings-android` → `main`
 
 ## 完了条件
@@ -235,22 +248,35 @@ private fun openUrl(context: Context, url: String) {
 - [ ] アカウントハブから「プライバシー設定」タップで `PrivacySettingsScreen` が表示される
 - [ ] トラッキング許諾トグルが既定値オフで初期表示される
 - [ ] トグル操作後、アプリ再起動でも値が保持される
-- [ ] プライバシーポリシー本文（仮）がスクロール表示される
-- [ ] 利用規約 / 特定商取引法表記の 2 行をタップで外部ブラウザが開く
-- [ ] `:shared` の `PrivacyPreferences` API が iOS から `SharedDI.resolve()` で取得できる（コンパイル可能性まで担保）
+- [ ] 「プライバシーポリシー」「利用規約」の 2 行をタップで外部ブラウザが開く
+- [ ] `:shared` の `PrivacyPreferences` / `PrivacyContent` API が iOS から `SharedDI.resolve()` で取得できる（コンパイル可能性まで担保）
+
+## アカウントハブ刷新（参考、本タスク対象外）
+
+[697:8394](https://www.figma.com/design/bzm13wVWQmgaFFmlEbJZ3k/NxTECH?node-id=697-8394&m=dev) でアカウントハブの構成が更新されている。本タスクのスコープ外だが、shared API 設計に影響するため記録する:
+
+- **「設定」セクション**: 通知 / プライバシー設定 / **パスワード変更（新規）** の 3 行
+- **「情報」セクション（新規）**: プライバシーポリシー / 利用規約 の 2 行（外部ブラウザで開く想定）
+- **プロフィールカード**: アバター + 名前 + ID 表示の刷新
+
+→ 「情報」セクションは本タスクで定義する `PrivacyContent.PRIVACY_POLICY_URL` / `TERMS_OF_SERVICE_URL` を参照する前提。本タスクの shared API 命名・公開範囲は、アカウントハブ刷新タスク側からも自然に再利用できることを意識する。
+
+→ アカウントハブ刷新の本実装、「パスワード変更」行の本実装はそれぞれ別タスクで扱う。
 
 ## 想定される懸念・リスク
 
 - **オプトイン既定値の確定**: 本タスクでは `false`（明示同意までデータ収集オフ）で実装するが、プロダクト方針として「既定オン + オフ可能」のオプトアウト方式を採る場合は要相談。法務確認後に変更する場合は単に既定値を切り替えるだけで済む構造にしておく
-- **プライバシーポリシー本文の保守**: `PrivacyContent.POLICY_BODY` を Kotlin 定数に持つと、本文更新のたびにアプリのリリースが必要。長期的には CMS / リモート JSON に切り出す案もあるが、本タスクでは MVP として埋め込み採用。法務原稿確定タスクで本文だけ差し替える運用前提
 - **`accountModule` の責務肥大**: 通知設定 / プロフィール / プライバシーが全て `accountModule` に集約されるため、将来分割する可能性あり。本タスクでは集約方針を維持
 - **`PrivacyContent` の URL がダミー**: `https://example.com/...` を入れる。本番リリース前に必ず差し替えチェックを行う（本計画書の「想定される懸念」に明記しておくことで、レビュー時の見落としを防ぐ）
-- **iOS API 凍結リスク**: `PrivacyPreferences` のシグネチャを後で変更すると iOS タスクが追従コストを払うことになる。`StateFlow<Boolean>` 公開と `setAnalyticsOptInEnabled(Boolean)` のシグネチャは本タスク内で確定し、以降は変更しない方針
-- **トグルがアナリティクスに実連動していないことの可視化不足**: ユーザーは「トグルをオンにした = データ送信される」と誤認するリスクがある。仮実装段階では UI 上の補足注記（「※将来のアプリ更新で有効化されます」等）を入れるか、トグル無効化（disabled 表示）して「準備中」を示すかは実装時に確認。本計画では「機能上は永続化のみ動く」前提で UI に注記文を入れる方向
-- **Compose の `Modifier.verticalScroll` ネスト**: 全体 Column に `verticalScroll` をかけ、その中に長文 `Text` を入れるパターンは Compose で正しく動作する。ポリシー本文用カードに別途 `verticalScroll` を入れると無限高制約エラーになるので注意
+- **shared API 凍結リスク**: `PrivacyPreferences` のシグネチャを後で変更すると iOS タスクおよびアカウントハブ刷新タスクが追従コストを払うことになる。`StateFlow<Boolean>` 公開と `setAnalyticsOptInEnabled(Boolean)` のシグネチャ、および `PrivacyContent` の 2 定数は本タスク内で確定し、以降は変更しない方針
+- **トグルがアナリティクスに実連動していないことの可視化不足**: ユーザーは「トグルをオンにした = データ送信される」と誤認するリスクがある。Figma デザインのコピー文言（「アプリのトラッキングを許可」「利用状況の分析と改善に使用されます」）は実機能準拠の表現になっているため、SDK 連動が入るまではトグル値が StateFlow としては流れているが「実 SDK は無い」状態を README ないし内部ドキュメントで明記する
+- **外部ブラウザ起動時の `ActivityNotFoundException`**: ブラウザ未インストール環境（Android Auto 等の特殊環境）では `Intent.ACTION_VIEW` が解決失敗する可能性。本タスクでは標準 Android 端末前提で例外ハンドリングは行わない（クラッシュさせない最低限の `runCatching` は付ける方向）
 
 ## 参考リンク
 
+- Figma 確定デザイン（プライバシー設定画面）: [798:12559](https://www.figma.com/design/bzm13wVWQmgaFFmlEbJZ3k/NxTECH?node-id=798-12559&m=dev)
+- Figma 参考スクリーンショット: [`docs/figma-assets/bank-redesign-798-12559.png`](../figma-assets/bank-redesign-798-12559.png)
+- Figma 確定デザイン（アカウントハブ刷新、参考）: [697:8394](https://www.figma.com/design/bzm13wVWQmgaFFmlEbJZ3k/NxTECH?node-id=697-8394&m=dev)
 - 前提タスク 4 (Android アカウント設定): [`client-bank-4-account-settings-android.md`](./client-bank-4-account-settings-android.md)
 - 前提タスク 5 (iOS アカウント設定): [`client-bank-5-account-settings-ios.md`](./client-bank-5-account-settings-ios.md)
 - 既存 `NotificationSettingsPreferences`（パターン参考）: `shared/src/commonMain/kotlin/studio/nxtech/fujubank/account/NotificationSettingsPreferences.kt`
@@ -262,10 +288,11 @@ private fun openUrl(context: Context, url: String) {
 
 ## Notion タスク登録用サマリ
 
-- **タイトル**: 銀行アプリクライアント：プライバシー設定画面（仮実装）Android 実装
+- **タイトル**: 銀行アプリクライアント：プライバシー設定画面 Android 実装
 - **プレフィックス**: client-bank-8
 - **ブランチ命名**: `feature/client-bank-8-privacy-settings-android`
 - **メモ欄に貼る計画書パス**: `docs/tasks/client-bank-8-privacy-settings-android.md`
 - **依存タスク**: client-bank-4 (Android アカウント設定) 完了。client-bank-7 と `:shared/accountModule` を共通変更するため、可能なら client-bank-7 マージ後に着手
-- **後続タスク**: iOS 版プライバシー設定（client-bank-5 iOS 完了後に別タスク化、shared `PrivacyPreferences` を再利用）/ プライバシーポリシー原稿確定 + 本文差し替え / アナリティクス SDK 連携
+- **後続タスク**: [`client-bank-9-privacy-settings-ios`](./client-bank-9-privacy-settings-ios.md)（shared `PrivacyPreferences` / `PrivacyContent` を再利用）/ プライバシーポリシー・利用規約原稿確定 + URL 差し替え / アナリティクス SDK 連携 / アカウントハブ刷新（697:8394 本実装、別タスク）/ パスワード変更行の本実装（別タスク）
 - **PR 構成**: 1 本（Android + 共通 `:shared` 基盤拡張）
+- **参考 Figma**: [プライバシー設定 798:12559](https://www.figma.com/design/bzm13wVWQmgaFFmlEbJZ3k/NxTECH?node-id=798-12559&m=dev) / [アカウントハブ刷新 697:8394](https://www.figma.com/design/bzm13wVWQmgaFFmlEbJZ3k/NxTECH?node-id=697-8394&m=dev)
