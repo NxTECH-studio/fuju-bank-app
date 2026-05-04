@@ -28,4 +28,7 @@ sealed interface RootDestination {
 
     /** 利用規約本文。PrivacySettings 配下のドリルダウン画面。 */
     data object TermsOfService : RootDestination
+
+    /** パスワード変更画面（Figma `799:13327`）。Account タブ配下のサブ画面。 */
+    data object PasswordChange : RootDestination
 }

@@ -48,6 +48,7 @@ fun AccountHubScreen(
     viewModel: AccountHubViewModel,
     onNavigateNotifications: () -> Unit,
     onNavigatePrivacy: () -> Unit,
+    onNavigatePasswordChange: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
@@ -80,6 +81,7 @@ fun AccountHubScreen(
             rows = listOf(
                 SettingsRowSpec(label = "通知", onClick = onNavigateNotifications),
                 SettingsRowSpec(label = "プライバシー設定", onClick = onNavigatePrivacy),
+                SettingsRowSpec(label = "パスワード変更", onClick = onNavigatePasswordChange),
             ),
         )
     }

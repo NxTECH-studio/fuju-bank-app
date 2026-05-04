@@ -50,6 +50,8 @@ import studio.nxtech.fujubank.features.account.AccountHubViewModel
 import studio.nxtech.fujubank.features.account.LegalDocumentScreen
 import studio.nxtech.fujubank.features.account.NotificationSettingsScreen
 import studio.nxtech.fujubank.features.account.NotificationSettingsViewModel
+import studio.nxtech.fujubank.features.account.PasswordChangeScreen
+import studio.nxtech.fujubank.features.account.PasswordChangeViewModel
 import studio.nxtech.fujubank.features.account.PrivacySettingsScreen
 import studio.nxtech.fujubank.features.account.PrivacySettingsViewModel
 import studio.nxtech.fujubank.features.home.HomeScreen
@@ -90,7 +92,8 @@ fun RootScaffold() {
     val showBottomBar = when (destination) {
         RootDestination.Send,
         RootDestination.PrivacyPolicy,
-        RootDestination.TermsOfService -> false
+        RootDestination.TermsOfService,
+        RootDestination.PasswordChange -> false
         else -> true
     }
     Scaffold(
@@ -149,6 +152,7 @@ fun RootScaffold() {
                         viewModel = viewModel,
                         onNavigateNotifications = { destination = RootDestination.NotificationSettings },
                         onNavigatePrivacy = { destination = RootDestination.PrivacySettings },
+                        onNavigatePasswordChange = { destination = RootDestination.PasswordChange },
                     )
                 }
                 RootDestination.NotificationSettings -> {
@@ -196,6 +200,18 @@ fun RootScaffold() {
                         title = PrivacyContent.TERMS_OF_SERVICE_TITLE,
                         body = PrivacyContent.TERMS_OF_SERVICE_BODY,
                         onBack = { destination = RootDestination.PrivacySettings },
+                    )
+                }
+                RootDestination.PasswordChange -> {
+                    val viewModel: PasswordChangeViewModel = viewModel(
+                        factory = viewModelFactory {
+                            initializer { PasswordChangeViewModel() }
+                        },
+                    )
+                    PasswordChangeScreen(
+                        viewModel = viewModel,
+                        onBack = { destination = RootDestination.Account },
+                        onSuccess = { showToast("パスワードを変更しました") },
                     )
                 }
                 RootDestination.TransactionHistory -> {
@@ -267,7 +283,8 @@ private fun BottomNav(
         selected == RootDestination.NotificationSettings ||
         selected == RootDestination.PrivacySettings ||
         selected == RootDestination.PrivacyPolicy ||
-        selected == RootDestination.TermsOfService
+        selected == RootDestination.TermsOfService ||
+        selected == RootDestination.PasswordChange
     // Figma `709:8658` 等の bottomBar: 84dp、白背景、上端に 1dp ボーダー、pt-8 px-48、
     // 2 タブが均等の weight=1 で並び、それぞれ内側 64dp の余白で中央へ寄せる
     Row(
@@ -353,6 +370,7 @@ private val RootDestinationSaver = androidx.compose.runtime.saveable.Saver<RootD
             RootDestination.PrivacySettings -> "privacySettings"
             RootDestination.PrivacyPolicy -> "privacyPolicy"
             RootDestination.TermsOfService -> "termsOfService"
+            RootDestination.PasswordChange -> "passwordChange"
         }
     },
     restore = { key ->
@@ -367,6 +385,7 @@ private val RootDestinationSaver = androidx.compose.runtime.saveable.Saver<RootD
             "privacySettings" -> RootDestination.PrivacySettings
             "privacyPolicy" -> RootDestination.PrivacyPolicy
             "termsOfService" -> RootDestination.TermsOfService
+            "passwordChange" -> RootDestination.PasswordChange
             // client-bank-10 で削除した accountEdit キーは Account タブに降格させる
             "accountEdit" -> RootDestination.Account
             else -> null
