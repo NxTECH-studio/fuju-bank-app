@@ -39,7 +39,9 @@ struct PrivacySettingsView: View {
                     ])
                 }
                 .padding(.horizontal, 16)
+                .padding(.bottom, 24)
             }
+            .scrollIndicators(.hidden)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(FujuBankPalette.background.ignoresSafeArea())
