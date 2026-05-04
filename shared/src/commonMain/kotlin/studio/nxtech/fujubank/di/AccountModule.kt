@@ -6,6 +6,7 @@ import studio.nxtech.fujubank.BuildKonfig
 import studio.nxtech.fujubank.account.AccountProfileProvider
 import studio.nxtech.fujubank.account.DummyAccountProfileProvider
 import studio.nxtech.fujubank.account.NotificationSettingsPreferences
+import studio.nxtech.fujubank.account.PrivacyPreferences
 
 /**
  * アカウントタブ配下（ハブ画面 / 通知設定画面）が依存する shared コンポーネントを提供する。
@@ -17,6 +18,7 @@ import studio.nxtech.fujubank.account.NotificationSettingsPreferences
 val accountModule = module {
     // signupModule で `single<Settings> { Settings() }` 済みなので get() で同一インスタンスを取る
     single { NotificationSettingsPreferences(get<Settings>()) }
+    single { PrivacyPreferences(get<Settings>()) }
     single<AccountProfileProvider> {
         // 現状はダミー固定。実 API 連携時に Remote 実装を追加して USE_DUMMY_PROFILE=false の
         // 分岐で返す想定。release ビルド (USE_DUMMY_PROFILE=false) で Dummy が黙って混入しない
