@@ -4,6 +4,7 @@ import org.koin.mp.KoinPlatform
 import studio.nxtech.fujubank.BuildKonfig
 import studio.nxtech.fujubank.account.AccountProfileProvider
 import studio.nxtech.fujubank.account.NotificationSettingsPreferences
+import studio.nxtech.fujubank.account.PrivacyPreferences
 import studio.nxtech.fujubank.data.remote.api.UserApi
 import studio.nxtech.fujubank.data.repository.AuthRepository
 import studio.nxtech.fujubank.data.repository.ProfileRepository
@@ -43,3 +44,5 @@ fun profileRepository(): ProfileRepository = KoinPlatform.getKoin().get()
 fun accountProfileProvider(): AccountProfileProvider = KoinPlatform.getKoin().get()
 
 fun notificationSettingsPreferences(): NotificationSettingsPreferences = KoinPlatform.getKoin().get()
+
+fun privacyPreferences(): PrivacyPreferences = KoinPlatform.getKoin().get()

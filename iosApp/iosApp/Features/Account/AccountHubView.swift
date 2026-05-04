@@ -105,7 +105,13 @@ enum AccountInfoField: String, Identifiable {
 
 /// アカウントタブ配下の遷移先。`RootTabView` の `NavigationStack` で `navigationDestination`
 /// するために値型として定義する。
+///
+/// `privacyPolicy` / `termsOfService` は `PrivacySettingsView` 配下のドリルダウン先で、
+/// shared `PrivacyContent` の本文テキストを `LegalDocumentView` に流して表示する。
+/// Android の `RootDestination.PrivacyPolicy` / `TermsOfService` と同等。
 enum AccountDestination: Hashable {
     case notifications
     case privacy
+    case privacyPolicy
+    case termsOfService
 }
