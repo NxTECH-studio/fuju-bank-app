@@ -22,7 +22,4 @@ sealed interface RootDestination {
 
     /** プライバシー設定（準備中画面）。Account タブ配下のサブ画面。 */
     data object PrivacySettings : RootDestination
-
-    /** アカウント情報変更（準備中画面）。Account タブ配下のサブ画面。 */
-    data object AccountEdit : RootDestination
 }

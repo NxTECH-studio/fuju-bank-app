@@ -139,7 +139,6 @@ fun RootScaffold() {
                         viewModel = viewModel,
                         onNavigateNotifications = { destination = RootDestination.NotificationSettings },
                         onNavigatePrivacy = { destination = RootDestination.PrivacySettings },
-                        onNavigateAccountEdit = { destination = RootDestination.AccountEdit },
                     )
                 }
                 RootDestination.NotificationSettings -> {
@@ -160,10 +159,6 @@ fun RootScaffold() {
                 }
                 RootDestination.PrivacySettings -> AccountComingSoonScreen(
                     title = "プライバシー設定",
-                    onBack = { destination = RootDestination.Account },
-                )
-                RootDestination.AccountEdit -> AccountComingSoonScreen(
-                    title = "アカウント情報",
                     onBack = { destination = RootDestination.Account },
                 )
                 RootDestination.TransactionHistory -> {
@@ -233,8 +228,7 @@ private fun BottomNav(
     // アカウント家族に属する画面（通知設定・準備中サブ画面）でもアカウントタブを selected 表示にする
     val accountFamily = selected == RootDestination.Account ||
         selected == RootDestination.NotificationSettings ||
-        selected == RootDestination.PrivacySettings ||
-        selected == RootDestination.AccountEdit
+        selected == RootDestination.PrivacySettings
     // Figma `709:8658` 等の bottomBar: 84dp、白背景、上端に 1dp ボーダー、pt-8 px-48、
     // 2 タブが均等の weight=1 で並び、それぞれ内側 64dp の余白で中央へ寄せる
     Row(
@@ -318,7 +312,6 @@ private val RootDestinationSaver = androidx.compose.runtime.saveable.Saver<RootD
             RootDestination.Send -> "send"
             RootDestination.NotificationSettings -> "notificationSettings"
             RootDestination.PrivacySettings -> "privacySettings"
-            RootDestination.AccountEdit -> "accountEdit"
         }
     },
     restore = { key ->
@@ -331,7 +324,8 @@ private val RootDestinationSaver = androidx.compose.runtime.saveable.Saver<RootD
             "send" -> RootDestination.Send
             "notificationSettings" -> RootDestination.NotificationSettings
             "privacySettings" -> RootDestination.PrivacySettings
-            "accountEdit" -> RootDestination.AccountEdit
+            // client-bank-10 で削除した accountEdit キーは Account タブに降格させる
+            "accountEdit" -> RootDestination.Account
             else -> null
         }
     },

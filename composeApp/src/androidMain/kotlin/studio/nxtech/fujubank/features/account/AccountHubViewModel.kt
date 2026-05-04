@@ -1,23 +1,25 @@
 package studio.nxtech.fujubank.features.account
 
 import androidx.lifecycle.ViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import studio.nxtech.fujubank.account.AccountProfile
 import studio.nxtech.fujubank.account.AccountProfileProvider
 
 /**
  * アカウントハブ画面（Figma `697:8394`）の状態保持。
  *
- * 本タスクではダミー固定の [AccountProfileProvider] から 1 度だけプロフィールを取得し、
- * `StateFlow` として公開する。実 API 連携時には provider の実装が差し替わるだけで
- * 本クラスは変更不要。
+ * [AccountProfileProvider] が公開する `StateFlow<AccountProfile>` を直接 UI に流し、
+ * 編集操作は [updateProfile] で Provider に書き戻す。Provider 側が in-memory state を
+ * 持つため、保存時に Provider が更新されると本 VM 経由でも UI に即時反映される。
  */
 class AccountHubViewModel(
-    profileProvider: AccountProfileProvider,
+    private val profileProvider: AccountProfileProvider,
 ) : ViewModel() {
 
-    private val _profile = MutableStateFlow(profileProvider.current())
-    val profile: StateFlow<AccountProfile> = _profile.asStateFlow()
+    val profile: StateFlow<AccountProfile> = profileProvider.profile
+
+    /** 編集ボトムシートからの保存。表示名 / メールアドレスを Provider に書き戻す。 */
+    fun updateProfile(displayName: String, email: String) {
+        profileProvider.updateProfile(displayName = displayName, email = email)
+    }
 }
