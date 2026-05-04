@@ -22,4 +22,10 @@ sealed interface RootDestination {
 
     /** プライバシー設定（準備中画面）。Account タブ配下のサブ画面。 */
     data object PrivacySettings : RootDestination
+
+    /** プライバシーポリシー本文。PrivacySettings 配下のドリルダウン画面。 */
+    data object PrivacyPolicy : RootDestination
+
+    /** 利用規約本文。PrivacySettings 配下のドリルダウン画面。 */
+    data object TermsOfService : RootDestination
 }

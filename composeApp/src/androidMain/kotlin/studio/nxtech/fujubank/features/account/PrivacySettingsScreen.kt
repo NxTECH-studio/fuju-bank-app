@@ -1,8 +1,5 @@
 package studio.nxtech.fujubank.features.account
 
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -39,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import studio.nxtech.fujubank.R
-import studio.nxtech.fujubank.account.PrivacyContent
 import studio.nxtech.fujubank.features.account.components.SettingsCard
 import studio.nxtech.fujubank.features.account.components.SettingsRowSpec
 import studio.nxtech.fujubank.theme.FujuBankColors
@@ -50,20 +45,21 @@ import studio.nxtech.fujubank.theme.NotoSansJP
  *
  * - ヘッダー: 戻る `<` + 中央タイトル「プライバシー設定」(17sp Bold)
  * - セクション 1「トラッキング」: 単一カード内に「アプリのトラッキングを許可」+ サブテキスト + 右端トグル
- * - セクション 2「法的情報」: 「プライバシーポリシー」「利用規約」の 2 行リスト、タップで外部ブラウザ起動
+ * - セクション 2「法的情報」: 「プライバシーポリシー」「利用規約」の 2 行リスト、タップでアプリ内画面へ遷移
  *
  * トグルの永続化は [PrivacySettingsViewModel] 経由で
  * [studio.nxtech.fujubank.account.PrivacyPreferences] が担う。
- * 法的情報の URL は [PrivacyContent] を参照する。
+ * 法的文書本文は [studio.nxtech.fujubank.account.PrivacyContent] を参照する。
  */
 @Composable
 fun PrivacySettingsScreen(
     viewModel: PrivacySettingsViewModel,
     onBack: () -> Unit,
+    onPrivacyPolicyClick: () -> Unit,
+    onTermsOfServiceClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val optIn by viewModel.analyticsOptInEnabled.collectAsStateWithLifecycle()
-    val context = LocalContext.current
 
     Column(
         modifier = modifier
@@ -88,11 +84,11 @@ fun PrivacySettingsScreen(
                 rows = listOf(
                     SettingsRowSpec(
                         label = "プライバシーポリシー",
-                        onClick = { openUrl(context, PrivacyContent.PRIVACY_POLICY_URL) },
+                        onClick = onPrivacyPolicyClick,
                     ),
                     SettingsRowSpec(
                         label = "利用規約",
-                        onClick = { openUrl(context, PrivacyContent.TERMS_OF_SERVICE_URL) },
+                        onClick = onTermsOfServiceClick,
                     ),
                 ),
             )
@@ -208,14 +204,4 @@ private fun TrackingOptInCard(
             ),
         )
     }
-}
-
-/**
- * 外部ブラウザで URL を開く。ブラウザ未インストール等の特殊環境では
- * `ActivityNotFoundException` が発生し得るため、`runCatching` でクラッシュを防ぐ。
- * Figma 確定デザインでは標準 Android 端末前提のため、失敗時の UI 通知は行わない。
- */
-private fun openUrl(context: Context, url: String) {
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-    runCatching { context.startActivity(intent) }
 }

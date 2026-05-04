@@ -40,12 +40,14 @@ import org.koin.mp.KoinPlatform
 import studio.nxtech.fujubank.R
 import studio.nxtech.fujubank.account.AccountProfileProvider
 import studio.nxtech.fujubank.account.NotificationSettingsPreferences
+import studio.nxtech.fujubank.account.PrivacyContent
 import studio.nxtech.fujubank.account.PrivacyPreferences
 import studio.nxtech.fujubank.data.repository.ProfileRepository
 import studio.nxtech.fujubank.data.repository.UserRepository
 import studio.nxtech.fujubank.domain.model.Transaction
 import studio.nxtech.fujubank.features.account.AccountHubScreen
 import studio.nxtech.fujubank.features.account.AccountHubViewModel
+import studio.nxtech.fujubank.features.account.LegalDocumentScreen
 import studio.nxtech.fujubank.features.account.NotificationSettingsScreen
 import studio.nxtech.fujubank.features.account.NotificationSettingsViewModel
 import studio.nxtech.fujubank.features.account.PrivacySettingsScreen
@@ -172,6 +174,22 @@ fun RootScaffold() {
                     PrivacySettingsScreen(
                         viewModel = viewModel,
                         onBack = { destination = RootDestination.Account },
+                        onPrivacyPolicyClick = { destination = RootDestination.PrivacyPolicy },
+                        onTermsOfServiceClick = { destination = RootDestination.TermsOfService },
+                    )
+                }
+                RootDestination.PrivacyPolicy -> {
+                    LegalDocumentScreen(
+                        title = PrivacyContent.PRIVACY_POLICY_TITLE,
+                        body = PrivacyContent.PRIVACY_POLICY_BODY,
+                        onBack = { destination = RootDestination.PrivacySettings },
+                    )
+                }
+                RootDestination.TermsOfService -> {
+                    LegalDocumentScreen(
+                        title = PrivacyContent.TERMS_OF_SERVICE_TITLE,
+                        body = PrivacyContent.TERMS_OF_SERVICE_BODY,
+                        onBack = { destination = RootDestination.PrivacySettings },
                     )
                 }
                 RootDestination.TransactionHistory -> {
@@ -241,7 +259,9 @@ private fun BottomNav(
     // アカウント家族に属する画面（通知設定・準備中サブ画面）でもアカウントタブを selected 表示にする
     val accountFamily = selected == RootDestination.Account ||
         selected == RootDestination.NotificationSettings ||
-        selected == RootDestination.PrivacySettings
+        selected == RootDestination.PrivacySettings ||
+        selected == RootDestination.PrivacyPolicy ||
+        selected == RootDestination.TermsOfService
     // Figma `709:8658` 等の bottomBar: 84dp、白背景、上端に 1dp ボーダー、pt-8 px-48、
     // 2 タブが均等の weight=1 で並び、それぞれ内側 64dp の余白で中央へ寄せる
     Row(
@@ -325,6 +345,8 @@ private val RootDestinationSaver = androidx.compose.runtime.saveable.Saver<RootD
             RootDestination.Send -> "send"
             RootDestination.NotificationSettings -> "notificationSettings"
             RootDestination.PrivacySettings -> "privacySettings"
+            RootDestination.PrivacyPolicy -> "privacyPolicy"
+            RootDestination.TermsOfService -> "termsOfService"
         }
     },
     restore = { key ->
@@ -337,6 +359,8 @@ private val RootDestinationSaver = androidx.compose.runtime.saveable.Saver<RootD
             "send" -> RootDestination.Send
             "notificationSettings" -> RootDestination.NotificationSettings
             "privacySettings" -> RootDestination.PrivacySettings
+            "privacyPolicy" -> RootDestination.PrivacyPolicy
+            "termsOfService" -> RootDestination.TermsOfService
             // client-bank-10 で削除した accountEdit キーは Account タブに降格させる
             "accountEdit" -> RootDestination.Account
             else -> null
