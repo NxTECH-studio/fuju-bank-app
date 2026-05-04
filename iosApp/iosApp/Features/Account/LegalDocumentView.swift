@@ -36,6 +36,7 @@ struct LegalDocumentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(FujuBankPalette.background.ignoresSafeArea())
         .navigationBarHidden(true)
+        .toolbar(.hidden, for: .tabBar)
     }
 
     private var header: some View {
