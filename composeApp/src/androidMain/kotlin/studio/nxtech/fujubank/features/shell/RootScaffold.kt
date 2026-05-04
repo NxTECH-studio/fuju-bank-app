@@ -40,14 +40,16 @@ import org.koin.mp.KoinPlatform
 import studio.nxtech.fujubank.R
 import studio.nxtech.fujubank.account.AccountProfileProvider
 import studio.nxtech.fujubank.account.NotificationSettingsPreferences
+import studio.nxtech.fujubank.account.PrivacyPreferences
 import studio.nxtech.fujubank.data.repository.ProfileRepository
 import studio.nxtech.fujubank.data.repository.UserRepository
 import studio.nxtech.fujubank.domain.model.Transaction
-import studio.nxtech.fujubank.features.account.AccountComingSoonScreen
 import studio.nxtech.fujubank.features.account.AccountHubScreen
 import studio.nxtech.fujubank.features.account.AccountHubViewModel
 import studio.nxtech.fujubank.features.account.NotificationSettingsScreen
 import studio.nxtech.fujubank.features.account.NotificationSettingsViewModel
+import studio.nxtech.fujubank.features.account.PrivacySettingsScreen
+import studio.nxtech.fujubank.features.account.PrivacySettingsViewModel
 import studio.nxtech.fujubank.features.home.HomeScreen
 import studio.nxtech.fujubank.features.home.HomeViewModel
 import studio.nxtech.fujubank.features.placeholder.ComingSoonScreen
@@ -157,10 +159,21 @@ fun RootScaffold() {
                         onNotificationClick = { showToast("通知機能は実装中です") },
                     )
                 }
-                RootDestination.PrivacySettings -> AccountComingSoonScreen(
-                    title = "プライバシー設定",
-                    onBack = { destination = RootDestination.Account },
-                )
+                RootDestination.PrivacySettings -> {
+                    val viewModel: PrivacySettingsViewModel = viewModel(
+                        factory = viewModelFactory {
+                            initializer {
+                                PrivacySettingsViewModel(
+                                    preferences = KoinPlatform.getKoin().get<PrivacyPreferences>(),
+                                )
+                            }
+                        },
+                    )
+                    PrivacySettingsScreen(
+                        viewModel = viewModel,
+                        onBack = { destination = RootDestination.Account },
+                    )
+                }
                 RootDestination.TransactionHistory -> {
                     val viewModel: TransactionListViewModel = viewModel(
                         factory = viewModelFactory {
