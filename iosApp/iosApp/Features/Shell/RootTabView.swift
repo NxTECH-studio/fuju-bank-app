@@ -34,12 +34,14 @@ struct RootTabView: View {
         }
     }
 
-    /// 法的文書のフルスクリーン表示中はボトムナビを隠す。本文が長く、フッターに被って
-    /// 読めなくなるため。Android 側はそもそも tabBar 構造がないため対応不要。
+    /// 法的文書 / パスワード変更画面ではボトムナビを隠す。法的文書は本文が長くフッターに
+    /// 被って読めなくなるため、パスワード変更はキーボード操作中の入力欄が押し下がらない
+    /// よう画面全体を縦に使うため（Android 側 `RootScaffold` で `bottomBarVisible = false`
+    /// にしているのと同方針）。
     private var isBottomBarHidden: Bool {
         guard destination == .account else { return false }
         switch accountPath.last {
-        case .privacyPolicy, .termsOfService: return true
+        case .privacyPolicy, .termsOfService, .passwordChange: return true
         default: return false
         }
     }
@@ -106,6 +108,10 @@ struct RootTabView: View {
                         LegalDocumentView(
                             title: PrivacyContent.shared.TERMS_OF_SERVICE_TITLE,
                             bodyText: PrivacyContent.shared.TERMS_OF_SERVICE_BODY,
+                        )
+                    case .passwordChange:
+                        PasswordChangeView(
+                            onSuccess: { toast.send("パスワードを変更しました") },
                         )
                     }
                 }

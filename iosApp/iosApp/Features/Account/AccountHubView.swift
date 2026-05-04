@@ -41,6 +41,7 @@ struct AccountHubView: View {
                 SettingsCardView(rows: [
                     .init(label: "通知") { onSelectDestination(.notifications) },
                     .init(label: "プライバシー設定") { onSelectDestination(.privacy) },
+                    .init(label: "パスワード変更") { onSelectDestination(.passwordChange) },
                 ])
             }
             .padding(.horizontal, 16)
@@ -114,4 +115,5 @@ enum AccountDestination: Hashable {
     case privacy
     case privacyPolicy
     case termsOfService
+    case passwordChange
 }
