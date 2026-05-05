@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -34,6 +35,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import studio.nxtech.fujubank.R
+import studio.nxtech.fujubank.features.account.notification.NotificationPermissionCard
+import studio.nxtech.fujubank.features.account.notification.openAppNotificationSettings
+import studio.nxtech.fujubank.features.account.notification.rememberNotificationPermissionLauncher
+import studio.nxtech.fujubank.features.account.notification.rememberNotificationPermissionState
+import studio.nxtech.fujubank.features.account.notification.rememberRequestingState
+import studio.nxtech.fujubank.features.account.notification.safelyRequestNotificationPermission
 import studio.nxtech.fujubank.features.home.components.NotificationBellButton
 import studio.nxtech.fujubank.theme.FujuBankColors
 import studio.nxtech.fujubank.theme.NotoSansJP
@@ -58,6 +65,14 @@ fun NotificationSettingsScreen(
     val deposit by viewModel.depositEnabled.collectAsStateWithLifecycle()
     val transfer by viewModel.transferEnabled.collectAsStateWithLifecycle()
 
+    val context = LocalContext.current
+    val permissionState = rememberNotificationPermissionState()
+    val requesting = rememberRequestingState()
+    val launcher = rememberNotificationPermissionLauncher(
+        state = permissionState,
+        requesting = requesting,
+    )
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -73,6 +88,16 @@ fun NotificationSettingsScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            NotificationPermissionCard(
+                state = permissionState.value,
+                requesting = requesting.value,
+                onRequestPermission = {
+                    safelyRequestNotificationPermission(launcher, requesting)
+                },
+                onOpenSystemSettings = {
+                    openAppNotificationSettings(context)
+                },
+            )
             NotificationCard(
                 depositEnabled = deposit,
                 onDepositToggle = viewModel::setDepositEnabled,
