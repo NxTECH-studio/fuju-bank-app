@@ -2,6 +2,8 @@ package studio.nxtech.fujubank.features.account.notification
 
 import android.Manifest
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
@@ -122,7 +124,7 @@ internal fun safelyRequestNotificationPermission(
 }
 
 private fun evaluateNotificationPermissionState(
-    context: android.content.Context,
+    context: Context,
 ): NotificationPermissionState {
     val enabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
 
@@ -158,7 +160,7 @@ private fun evaluateNotificationPermissionState(
 }
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-private fun shouldShowRationale(context: android.content.Context): Boolean {
+private fun shouldShowRationale(context: Context): Boolean {
     val activity = context.findActivity() ?: return false
     return ActivityCompat.shouldShowRequestPermissionRationale(
         activity,
@@ -166,8 +168,8 @@ private fun shouldShowRationale(context: android.content.Context): Boolean {
     )
 }
 
-private tailrec fun android.content.Context.findActivity(): Activity? = when (this) {
+private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
-    is android.content.ContextWrapper -> baseContext.findActivity()
+    is ContextWrapper -> baseContext.findActivity()
     else -> null
 }
