@@ -55,7 +55,7 @@ import studio.nxtech.fujubank.theme.NotoSansJP
  * 通知設定画面 — Figma `718:7332` 準拠（Android 先行）。
  *
  * - ヘッダー: 戻る `<` (左 48dp) / タイトル「通知設定」(中央 17sp Bold) / 通知ベル (右 48dp)
- * - 本文: 上段マスター「OS 通知許可」カード + サブ「着金通知 / 転送通知」カード（client-bank-14 共通仕様 D）
+ * - 本文: 上段マスター「プッシュ通知」カード + サブ「着金通知 / 転送通知」カード（client-bank-14 共通仕様 D）
  *
  * マスター ON 状態（OS 許可が `Granted` / `SystemSettingsOnly`）でのみサブトグルが操作可能。
  * マスター OFF → ON 遷移時はサブトグル両方を自動 ON に上書きする。

@@ -13,12 +13,12 @@
 ### 経緯
 
 - client-bank-4 で `NotificationSettingsScreen` と `NotificationSettingsPreferences` を導入し、着金 / 転送のトグル状態を `multiplatform-settings` に永続化済み。
-- 一方、`AndroidManifest.xml` には `POST_NOTIFICATIONS` 権限が未宣言。Android 13 (API 33) 以降のランタイム権限ダイアログを起動する手段が無く、アプリ内トグルがオンでも OS 通知許可が無ければ実通知は届かない。
+- 一方、`AndroidManifest.xml` には `POST_NOTIFICATIONS` 権限が未宣言。Android 13 (API 33) 以降のランタイム権限ダイアログを起動する手段が無く、アプリ内トグルがオンでも プッシュ通知許可が無ければ実通知は届かない。
 - client-bank-6 で Android 単独実装として起票していたが、KMP は iOS/Android 両対応必須（ユーザーメモリ参照）かつ「UI 以外の仕様は両プラットフォームで揃える」方針に変更したため、本タスク (14) で iOS 版 (15) と仕様を共通化した形で再起票する。client-bank-6 は未着手のまま deprecated。
 
 ### 目的
 
-- アカウント > 通知設定 から OS 通知許可状態を確認・要求できるようにする。
+- アカウント > 通知設定 から プッシュ通知許可状態を確認・要求できるようにする。
 - 「アプリ内トグルはオン × OS 許可なし」という状態をユーザーが視認できるようにする（自動連動はしない）。
 - iOS 版 (`client-bank-15`) とユーザー体験を揃える（後述「共通仕様」セクション）。
 
@@ -26,13 +26,13 @@
 
 - **`AndroidManifest.xml` 変更**: `<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />` を追加。
 - **`NotificationSettingsScreen` 拡張**: ヘッダー直下、既存「着金通知 / 転送通知」カードの **上** に新規カード `NotificationPermissionCard` を追加。
-- **OS 通知許可状態の取得・要求ヘルパ**（Android 限定、`composeApp/src/androidMain/.../features/account/notification/` 配下）。
+- **プッシュ通知許可状態の取得・要求ヘルパ**（Android 限定、`composeApp/src/androidMain/.../features/account/notification/` 配下）。
 - **画面復帰時の状態再取得**（`Lifecycle.Event.ON_RESUME`）。
 
 ### アウトオブスコープ
 
 - iOS 実装（`client-bank-15` で別途）。
-- `:shared` 拡張（OS 通知許可は完全にプラットフォーム個別 API なので shared には何も追加しない）。
+- `:shared` 拡張（プッシュ通知許可は完全にプラットフォーム個別 API なので shared には何も追加しない）。
 - 既存 `NotificationSettingsPreferences` のキー / デフォルト変更。
 - 実通知の送出 / FCM 連携。
 - 警告バナーの追加（マスター/サブ階層 + サブの自動 disabled で代替するため不要）。
@@ -77,7 +77,7 @@
 
 ### D. アプリ内トグルとの連動方針（マスター/サブ階層）
 
-- 「OS 通知許可」を **マスタートグル**、着金通知 / 転送通知を **サブトグル** として階層的に表現する。
+- 「プッシュ通知」を **マスタートグル**、着金通知 / 転送通知を **サブトグル** として階層的に表現する。
 - **マスター OFF → ON 遷移時**（OS 許可状態が `Granted` または `SystemSettingsOnly` に変化した瞬間）、サブトグル両方を自動的に ON へ上書きする。アプリ内 UI からの遷移（権限ダイアログ許可）と OS 設定アプリからの遷移（`ON_RESUME` / `scenePhase=.active` 復帰）の両方で同じ動作をする。
 - **マスター OFF 状態**（`NotDetermined` / `Denied`）ではサブトグルを `enabled = false` / `.disabled(true)` にして操作を受け付けない。サブトグルの永続値そのものは変更しない（ユーザーが OS 許可を再取得すれば直前の意図値ではなく一律 ON が適用される、という上書き仕様）。
 - **マスター ON 状態**ではサブトグル（着金 / 転送）を個別に ON/OFF できる。
@@ -138,7 +138,7 @@
    - 例外時は `Log.w("NotificationPermission", e)` でログ出力（共通仕様 F）。
 
 4. **`NotificationPermissionCard.kt` 新規作成（Switch UI）**
-   - 既存 `NotificationCard` 内の `ToggleRow` と同じ見た目（白背景 / `RoundedCornerShape(20.dp)` / `shadow(4.dp, clip=false)` / 左に「OS 通知許可」+ サブ説明、右に `Switch`）。サブトグルと並べたとき UI 表現が揃うようにする。
+   - 既存 `NotificationCard` 内の `ToggleRow` と同じ見た目（白背景 / `RoundedCornerShape(20.dp)` / `shadow(4.dp, clip=false)` / 左に「プッシュ通知」+ サブ説明、右に `Switch`）。サブトグルと並べたとき UI 表現が揃うようにする。
    - `Switch` の `checked` は OS 許可状態を反映: `Granted` / `SystemSettingsOnly` → `true`、`NotDetermined` / `Denied` → `false`。`onCheckedChange` は受動的（パラメータの真偽値は無視し、内部で `checked` の値を更新しない）。
    - Switch タップ時の挙動を状態で分岐:
      - `NotDetermined`: `launcher.launch(POST_NOTIFICATIONS)`
@@ -172,7 +172,7 @@
 - [ ] OS 設定で許可状態を変更してアプリ復帰すると `ON_RESUME` 経由で UI が更新される
 - [ ] 既存の着金 / 転送トグルがリグレッションなく動作し、再起動後も値が保持される
 - [ ] 共通仕様 A〜F が iOS 版 (`client-bank-15`) と齟齬なく実装されている
-- [ ] OS 通知許可カードが Switch UI で実装され、許可状態を `checked` で受動的に反映する
+- [ ] プッシュ通知許可カードが Switch UI で実装され、許可状態を `checked` で受動的に反映する
 - [ ] マスター OFF → ON 遷移時に着金 / 転送サブトグルが両方自動 ON になる（権限ダイアログ経由・OS 設定経由のいずれでも）
 - [ ] マスター OFF 状態（`NotDetermined` / `Denied`）でサブトグルが操作不可（disabled）になる
 - [ ] マスター ON 後にサブトグルを個別に ON/OFF できる

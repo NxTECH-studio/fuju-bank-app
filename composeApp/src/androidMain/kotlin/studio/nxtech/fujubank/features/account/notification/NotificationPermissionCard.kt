@@ -39,9 +39,9 @@ import studio.nxtech.fujubank.theme.NotoSansJP
 private const val LOG_TAG = "NotificationPermission"
 
 /**
- * 「OS 通知許可」マスタートグルカード。
+ * 「プッシュ通知」マスタートグルカード。
  *
- * 共通仕様 D に従い、OS 通知許可をマスター、着金 / 転送をサブとする階層構造の最上段。
+ * 共通仕様 D に従い、OS のプッシュ通知許可をマスター、着金 / 転送をサブとする階層構造の最上段。
  * UI は既存 `NotificationCard` のサブトグル行と同じ `Switch` ベースに揃える:
  *
  * - `checked` は OS 許可状態を反映（`Granted` / `SystemSettingsOnly` → ON、それ以外 OFF）。
@@ -80,7 +80,7 @@ internal fun NotificationPermissionCard(
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
-                text = "OS 通知許可",
+                text = "プッシュ通知",
                 style = TextStyle(
                     fontFamily = NotoSansJP,
                     fontSize = 14.sp,
@@ -112,7 +112,7 @@ internal fun NotificationPermissionCard(
             },
             enabled = !requesting,
             modifier = Modifier.semantics {
-                contentDescription = "OS 通知許可"
+                contentDescription = "プッシュ通知"
                 role = Role.Switch
             },
             colors = SwitchDefaults.colors(
@@ -135,7 +135,7 @@ internal fun NotificationPermissionState.isGranted(): Boolean = when (this) {
 }
 
 private fun subDescriptionFor(state: NotificationPermissionState): String = when (state) {
-    NotificationPermissionState.NotDetermined -> "通知を受け取るには許可が必要です"
+    NotificationPermissionState.NotDetermined -> "プッシュ通知を受け取るには許可が必要です"
     NotificationPermissionState.Granted -> "許可済み"
     NotificationPermissionState.Denied -> "OS 設定から有効化できます"
     NotificationPermissionState.SystemSettingsOnly -> "OS 設定から変更できます"
