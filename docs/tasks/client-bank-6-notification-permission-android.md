@@ -1,5 +1,9 @@
 # 銀行アプリクライアント：通知許可（OS 連動）Android 実装
 
+> **[DEPRECATED]** → client-bank-14 に統合・発展継承。本ドキュメントは未実装のまま deprecated。最新は [`client-bank-14-push-notification-permission-android.md`](./client-bank-14-push-notification-permission-android.md) を参照。
+>
+> 変更経緯: KMP 両対応必須方針および「UI 以外の仕様は Android / iOS で揃える」方針に伴い、Android 単独タスクから iOS 版 (`client-bank-15`) とペアの仕様共通化タスクへ再起票した。本ドキュメントは履歴保全のため残置する。
+
 ## 概要
 
 client-bank-4 で実装した `NotificationSettingsScreen`（Figma `718:7332`）の上部に「OS の通知許可状態」セクションを追加し、Android 13+ の `POST_NOTIFICATIONS` ランタイム権限ダイアログ起動と Android 設定アプリへの導線を提供する。既存の着金通知 / 転送通知トグル（アプリ内意図値）と OS 側許可状態を分離して扱い、ユーザーが「アプリ内ではオンにしているのに OS 側許可がない」状況を視覚的に把握できるようにする。
