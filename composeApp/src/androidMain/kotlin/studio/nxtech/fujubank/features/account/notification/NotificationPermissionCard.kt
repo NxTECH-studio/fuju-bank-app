@@ -10,23 +10,20 @@ import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -39,17 +36,20 @@ import studio.nxtech.fujubank.theme.NotoSansJP
 private const val LOG_TAG = "NotificationPermission"
 
 /**
- * 「プッシュ通知」マスタートグルカード。
+ * 「プッシュ通知」マスターカード。
  *
- * 共通仕様 D に従い、OS のプッシュ通知許可をマスター、着金 / 転送をサブとする階層構造の最上段。
- * UI は既存 `NotificationCard` のサブトグル行と同じ `Switch` ベースに揃える:
+ * 共通仕様 D に従い、OS のプッシュ通知許可をマスター、着金 / 転送をサブとする
+ * 階層構造の最上段。マスターはステータステキスト + 単一のアクションボタンで
+ * 表現する（Switch / Toggle は使わない。Toggle だと「ON タップで OFF にならず
+ * 設定へ飛ぶ」など語彙と挙動の不整合が出るため）。
  *
- * - `checked` は OS 許可状態を反映（`Granted` / `SystemSettingsOnly` → ON、それ以外 OFF）。
- * - `Switch` は受動コンポーネントとして扱い、`onCheckedChange` のパラメータ値は使わない。
- *   タップアクションは現在の OS 状態で分岐する:
- *   - `NotDetermined` → 権限要求ダイアログ（[onRequestPermission]）
- *   - `Denied` / `Granted` / `SystemSettingsOnly` → OS 設定アプリ起動（[onOpenSystemSettings]）
- * - 要求中（[requesting] が true）は `enabled = false` で二重タップを防ぐ。
+ * 状態に応じてボタンラベルと挙動を切り替える（共通仕様 B / C）:
+ *
+ * - [NotificationPermissionState.NotDetermined] → 「許可する」、タップで OS 権限ダイアログ
+ * - その他 → 「OS 設定を開く」、タップで OS 設定アプリ
+ *
+ * 要求中（[requesting] が true）はボタンを `enabled = false` にして二重タップを
+ * 防ぐ（共通仕様 F）。
  */
 @Composable
 internal fun NotificationPermissionCard(
@@ -59,9 +59,7 @@ internal fun NotificationPermissionCard(
     onOpenSystemSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val isOn = state.isGranted()
-
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
@@ -72,11 +70,9 @@ internal fun NotificationPermissionCard(
             .clip(RoundedCornerShape(20.dp))
             .background(FujuBankColors.Surface)
             .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(
-            modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
@@ -98,11 +94,9 @@ internal fun NotificationPermissionCard(
                 ),
             )
         }
-        Switch(
-            checked = isOn,
-            onCheckedChange = {
-                // パラメータの値は無視し、OS 状態に応じて要求 / 設定起動を分岐する。
-                // Switch は OS 状態取得後にしか checked を更新しない受動コンポーネント。
+        val label = buttonLabelFor(state)
+        Button(
+            onClick = {
                 when (state) {
                     NotificationPermissionState.NotDetermined -> onRequestPermission()
                     NotificationPermissionState.Denied,
@@ -111,19 +105,27 @@ internal fun NotificationPermissionCard(
                 }
             },
             enabled = !requesting,
-            modifier = Modifier.semantics {
-                contentDescription = "プッシュ通知"
-                role = Role.Switch
-            },
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = FujuBankColors.BrandPink,
-                checkedBorderColor = Color.Transparent,
-                uncheckedThumbColor = Color.White,
-                uncheckedTrackColor = FujuBankColors.TextTertiary,
-                uncheckedBorderColor = Color.Transparent,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp)
+                .semantics { contentDescription = label },
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = FujuBankColors.BrandPink,
+                contentColor = Color.White,
+                disabledContainerColor = FujuBankColors.Hairline,
+                disabledContentColor = FujuBankColors.TextTertiary,
             ),
-        )
+        ) {
+            Text(
+                text = label,
+                style = TextStyle(
+                    fontFamily = NotoSansJP,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                ),
+            )
+        }
     }
 }
 
@@ -137,8 +139,15 @@ internal fun NotificationPermissionState.isGranted(): Boolean = when (this) {
 private fun subDescriptionFor(state: NotificationPermissionState): String = when (state) {
     NotificationPermissionState.NotDetermined -> "プッシュ通知を受け取るには許可が必要です"
     NotificationPermissionState.Granted -> "許可済み"
-    NotificationPermissionState.Denied -> "OS 設定から有効化できます"
+    NotificationPermissionState.Denied -> "現在 OS で通知が無効になっています"
     NotificationPermissionState.SystemSettingsOnly -> "OS 設定から変更できます"
+}
+
+private fun buttonLabelFor(state: NotificationPermissionState): String = when (state) {
+    NotificationPermissionState.NotDetermined -> "許可する"
+    NotificationPermissionState.Denied,
+    NotificationPermissionState.Granted,
+    NotificationPermissionState.SystemSettingsOnly -> "OS 設定を開く"
 }
 
 /**

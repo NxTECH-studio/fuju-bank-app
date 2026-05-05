@@ -3,8 +3,12 @@ import SwiftUI
 /// 通知設定画面 — Figma `718:7332` 準拠（Android `NotificationSettingsScreen` と 1:1）。
 ///
 /// - ヘッダー: 戻る `<` (左 48pt) / タイトル「通知設定」(中央 17pt Bold) / 通知ベル (右 48pt)
-/// - 本文: 白角丸カード内に「着金通知 / ふじゅ〜が届いたとき」「転送通知 / 送金が完了したとき」
-///   の 2 行 + 各行右にトグル
+/// - 本文: 上段マスター「プッシュ通知」カード + サブ「着金通知 / 転送通知」カード
+///   （client-bank-15 共通仕様 D の階層構造）。
+///
+/// マスター ON 状態（OS 許可が `.granted` / `.systemSettingsOnly`）でのみサブトグル
+/// が操作可能。サブトグルの永続値はユーザーの保存値を尊重し、マスター遷移時の
+/// 自動上書きはしない（共通仕様 D 改訂版）。
 ///
 /// `NavigationStack` 配下で表示されるためヘッダーの戻るは `dismiss` を呼ぶ。`navigationBarHidden`
 /// は SwiftUI 側で標準ナビバーを隠したうえで、Figma 準拠の自前ヘッダーを描く（`TransactionListView`
@@ -12,17 +16,27 @@ import SwiftUI
 struct NotificationSettingsView: View {
     @StateObject private var viewModel = ObservableNotificationSettingsViewModel()
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var permissionState: NotificationPermissionState = .notDetermined
+    @State private var isRequestingPermission: Bool = false
     var onNotificationTap: () -> Void = {}
 
     var body: some View {
         VStack(spacing: 0) {
             header
             VStack(spacing: 16) {
+                NotificationPermissionCard(
+                    state: permissionState,
+                    isRequesting: isRequestingPermission,
+                    onRequestPermission: requestPermission,
+                    onOpenSystemSettings: openAppNotificationSettings
+                )
                 NotificationCard(
                     depositEnabled: viewModel.depositEnabled,
                     onDepositChange: viewModel.setDepositEnabled,
                     transferEnabled: viewModel.transferEnabled,
                     onTransferChange: viewModel.setTransferEnabled,
+                    enabled: permissionState.isGranted,
                 )
             }
             .padding(.horizontal, 16)
@@ -31,6 +45,29 @@ struct NotificationSettingsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(FujuBankPalette.background.ignoresSafeArea())
         .navigationBarHidden(true)
+        .task {
+            permissionState = await currentNotificationPermissionState()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task {
+                    await refreshPermissionState()
+                }
+            }
+        }
+    }
+
+    private func requestPermission() {
+        guard !isRequestingPermission else { return }
+        isRequestingPermission = true
+        Task {
+            permissionState = await requestNotificationPermission()
+            isRequestingPermission = false
+        }
+    }
+
+    private func refreshPermissionState() async {
+        permissionState = await currentNotificationPermissionState()
     }
 
     private var header: some View {
@@ -61,11 +98,15 @@ struct NotificationSettingsView: View {
 }
 
 /// 通知設定の白角丸カード（着金 / 転送の 2 行）。
+///
+/// 共通仕様 D に従い、マスタートグル OFF（`enabled = false`）時は両サブトグルを
+/// `.disabled(true)` にして操作を受け付けず、視覚的にも `.opacity(0.4)` で抑制する。
 private struct NotificationCard: View {
     let depositEnabled: Bool
     let onDepositChange: (Bool) -> Void
     let transferEnabled: Bool
     let onTransferChange: (Bool) -> Void
+    let enabled: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -74,6 +115,7 @@ private struct NotificationCard: View {
                 description: "ふじゅ〜が届いたとき",
                 isOn: Binding(get: { depositEnabled }, set: onDepositChange),
                 accessibilityLabel: "着金通知",
+                enabled: enabled,
             )
             Divider()
                 .frame(height: 1)
@@ -84,6 +126,7 @@ private struct NotificationCard: View {
                 description: "送金が完了したとき",
                 isOn: Binding(get: { transferEnabled }, set: onTransferChange),
                 accessibilityLabel: "転送通知",
+                enabled: enabled,
             )
         }
         .frame(maxWidth: .infinity)
@@ -101,6 +144,7 @@ private struct ToggleRow: View {
     let description: String
     @Binding var isOn: Bool
     let accessibilityLabel: String
+    let enabled: Bool
 
     var body: some View {
         HStack(alignment: .center) {
@@ -112,10 +156,12 @@ private struct ToggleRow: View {
                     .font(FujuBankTypography.caption)
                     .foregroundStyle(FujuBankPalette.textTertiary)
             }
+            .opacity(enabled ? 1.0 : 0.4)
             Spacer(minLength: 12)
             Toggle("", isOn: $isOn)
                 .labelsHidden()
                 .tint(FujuBankPalette.brandPink)
+                .disabled(!enabled)
                 .accessibilityLabel(accessibilityLabel)
         }
         .padding(.horizontal, 16)
