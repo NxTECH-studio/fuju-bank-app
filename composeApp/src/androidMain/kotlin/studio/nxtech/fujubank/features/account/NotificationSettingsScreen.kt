@@ -18,9 +18,13 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -36,6 +40,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import studio.nxtech.fujubank.R
 import studio.nxtech.fujubank.features.account.notification.NotificationPermissionCard
+import studio.nxtech.fujubank.features.account.notification.NotificationPermissionState
+import studio.nxtech.fujubank.features.account.notification.isGranted
 import studio.nxtech.fujubank.features.account.notification.openAppNotificationSettings
 import studio.nxtech.fujubank.features.account.notification.rememberNotificationPermissionLauncher
 import studio.nxtech.fujubank.features.account.notification.rememberNotificationPermissionState
@@ -49,11 +55,10 @@ import studio.nxtech.fujubank.theme.NotoSansJP
  * 通知設定画面 — Figma `718:7332` 準拠（Android 先行）。
  *
  * - ヘッダー: 戻る `<` (左 48dp) / タイトル「通知設定」(中央 17sp Bold) / 通知ベル (右 48dp)
- * - 本文: 白角丸カード内に「着金通知 / ふじゅ〜が届いたとき」「転送通知 / 送金が完了したとき」
- *   の 2 行 + 各行の右にトグル
+ * - 本文: 上段マスター「OS 通知許可」カード + サブ「着金通知 / 転送通知」カード（client-bank-14 共通仕様 D）
  *
- * トグルの永続化は [NotificationSettingsViewModel] 経由で
- * [studio.nxtech.fujubank.account.NotificationSettingsPreferences] が担う。
+ * マスター ON 状態（OS 許可が `Granted` / `SystemSettingsOnly`）でのみサブトグルが操作可能。
+ * マスター OFF → ON 遷移時はサブトグル両方を自動 ON に上書きする。
  */
 @Composable
 fun NotificationSettingsScreen(
@@ -72,6 +77,18 @@ fun NotificationSettingsScreen(
         state = permissionState,
         requesting = requesting,
     )
+
+    val isMasterOn = permissionState.value.isGranted()
+    val previousMasterOn = remember { mutableStateOf(isMasterOn) }
+    LaunchedEffect(isMasterOn) {
+        if (!previousMasterOn.value && isMasterOn) {
+            // 共通仕様 D: マスター OFF → ON 遷移時にサブトグルを一括 ON に上書き。
+            // 権限ダイアログ経由・OS 設定アプリ復帰経由のいずれでも同じ動作になる。
+            viewModel.setDepositEnabled(true)
+            viewModel.setTransferEnabled(true)
+        }
+        previousMasterOn.value = isMasterOn
+    }
 
     Column(
         modifier = modifier
@@ -103,6 +120,7 @@ fun NotificationSettingsScreen(
                 onDepositToggle = viewModel::setDepositEnabled,
                 transferEnabled = transfer,
                 onTransferToggle = viewModel::setTransferEnabled,
+                enabled = isMasterOn,
             )
         }
     }
@@ -157,6 +175,7 @@ private fun NotificationCard(
     onDepositToggle: (Boolean) -> Unit,
     transferEnabled: Boolean,
     onTransferToggle: (Boolean) -> Unit,
+    enabled: Boolean,
 ) {
     Column(
         modifier = Modifier
@@ -175,6 +194,7 @@ private fun NotificationCard(
             checked = depositEnabled,
             onCheckedChange = onDepositToggle,
             toggleContentDescription = "着金通知",
+            enabled = enabled,
         )
         HorizontalDivider(
             modifier = Modifier.padding(horizontal = 16.dp),
@@ -187,6 +207,7 @@ private fun NotificationCard(
             checked = transferEnabled,
             onCheckedChange = onTransferToggle,
             toggleContentDescription = "転送通知",
+            enabled = enabled,
         )
     }
 }
@@ -198,6 +219,7 @@ private fun ToggleRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     toggleContentDescription: String,
+    enabled: Boolean,
 ) {
     Row(
         modifier = Modifier
@@ -207,7 +229,9 @@ private fun ToggleRow(
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Column(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .alpha(if (enabled) 1f else 0.4f),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
@@ -232,6 +256,7 @@ private fun ToggleRow(
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
+            enabled = enabled,
             modifier = Modifier.semantics { contentDescription = toggleContentDescription },
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
@@ -240,6 +265,12 @@ private fun ToggleRow(
                 uncheckedThumbColor = Color.White,
                 uncheckedTrackColor = FujuBankColors.TextTertiary,
                 uncheckedBorderColor = Color.Transparent,
+                disabledCheckedThumbColor = Color.White,
+                disabledCheckedTrackColor = FujuBankColors.BrandPink.copy(alpha = 0.4f),
+                disabledCheckedBorderColor = Color.Transparent,
+                disabledUncheckedThumbColor = Color.White,
+                disabledUncheckedTrackColor = FujuBankColors.TextTertiary.copy(alpha = 0.4f),
+                disabledUncheckedBorderColor = Color.Transparent,
             ),
         )
     }

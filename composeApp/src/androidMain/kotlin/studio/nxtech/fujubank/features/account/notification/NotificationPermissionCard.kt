@@ -14,19 +14,20 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -38,17 +39,17 @@ import studio.nxtech.fujubank.theme.NotoSansJP
 private const val LOG_TAG = "NotificationPermission"
 
 /**
- * 「OS 通知許可」セクションのカード。
+ * 「OS 通知許可」マスタートグルカード。
  *
- * 既存 `NotificationCard`（白背景 / `RoundedCornerShape(20.dp)` / `shadow(4.dp, clip=false)`）
- * と同じスタイルで実装する。状態に応じて右側のボタンを切り替える:
+ * 共通仕様 D に従い、OS 通知許可をマスター、着金 / 転送をサブとする階層構造の最上段。
+ * UI は既存 `NotificationCard` のサブトグル行と同じ `Switch` ベースに揃える:
  *
- * - [NotificationPermissionState.NotDetermined] → 塗りつぶし「許可する」（OS ダイアログ起動）
- * - [NotificationPermissionState.Granted]      → サブテキスト「許可済み」+ アウトライン「OS 設定で開く」
- * - [NotificationPermissionState.Denied]       → アウトライン「OS 設定で開く」
- * - [NotificationPermissionState.SystemSettingsOnly] → アウトライン「OS 設定で開く」
- *
- * 要求中（[requesting] が true）はボタンを `enabled = false` にして二重タップを防ぐ。
+ * - `checked` は OS 許可状態を反映（`Granted` / `SystemSettingsOnly` → ON、それ以外 OFF）。
+ * - `Switch` は受動コンポーネントとして扱い、`onCheckedChange` のパラメータ値は使わない。
+ *   タップアクションは現在の OS 状態で分岐する:
+ *   - `NotDetermined` → 権限要求ダイアログ（[onRequestPermission]）
+ *   - `Denied` / `Granted` / `SystemSettingsOnly` → OS 設定アプリ起動（[onOpenSystemSettings]）
+ * - 要求中（[requesting] が true）は `enabled = false` で二重タップを防ぐ。
  */
 @Composable
 internal fun NotificationPermissionCard(
@@ -58,6 +59,8 @@ internal fun NotificationPermissionCard(
     onOpenSystemSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isOn = state.isGranted()
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -95,81 +98,40 @@ internal fun NotificationPermissionCard(
                 ),
             )
         }
-        when (state) {
-            NotificationPermissionState.NotDetermined -> AllowButton(
-                enabled = !requesting,
-                onClick = onRequestPermission,
-            )
-            NotificationPermissionState.Granted -> OpenSettingsOutlinedButton(
-                label = "OS 設定で開く",
-                enabled = !requesting,
-                onClick = onOpenSystemSettings,
-            )
-            NotificationPermissionState.Denied -> OpenSettingsOutlinedButton(
-                label = "OS 設定で開く",
-                enabled = !requesting,
-                onClick = onOpenSystemSettings,
-            )
-            NotificationPermissionState.SystemSettingsOnly -> OpenSettingsOutlinedButton(
-                label = "OS 設定で開く",
-                enabled = !requesting,
-                onClick = onOpenSystemSettings,
-            )
-        }
-    }
-}
-
-@Composable
-private fun AllowButton(
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        shape = RoundedCornerShape(12.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = FujuBankColors.BrandPink,
-            contentColor = Color.White,
-            disabledContainerColor = FujuBankColors.BrandPink.copy(alpha = 0.4f),
-            disabledContentColor = Color.White.copy(alpha = 0.7f),
-        ),
-    ) {
-        Text(
-            text = "許可する",
-            style = TextStyle(
-                fontFamily = NotoSansJP,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
+        Switch(
+            checked = isOn,
+            onCheckedChange = {
+                // パラメータの値は無視し、OS 状態に応じて要求 / 設定起動を分岐する。
+                // Switch は OS 状態取得後にしか checked を更新しない受動コンポーネント。
+                when (state) {
+                    NotificationPermissionState.NotDetermined -> onRequestPermission()
+                    NotificationPermissionState.Denied,
+                    NotificationPermissionState.Granted,
+                    NotificationPermissionState.SystemSettingsOnly -> onOpenSystemSettings()
+                }
+            },
+            enabled = !requesting,
+            modifier = Modifier.semantics {
+                contentDescription = "OS 通知許可"
+                role = Role.Switch
+            },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = FujuBankColors.BrandPink,
+                checkedBorderColor = Color.Transparent,
+                uncheckedThumbColor = Color.White,
+                uncheckedTrackColor = FujuBankColors.TextTertiary,
+                uncheckedBorderColor = Color.Transparent,
             ),
         )
     }
 }
 
-@Composable
-private fun OpenSettingsOutlinedButton(
-    label: String,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    OutlinedButton(
-        onClick = onClick,
-        enabled = enabled,
-        shape = RoundedCornerShape(12.dp),
-        colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = FujuBankColors.BrandPink,
-            disabledContentColor = FujuBankColors.BrandPink.copy(alpha = 0.4f),
-        ),
-    ) {
-        Text(
-            text = label,
-            style = TextStyle(
-                fontFamily = NotoSansJP,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-            ),
-        )
-    }
+internal fun NotificationPermissionState.isGranted(): Boolean = when (this) {
+    NotificationPermissionState.Granted,
+    NotificationPermissionState.SystemSettingsOnly -> true
+    NotificationPermissionState.NotDetermined,
+    NotificationPermissionState.Denied -> false
 }
 
 private fun subDescriptionFor(state: NotificationPermissionState): String = when (state) {
@@ -244,6 +206,3 @@ private fun NotificationPermissionCardPreview() {
         )
     }
 }
-
-@Composable
-internal fun rememberRequestingState() = remember { mutableStateOf(false) }

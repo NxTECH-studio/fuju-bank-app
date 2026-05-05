@@ -45,6 +45,12 @@ internal sealed interface NotificationPermissionState {
 private const val LOG_TAG = "NotificationPermission"
 
 /**
+ * 権限ダイアログ要求中フラグ。`Switch` の `enabled` を制御して二重タップを防ぐ。
+ */
+@Composable
+internal fun rememberRequestingState(): MutableState<Boolean> = remember { mutableStateOf(false) }
+
+/**
  * 現在の OS 通知許可状態を返す Composable。
  *
  * 共通仕様 E に従い、[Lifecycle.Event.ON_RESUME] で再評価する。設定アプリから

@@ -67,12 +67,14 @@
   - iOS: `UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)`。
 - 設定アプリから戻ってきたタイミングで状態を再取得し、UI を即座に更新する（仕様 E 参照）。
 
-### D. アプリ内トグルとの連動方針
+### D. アプリ内トグルとの連動方針（マスター/サブ階層）
 
-- アプリ内トグル（着金通知 / 転送通知 = `NotificationSettingsPreferences`）と OS 許可状態は **並列表示**。
-- **自動連動なし**: アプリ内トグルをオンにしても OS 許可は要求しないし、OS で拒否されてもアプリ内トグルを自動でオフにしない。
-- ユーザーが「アプリ内ではオン × OS 未許可」を視認できるよう、両者を独立したカードとして並べる。
-- 将来的に警告バナーや自動連動を追加する余地は残すが、本タスクのスコープ外。
+- 「OS 通知許可」を **マスタートグル**、着金通知 / 転送通知を **サブトグル** として階層的に表現する。
+- **マスター OFF → ON 遷移時**（OS 許可状態が `Granted` または `SystemSettingsOnly` に変化した瞬間）、サブトグル両方を自動的に ON へ上書きする。アプリ内 UI からの遷移（権限ダイアログ許可）と OS 設定アプリからの遷移（`ON_RESUME` / `scenePhase=.active` 復帰）の両方で同じ動作をする。
+- **マスター OFF 状態**（`NotDetermined` / `Denied`）ではサブトグルを `enabled = false` / `.disabled(true)` にして操作を受け付けない。サブトグルの永続値そのものは変更しない（ユーザーが OS 許可を再取得すれば直前の意図値ではなく一律 ON が適用される、という上書き仕様）。
+- **マスター ON 状態**ではサブトグル（着金 / 転送）を個別に ON/OFF できる。
+- **マスター OFF 操作**は OS 仕様上アプリ内から直接できないため、Switch / Toggle タップ時の挙動は OS 設定アプリへの遷移とする（共通仕様 C）。Switch / Toggle の `checked` / `isOn` は OS 状態取得後にのみ更新する受動コンポーネントとして扱う。
+- iOS / Android で同じ階層関係・Switch / Toggle ベースの UI に揃える。
 
 ### E. 許可状態の取得タイミング
 
@@ -126,24 +128,25 @@
      - `UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)`。
      - 開けなかった場合の例外ログ。
 
-2. **`NotificationPermissionCard.swift` 新規作成**
-   - 既存 `NotificationCard` と同じスタイル（`RoundedRectangle(cornerRadius: 20, style: .continuous)` + `.fill(FujuBankPalette.surface)` + `.shadow(...)`）。
-   - レイアウトは `HStack`、左にタイトル「OS 通知許可」+ サブ説明、右に状態別ボタン:
-     - `.notDetermined`: 塗りつぶしボタン「許可する」（`FujuBankPalette.brandPink`）→ `Task { state = await requestNotificationPermission() }`
-     - `.granted`: テキスト「許可済み」+ アウトライン「OS 設定で開く」リンク
-     - `.denied`: アウトラインボタン「OS 設定で開く」（共通仕様 C）→ `openAppNotificationSettings()`
-     - `.systemSettingsOnly`: アウトラインボタン「OS 設定で開く」
-   - 要求中は `@State var isRequesting: Bool` でボタンを `.disabled(true)`（共通仕様 F）。
+2. **`NotificationPermissionCard.swift` 新規作成（Toggle UI）**
+   - 既存 `NotificationCard` のサブトグル行と同じ見た目（`RoundedRectangle(cornerRadius: 20, style: .continuous)` + `.fill(FujuBankPalette.surface)` + `.shadow(...)`、左に「OS 通知許可」+ サブ説明、右に `Toggle`（ラベル非表示））。
+   - `Toggle` の `isOn` バインディングは OS 許可状態を反映: `.granted` / `.systemSettingsOnly` → `true`、`.notDetermined` / `.denied` → `false`。Toggle は受動的なコンポーネントとして扱い、ユーザー操作で `isOn` を直接更新しない（`Binding(get: ..., set: { _ in /* タップアクション */ })` パターン）。
+   - Toggle タップ時の挙動を状態で分岐:
+     - `.notDetermined`: `Task { state = await requestNotificationPermission() }`
+     - `.denied`: `openAppNotificationSettings()`
+     - `.granted` / `.systemSettingsOnly`: `openAppNotificationSettings()`（iOS 仕様上アプリから revoke できない）
+   - 要求中は `@State var isRequesting: Bool` で Toggle を `.disabled(true)`（共通仕様 F）。
    - SwiftUI Preview で 4 状態を並べる。
 
-3. **`NotificationSettingsView` 拡張**
+3. **`NotificationSettingsView` 拡張（マスター/サブ階層）**
    - `VStack(spacing: 16)` 内、既存 `NotificationCard` の **前** に `NotificationPermissionCard` を挿入。
    - 親 View で以下を保持:
      - `@State private var permissionState: NotificationPermissionState = .notDetermined`
      - `@Environment(\.scenePhase) private var scenePhase`
    - `.task { permissionState = await currentNotificationPermissionState() }` で初回取得。
    - `.onChange(of: scenePhase) { _, newPhase in if newPhase == .active { Task { permissionState = await currentNotificationPermissionState() } } }` で復帰時に再取得（共通仕様 E）。
-   - `NotificationPermissionCard` には `state: permissionState` と各種コールバックを渡す。コールバック内で要求 / 設定起動後、`permissionState` を更新。
+   - 既存 `NotificationCard` のサブトグル（着金 / 転送）を `.disabled(!isMasterOn)` で OS 許可状態に応じて操作不可にする（`isMasterOn = state == .granted || state == .systemSettingsOnly`）。
+   - `permissionState` の `.onChange` で `非ON → ON` 遷移を検知し、`viewModel.setDepositEnabled(true)` / `viewModel.setTransferEnabled(true)` でサブトグル両方を一括 ON に上書きする（権限ダイアログ経由・`scenePhase` 復帰経由のいずれでも）。初回コンポジションで既に ON だった場合は上書きしない。
 
 4. **Xcode プロジェクト反映**
    - 新規 Swift ファイルを `iosApp/iosApp.xcodeproj/project.pbxproj` に追加（既存の Account 配下と同列）。
@@ -163,6 +166,10 @@
 - [ ] 既存の着金 / 転送トグルがリグレッションなく動作し、再起動後も値が保持される
 - [ ] Android 版 (`client-bank-14`) と並行して同じ共通仕様 A〜F を満たしている
 - [ ] 共通仕様セクションが `client-bank-14-push-notification-permission-android.md` と完全一致
+- [ ] OS 通知許可カードが Toggle UI で実装され、許可状態を `isOn` で受動的に反映する
+- [ ] マスター OFF → ON 遷移時に着金 / 転送サブトグルが両方自動 ON になる（権限ダイアログ経由・`scenePhase` 復帰経由のいずれでも）
+- [ ] マスター OFF 状態（`.notDetermined` / `.denied`）でサブトグルが操作不可（`.disabled(true)`）になる
+- [ ] マスター ON 後にサブトグルを個別に ON/OFF できる
 
 ## 動作確認手順
 

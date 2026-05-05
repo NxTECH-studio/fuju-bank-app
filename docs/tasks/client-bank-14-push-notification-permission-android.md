@@ -35,7 +35,7 @@
 - `:shared` 拡張（OS 通知許可は完全にプラットフォーム個別 API なので shared には何も追加しない）。
 - 既存 `NotificationSettingsPreferences` のキー / デフォルト変更。
 - 実通知の送出 / FCM 連携。
-- 「アプリ内オン × OS 未許可」状態の警告バナー / 自動連動（共通仕様で「並列表示・自動連動なし」と確定済み）。
+- 警告バナーの追加（マスター/サブ階層 + サブの自動 disabled で代替するため不要）。
 
 ## 着手条件
 
@@ -75,12 +75,14 @@
   - iOS: `UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)`。
 - 設定アプリから戻ってきたタイミングで状態を再取得し、UI を即座に更新する（仕様 E 参照）。
 
-### D. アプリ内トグルとの連動方針
+### D. アプリ内トグルとの連動方針（マスター/サブ階層）
 
-- アプリ内トグル（着金通知 / 転送通知 = `NotificationSettingsPreferences`）と OS 許可状態は **並列表示**。
-- **自動連動なし**: アプリ内トグルをオンにしても OS 許可は要求しないし、OS で拒否されてもアプリ内トグルを自動でオフにしない。
-- ユーザーが「アプリ内ではオン × OS 未許可」を視認できるよう、両者を独立したカードとして並べる。
-- 将来的に警告バナーや自動連動を追加する余地は残すが、本タスクのスコープ外。
+- 「OS 通知許可」を **マスタートグル**、着金通知 / 転送通知を **サブトグル** として階層的に表現する。
+- **マスター OFF → ON 遷移時**（OS 許可状態が `Granted` または `SystemSettingsOnly` に変化した瞬間）、サブトグル両方を自動的に ON へ上書きする。アプリ内 UI からの遷移（権限ダイアログ許可）と OS 設定アプリからの遷移（`ON_RESUME` / `scenePhase=.active` 復帰）の両方で同じ動作をする。
+- **マスター OFF 状態**（`NotDetermined` / `Denied`）ではサブトグルを `enabled = false` / `.disabled(true)` にして操作を受け付けない。サブトグルの永続値そのものは変更しない（ユーザーが OS 許可を再取得すれば直前の意図値ではなく一律 ON が適用される、という上書き仕様）。
+- **マスター ON 状態**ではサブトグル（着金 / 転送）を個別に ON/OFF できる。
+- **マスター OFF 操作**は OS 仕様上アプリ内から直接できないため、Switch / Toggle タップ時の挙動は OS 設定アプリへの遷移とする（共通仕様 C）。Switch / Toggle の `checked` / `isOn` は OS 状態取得後にのみ更新する受動コンポーネントとして扱う。
+- iOS / Android で同じ階層関係・Switch / Toggle ベースの UI に揃える。
 
 ### E. 許可状態の取得タイミング
 
@@ -135,21 +137,21 @@
    - `rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission())` で `POST_NOTIFICATIONS` を要求。コールバックで再評価をトリガ。
    - 例外時は `Log.w("NotificationPermission", e)` でログ出力（共通仕様 F）。
 
-4. **`NotificationPermissionCard.kt` 新規作成**
-   - 既存 `NotificationCard` と同じスタイル（白背景 / `RoundedCornerShape(20.dp)` / `shadow(4.dp, clip=false)`）。
-   - 内部レイアウトは `Row(SpaceBetween)`、左にタイトル「OS 通知許可」+ サブ説明、右に状態別ボタン:
-     - `NotDetermined`: 塗りつぶしボタン「許可する」（`FujuBankColors.BrandPink`）→ `launcher.launch(POST_NOTIFICATIONS)`
-     - `Granted`: テキスト「許可済み」+ アウトライン「OS 設定で開く」リンク
-     - `Denied`: アウトラインボタン「OS 設定で開く」（共通仕様 C）
-     - `SystemSettingsOnly`: アウトラインボタン「OS 設定で開く」
+4. **`NotificationPermissionCard.kt` 新規作成（Switch UI）**
+   - 既存 `NotificationCard` 内の `ToggleRow` と同じ見た目（白背景 / `RoundedCornerShape(20.dp)` / `shadow(4.dp, clip=false)` / 左に「OS 通知許可」+ サブ説明、右に `Switch`）。サブトグルと並べたとき UI 表現が揃うようにする。
+   - `Switch` の `checked` は OS 許可状態を反映: `Granted` / `SystemSettingsOnly` → `true`、`NotDetermined` / `Denied` → `false`。`onCheckedChange` は受動的（パラメータの真偽値は無視し、内部で `checked` の値を更新しない）。
+   - Switch タップ時の挙動を状態で分岐:
+     - `NotDetermined`: `launcher.launch(POST_NOTIFICATIONS)`
+     - `Denied`: OS 設定アプリを起動
+     - `Granted` / `SystemSettingsOnly`: OS 設定アプリを起動（OS 仕様上アプリから revoke できないため）
    - 「OS 設定で開く」コールバックは `Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)` を起動し、`ActivityNotFoundException` 時は `Settings.ACTION_APPLICATION_DETAILS_SETTINGS` にフォールバック。
-   - 要求中は対象ボタンを `enabled = false`（共通仕様 F）。
+   - 要求中は Switch を `enabled = false`（共通仕様 F）。
    - Preview で 4 状態を並べる。
 
-5. **`NotificationSettingsScreen` 拡張**
+5. **`NotificationSettingsScreen` 拡張（マスター/サブ階層）**
    - `Column` 内、既存 `NotificationCard` の **前** に `NotificationPermissionCard` を挿入。
-   - `rememberNotificationPermissionState()` の値とランチャを渡す。
-   - 既存トグル仕様には触らない。
+   - 既存 `NotificationCard` のサブトグル（着金 / 転送）を `enabled` プロパティで OS 許可状態に応じて切り替える。`Granted` / `SystemSettingsOnly` のみ操作可、それ以外は `enabled = false`（共通仕様 D）。`ToggleRow` / `NotificationCard` に `enabled: Boolean` パラメータを追加し、OFF 時は `Switch` と Text の `alpha` を下げて視覚的に disabled 表現する。
+   - OS 許可が `非ON → ON` に遷移したタイミング（`Granted` / `SystemSettingsOnly` への状態変化）を `LaunchedEffect(permissionState.value)` + 直前値保持で観測し、`viewModel.setDepositEnabled(true)` / `setTransferEnabled(true)` でサブトグルを一括 ON にする（既存値は上書き）。初回コンポジションで既に ON だった場合は上書きしない。
 
 6. **動作確認** — 「動作確認手順」セクション参照。
 
@@ -170,6 +172,10 @@
 - [ ] OS 設定で許可状態を変更してアプリ復帰すると `ON_RESUME` 経由で UI が更新される
 - [ ] 既存の着金 / 転送トグルがリグレッションなく動作し、再起動後も値が保持される
 - [ ] 共通仕様 A〜F が iOS 版 (`client-bank-15`) と齟齬なく実装されている
+- [ ] OS 通知許可カードが Switch UI で実装され、許可状態を `checked` で受動的に反映する
+- [ ] マスター OFF → ON 遷移時に着金 / 転送サブトグルが両方自動 ON になる（権限ダイアログ経由・OS 設定経由のいずれでも）
+- [ ] マスター OFF 状態（`NotDetermined` / `Denied`）でサブトグルが操作不可（disabled）になる
+- [ ] マスター ON 後にサブトグルを個別に ON/OFF できる
 
 ## 動作確認手順
 
