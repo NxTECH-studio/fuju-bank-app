@@ -18,10 +18,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -58,7 +55,8 @@ import studio.nxtech.fujubank.theme.NotoSansJP
  * - 本文: 上段マスター「プッシュ通知」カード + サブ「着金通知 / 転送通知」カード（client-bank-14 共通仕様 D）
  *
  * マスター ON 状態（OS 許可が `Granted` / `SystemSettingsOnly`）でのみサブトグルが操作可能。
- * マスター OFF → ON 遷移時はサブトグル両方を自動 ON に上書きする。
+ * サブトグルの永続値はユーザーの保存値を尊重し、マスター遷移時の自動上書きはしない
+ * （共通仕様 D 改訂版）。
  */
 @Composable
 fun NotificationSettingsScreen(
@@ -79,16 +77,6 @@ fun NotificationSettingsScreen(
     )
 
     val isMasterOn = permissionState.value.isGranted()
-    val previousMasterOn = remember { mutableStateOf(isMasterOn) }
-    LaunchedEffect(isMasterOn) {
-        if (!previousMasterOn.value && isMasterOn) {
-            // 共通仕様 D: マスター OFF → ON 遷移時にサブトグルを一括 ON に上書き。
-            // 権限ダイアログ経由・OS 設定アプリ復帰経由のいずれでも同じ動作になる。
-            viewModel.setDepositEnabled(true)
-            viewModel.setTransferEnabled(true)
-        }
-        previousMasterOn.value = isMasterOn
-    }
 
     Column(
         modifier = modifier
