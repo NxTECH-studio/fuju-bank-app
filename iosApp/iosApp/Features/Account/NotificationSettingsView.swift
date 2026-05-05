@@ -7,8 +7,8 @@ import SwiftUI
 ///   （client-bank-15 共通仕様 D の階層構造）。
 ///
 /// マスター ON 状態（OS 許可が `.granted` / `.systemSettingsOnly`）でのみサブトグル
-/// が操作可能。マスター OFF → ON 遷移時はサブトグル両方を自動 ON に上書きする
-/// （権限ダイアログ経由・`scenePhase` 復帰経由のいずれでも）。
+/// が操作可能。サブトグルの永続値はユーザーの保存値を尊重し、マスター遷移時の
+/// 自動上書きはしない（共通仕様 D 改訂版）。
 ///
 /// `NavigationStack` 配下で表示されるためヘッダーの戻るは `dismiss` を呼ぶ。`navigationBarHidden`
 /// は SwiftUI 側で標準ナビバーを隠したうえで、Figma 準拠の自前ヘッダーを描く（`TransactionListView`
@@ -61,28 +61,13 @@ struct NotificationSettingsView: View {
         guard !isRequestingPermission else { return }
         isRequestingPermission = true
         Task {
-            let next = await requestNotificationPermission()
-            await applyPermissionTransition(next: next)
+            permissionState = await requestNotificationPermission()
             isRequestingPermission = false
         }
     }
 
     private func refreshPermissionState() async {
-        let next = await currentNotificationPermissionState()
-        await applyPermissionTransition(next: next)
-    }
-
-    /// 共通仕様 D: マスター OFF → ON 遷移時にサブトグル両方を自動 ON へ上書き。
-    /// 権限ダイアログ経由・`scenePhase` 復帰経由のいずれでも同じ動作になる。
-    /// 既に ON だった場合は上書きしない（`previous` が OFF だったときのみ反映）。
-    @MainActor
-    private func applyPermissionTransition(next: NotificationPermissionState) async {
-        let previousOn = permissionState.isGranted
-        permissionState = next
-        if !previousOn && next.isGranted {
-            viewModel.setDepositEnabled(true)
-            viewModel.setTransferEnabled(true)
-        }
+        permissionState = await currentNotificationPermissionState()
     }
 
     private var header: some View {

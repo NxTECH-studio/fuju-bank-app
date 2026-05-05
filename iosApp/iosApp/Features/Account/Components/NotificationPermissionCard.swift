@@ -1,23 +1,19 @@
 import SwiftUI
 
-/// 「プッシュ通知」マスタートグルカード。
+/// 「プッシュ通知」マスターカード。
 ///
 /// 共通仕様 D に従い、OS のプッシュ通知許可をマスター、着金 / 転送をサブとする
-/// 階層構造の最上段。既存 `NotificationCard` のサブトグル行と同じ
-/// 白角丸（`RoundedRectangle(cornerRadius: 20, style: .continuous)`）+ shadow の
-/// 見た目に揃える。
+/// 階層構造の最上段。マスターはステータステキスト + 単一のアクションボタンで
+/// 表現する（Toggle は使わない。Toggle だと「ON タップで OFF にならず設定へ飛ぶ」
+/// など語彙と挙動の不整合が出るため）。
 ///
-/// `Toggle` は受動コンポーネントとして扱い、`Binding` の setter からは
-/// 値を更新せず、現在の OS 状態に応じて `requestPermission` / `openSystemSettings`
-/// を呼び分ける（共通仕様 B / C）:
+/// 状態に応じてボタンラベルと挙動を切り替える（共通仕様 B / C）:
 ///
-/// - `.notDetermined` → `requestPermission`
-/// - `.denied` / `.granted` / `.systemSettingsOnly` → `openSystemSettings`
-///   （iOS では一度許可した状態をアプリから revoke できないため `.granted` でも
-///    OS 設定アプリ導線に振る）
+/// - `.notDetermined` → 「許可する」、タップで OS 権限ダイアログ
+/// - `.denied` / `.granted` / `.systemSettingsOnly` → 「OS 設定を開く」、タップで OS 設定アプリ
 ///
-/// 要求中は `isRequesting` が立ち、Toggle を `.disabled(true)` にして
-/// 二重タップを防ぐ（共通仕様 F）。
+/// 要求中は `isRequesting` でボタンを `.disabled(true)` にして二重タップを防ぐ
+/// （共通仕様 F）。
 struct NotificationPermissionCard: View {
     let state: NotificationPermissionState
     let isRequesting: Bool
@@ -25,7 +21,7 @@ struct NotificationPermissionCard: View {
     let onOpenSystemSettings: () -> Void
 
     var body: some View {
-        HStack(alignment: .center) {
+        VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("プッシュ通知")
                     .font(FujuBankTypography.title)
@@ -34,27 +30,33 @@ struct NotificationPermissionCard: View {
                     .font(FujuBankTypography.caption)
                     .foregroundStyle(FujuBankPalette.textTertiary)
             }
-            Spacer(minLength: 12)
-            Toggle(
-                "",
-                isOn: Binding(
-                    get: { state.isGranted },
-                    set: { _ in handleTap() }
-                )
-            )
-            .labelsHidden()
-            .tint(FujuBankPalette.brandPink)
-            .disabled(isRequesting)
-            .accessibilityLabel("プッシュ通知")
+            actionButton
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(FujuBankPalette.surface)
         )
         .shadow(color: FujuBankPalette.shadowTint.opacity(0.08), radius: 4, x: 0, y: 2)
+    }
+
+    private var actionButton: some View {
+        Button(action: handleTap) {
+            Text(buttonLabel)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(isRequesting ? FujuBankPalette.textTertiary : Color.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(isRequesting ? FujuBankPalette.hairline : FujuBankPalette.brandPink)
+                )
+        }
+        .buttonStyle(.plain)
+        .disabled(isRequesting)
+        .accessibilityLabel(buttonLabel)
     }
 
     private var subDescription: String {
@@ -64,9 +66,18 @@ struct NotificationPermissionCard: View {
         case .granted:
             return "許可済み"
         case .denied:
-            return "OS 設定から有効化できます"
+            return "現在 OS で通知が無効になっています"
         case .systemSettingsOnly:
             return "OS 設定から変更できます"
+        }
+    }
+
+    private var buttonLabel: String {
+        switch state {
+        case .notDetermined:
+            return "許可する"
+        case .denied, .granted, .systemSettingsOnly:
+            return "OS 設定を開く"
         }
     }
 
