@@ -76,7 +76,7 @@ class UserRepository(
 }
 
 private fun UserResponse.toDomain(): User = User(
-    id = id,
+    id = id.toString(),
     balanceFuju = balanceFuju,
     createdAt = Instant.parse(createdAt),
 )
