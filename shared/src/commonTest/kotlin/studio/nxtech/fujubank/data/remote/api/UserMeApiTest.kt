@@ -45,8 +45,9 @@ class UserMeApiTest {
                 content = ByteReadChannel(
                     """
                     {
-                      "id": "usr_01HZY8X2B7",
-                      "sub": "01HZY8X2B7K3J4M5N6P7Q8R9ST",
+                      "id": 6,
+                      "name": null,
+                      "public_key": null,
                       "balance_fuju": 0,
                       "created_at": "2026-04-21T12:34:56Z"
                     }
@@ -61,7 +62,7 @@ class UserMeApiTest {
         val result = api.upsertMe()
 
         val success = assertIs<NetworkResult.Success<UserResponse>>(result)
-        assertEquals("usr_01HZY8X2B7", success.value.id)
+        assertEquals(6L, success.value.id)
         assertEquals(0L, success.value.balanceFuju)
     }
 
@@ -74,8 +75,7 @@ class UserMeApiTest {
                 content = ByteReadChannel(
                     """
                     {
-                      "id": "usr_01HZY8X2B7",
-                      "sub": "s",
+                      "id": 6,
                       "balance_fuju": 1234,
                       "created_at": "2026-04-21T12:34:56Z"
                     }

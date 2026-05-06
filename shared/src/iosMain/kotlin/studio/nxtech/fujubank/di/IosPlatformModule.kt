@@ -1,5 +1,6 @@
 package studio.nxtech.fujubank.di
 
+import io.ktor.client.plugins.cookies.CookiesStorage
 import org.koin.dsl.module
 import studio.nxtech.fujubank.BuildKonfig
 import studio.nxtech.fujubank.auth.PersistentCookiesStorageFactory
@@ -15,14 +16,31 @@ import studio.nxtech.fujubank.network.createHttpClient
 val iosPlatformModule = module {
     single { TokenStorageFactory() }
     single { PersistentCookiesStorageFactory() }
+    // bank client と AuthCore client で同じ CookiesStorage を共有して、
+    // login で発行された refresh_token cookie を refresh / logout で使えるようにする。
+    // 別 instance だと内部 mutex / 在メモリ状態が独立するため race の温床になる。
+    single<CookiesStorage> { get<PersistentCookiesStorageFactory>().create() }
     single {
         createHttpClient(
             HttpClientConfig(
                 baseUrl = BuildKonfig.BANK_API_BASE_URL,
                 enableLogging = true,
                 authTokenProvider = { get<TokenStorage>().loadAccess() },
-                cookiesStorage = get<PersistentCookiesStorageFactory>().create(),
+                cookiesStorage = get(),
                 tokenRefresher = getOrNull<AuthTokenRefresher>(),
+            ),
+        )
+    }
+    // AuthCore `/v1/auth/*` 用の Auth プラグイン無しクライアント。
+    single(qualifier = AUTHCORE_CLIENT_QUALIFIER) {
+        createHttpClient(
+            HttpClientConfig(
+                baseUrl = BuildKonfig.AUTHCORE_BASE_URL,
+                enableLogging = true,
+                authTokenProvider = { null },
+                cookiesStorage = get(),
+                tokenRefresher = null,
+                installAuth = false,
             ),
         )
     }

@@ -66,7 +66,7 @@ class ProfileRepository(
         return NetworkResult.Success(
             UserProfile(
                 authCoreId = authCore.id,
-                bankUserId = bank.id,
+                bankUserId = bank.id.toString(),
                 publicId = authCore.publicId,
                 email = authCore.email,
                 iconUrl = authCore.iconUrl,

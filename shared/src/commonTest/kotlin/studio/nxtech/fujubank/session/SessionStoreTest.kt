@@ -87,8 +87,7 @@ class SessionStoreTest {
                 content = ByteReadChannel(
                     """
                     {
-                      "id": "usr_existing",
-                      "sub": "s",
+                      "id": 42,
                       "balance_fuju": 100,
                       "created_at": "2026-04-21T12:34:56Z"
                     }
@@ -109,7 +108,7 @@ class SessionStoreTest {
         store.bootstrap(authRepo, userRepo)
 
         val auth = assertIs<SessionState.Authenticated>(store.current)
-        assertEquals("usr_existing", auth.userId)
+        assertEquals("42", auth.userId)
     }
 
     @Test
@@ -133,8 +132,7 @@ class SessionStoreTest {
                     content = ByteReadChannel(
                         """
                         {
-                          "id": "usr_refreshed",
-                          "sub": "s",
+                          "id": 43,
                           "balance_fuju": 0,
                           "created_at": "2026-04-21T12:34:56Z"
                         }
@@ -156,7 +154,7 @@ class SessionStoreTest {
         store.bootstrap(authRepo, userRepo)
 
         val auth = assertIs<SessionState.Authenticated>(store.current)
-        assertEquals("usr_refreshed", auth.userId)
+        assertEquals("43", auth.userId)
         assertEquals("at_refreshed", storage.access)
     }
 

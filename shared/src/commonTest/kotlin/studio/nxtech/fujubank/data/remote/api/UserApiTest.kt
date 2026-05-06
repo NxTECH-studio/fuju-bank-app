@@ -49,8 +49,7 @@ class UserApiTest {
                 content = ByteReadChannel(
                     """
                     {
-                      "id": "usr_01HZY8X2B7",
-                      "sub": "01HZY8X2B7K3J4M5N6P7Q8R9ST",
+                      "id": 6,
                       "balance_fuju": 0,
                       "created_at": "2026-04-21T12:34:56Z"
                     }
@@ -65,21 +64,20 @@ class UserApiTest {
         val result = api.create(CreateUserRequest(subject = "01HZY8X2B7K3J4M5N6P7Q8R9ST"))
 
         val success = assertIs<NetworkResult.Success<UserResponse>>(result)
-        assertEquals("usr_01HZY8X2B7", success.value.id)
+        assertEquals(6L, success.value.id)
         assertEquals(0L, success.value.balanceFuju)
     }
 
     @Test
     fun get_returns_success_for_200_payload() = runTest {
         val engine = MockEngine { request ->
-            assertEquals("/users/usr_01HZY8X2B7", request.url.encodedPath)
+            assertEquals("/users/6", request.url.encodedPath)
             assertEquals("GET", request.method.value)
             respond(
                 content = ByteReadChannel(
                     """
                     {
-                      "id": "usr_01HZY8X2B7",
-                      "sub": "s",
+                      "id": 6,
                       "balance_fuju": 1000,
                       "created_at": "2026-04-21T12:34:56Z"
                     }
@@ -91,7 +89,7 @@ class UserApiTest {
         }
         val api = UserApi(httpClient(engine))
 
-        val result = api.get("usr_01HZY8X2B7")
+        val result = api.get("6")
 
         val success = assertIs<NetworkResult.Success<UserResponse>>(result)
         assertEquals(1_000L, success.value.balanceFuju)

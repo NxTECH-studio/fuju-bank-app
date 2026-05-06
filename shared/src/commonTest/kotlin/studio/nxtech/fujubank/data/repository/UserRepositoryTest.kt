@@ -49,8 +49,7 @@ class UserRepositoryTest {
                 content = ByteReadChannel(
                     """
                     {
-                      "id": "usr_01HZY8X2B7",
-                      "sub": "01HZY8X2B7K3J4M5N6P7Q8R9ST",
+                      "id": 7,
                       "balance_fuju": 0,
                       "created_at": "2026-04-21T12:34:56Z"
                     }
@@ -65,7 +64,7 @@ class UserRepositoryTest {
         val result = repository.create(subject = "01HZY8X2B7K3J4M5N6P7Q8R9ST")
 
         val success = assertIs<NetworkResult.Success<User>>(result)
-        assertEquals("usr_01HZY8X2B7", success.value.id)
+        assertEquals("7", success.value.id)
         assertEquals(0L, success.value.balanceFuju)
         assertEquals(Instant.parse("2026-04-21T12:34:56Z"), success.value.createdAt)
     }
@@ -77,8 +76,7 @@ class UserRepositoryTest {
                 content = ByteReadChannel(
                     """
                     {
-                      "id": "usr_01HZY8X2B7",
-                      "sub": "s",
+                      "id": 7,
                       "balance_fuju": 1000,
                       "created_at": "2026-04-21T12:34:56Z"
                     }
@@ -90,7 +88,7 @@ class UserRepositoryTest {
         }
         val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)), useDummyData = false)
 
-        val result = repository.get("usr_01HZY8X2B7")
+        val result = repository.get("7")
 
         val success = assertIs<NetworkResult.Success<User>>(result)
         assertEquals(1_000L, success.value.balanceFuju)
@@ -236,8 +234,9 @@ class UserRepositoryTest {
                 content = ByteReadChannel(
                     """
                     {
-                      "id": "usr_provisioned",
-                      "sub": "s",
+                      "id": 11,
+                      "name": null,
+                      "public_key": null,
                       "balance_fuju": 0,
                       "created_at": "2026-04-21T12:34:56Z"
                     }
@@ -252,7 +251,7 @@ class UserRepositoryTest {
         val result = repository.provisionMe()
 
         val success = assertIs<NetworkResult.Success<User>>(result)
-        assertEquals("usr_provisioned", success.value.id)
+        assertEquals("11", success.value.id)
         assertEquals(0L, success.value.balanceFuju)
     }
 
@@ -265,8 +264,7 @@ class UserRepositoryTest {
                 content = ByteReadChannel(
                     """
                     {
-                      "id": "usr_me",
-                      "sub": "s",
+                      "id": 12,
                       "balance_fuju": 5000,
                       "created_at": "2026-04-21T12:34:56Z"
                     }
@@ -281,7 +279,7 @@ class UserRepositoryTest {
         val result = repository.getMe()
 
         val success = assertIs<NetworkResult.Success<User>>(result)
-        assertEquals("usr_me", success.value.id)
+        assertEquals("12", success.value.id)
         assertEquals(5_000L, success.value.balanceFuju)
     }
 }

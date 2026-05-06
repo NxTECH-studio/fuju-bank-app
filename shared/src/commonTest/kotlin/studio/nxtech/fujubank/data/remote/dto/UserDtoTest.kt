@@ -3,6 +3,7 @@ package studio.nxtech.fujubank.data.remote.dto
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class UserDtoTest {
 
@@ -26,11 +27,13 @@ class UserDtoTest {
     }
 
     @Test
-    fun userResponse_deserializes_snake_case_payload() {
+    fun userResponse_deserializes_current_server_payload() {
+        // 本番 `/users/me` の現行レスポンス: id は数値、sub は欠落、name / public_key は null。
         val payload = """
             {
-              "id": "usr_01HZY8X2B7",
-              "sub": "01HZY8X2B7K3J4M5N6P7Q8R9ST",
+              "id": 6,
+              "name": null,
+              "public_key": null,
               "balance_fuju": 1000000,
               "created_at": "2026-04-21T12:34:56Z"
             }
@@ -38,8 +41,8 @@ class UserDtoTest {
 
         val decoded = json.decodeFromString(UserResponse.serializer(), payload)
 
-        assertEquals("usr_01HZY8X2B7", decoded.id)
-        assertEquals("01HZY8X2B7K3J4M5N6P7Q8R9ST", decoded.subject)
+        assertEquals(6L, decoded.id)
+        assertNull(decoded.subject)
         assertEquals(1_000_000L, decoded.balanceFuju)
         assertEquals("2026-04-21T12:34:56Z", decoded.createdAt)
     }
@@ -49,8 +52,7 @@ class UserDtoTest {
         // bigint の範囲を確認（Int では溢れる値）。
         val payload = """
             {
-              "id": "usr_1",
-              "sub": "s",
+              "id": 1,
               "balance_fuju": 9223372036854775807,
               "created_at": "2026-04-21T00:00:00Z"
             }
@@ -62,9 +64,27 @@ class UserDtoTest {
     }
 
     @Test
+    fun userResponse_accepts_legacy_payload_with_sub() {
+        // 旧 fixture（`sub` が文字列で含まれる）も互換的に受け取れることを確認。
+        val payload = """
+            {
+              "id": 42,
+              "sub": "01HZY8X2B7K3J4M5N6P7Q8R9ST",
+              "balance_fuju": 1000000,
+              "created_at": "2026-04-21T12:34:56Z"
+            }
+        """.trimIndent()
+
+        val decoded = json.decodeFromString(UserResponse.serializer(), payload)
+
+        assertEquals(42L, decoded.id)
+        assertEquals("01HZY8X2B7K3J4M5N6P7Q8R9ST", decoded.subject)
+    }
+
+    @Test
     fun userResponse_roundtrips() {
         val original = UserResponse(
-            id = "usr_01HZY8X2B7",
+            id = 7L,
             subject = "01HZY8X2B7K3J4M5N6P7Q8R9ST",
             balanceFuju = 1_000_000L,
             createdAt = "2026-04-21T12:34:56Z",
@@ -78,8 +98,7 @@ class UserDtoTest {
     fun userResponse_ignores_unknown_fields() {
         val payload = """
             {
-              "id": "usr_1",
-              "sub": "s",
+              "id": 1,
               "balance_fuju": 0,
               "created_at": "2026-04-21T00:00:00Z",
               "updated_at": "2026-04-21T00:00:00Z"
@@ -88,6 +107,6 @@ class UserDtoTest {
 
         val decoded = json.decodeFromString(UserResponse.serializer(), payload)
 
-        assertEquals("usr_1", decoded.id)
+        assertEquals(1L, decoded.id)
     }
 }
