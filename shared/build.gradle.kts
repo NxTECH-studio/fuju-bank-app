@@ -134,11 +134,10 @@ buildkonfig {
     }
 
     // Release ビルドでは本番 API を向ける。`-Pbuildkonfig.flavor=release` で切り替え。
-    // AUTHCORE_BASE_URL の release 値は backend B4 確定までの暫定。確定後に追従 PR を 1 本当てる。
     defaultConfigs("release") {
         buildConfigField(STRING, "BANK_API_BASE_URL", "https://api.fujupay.app")
         buildConfigField(STRING, "CABLE_URL", "wss://api.fujupay.app/cable")
-        buildConfigField(STRING, "AUTHCORE_BASE_URL", "https://authcore.fujupay.app")
+        buildConfigField(STRING, "AUTHCORE_BASE_URL", "https://auth.fujupay.app")
         buildConfigField(BOOLEAN, "USE_DUMMY_PROFILE", "false")
     }
 
@@ -161,12 +160,12 @@ buildkonfig {
         create("iosArm64") {
             buildConfigField(STRING, "BANK_API_BASE_URL", "https://api.fujupay.app")
             buildConfigField(STRING, "CABLE_URL", "wss://api.fujupay.app/cable")
-            buildConfigField(STRING, "AUTHCORE_BASE_URL", "https://authcore.fujupay.app")
+            buildConfigField(STRING, "AUTHCORE_BASE_URL", "https://auth.fujupay.app")
         }
         create("iosSimulatorArm64") {
             buildConfigField(STRING, "BANK_API_BASE_URL", "https://api.fujupay.app")
             buildConfigField(STRING, "CABLE_URL", "wss://api.fujupay.app/cable")
-            buildConfigField(STRING, "AUTHCORE_BASE_URL", "https://authcore.fujupay.app")
+            buildConfigField(STRING, "AUTHCORE_BASE_URL", "https://auth.fujupay.app")
         }
     }
 }
