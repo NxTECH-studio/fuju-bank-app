@@ -10,7 +10,9 @@ import studio.nxtech.fujubank.network.AuthTokenRefresher
 
 val authModule = module {
     single<TokenStorage> { get<TokenStorageFactory>().create() }
-    single { AuthApi(get(), defaultAuthCoreBaseUrl()) }
+    // AuthApi は Auth プラグイン無しの専用 HttpClient を使う。同じクライアントだと
+    // refresh が 401 を返したときに refreshTokens ブロックが再帰起動して deadlock する。
+    single { AuthApi(get(qualifier = AUTHCORE_CLIENT_QUALIFIER), defaultAuthCoreBaseUrl()) }
     single { AuthRepository(get(), get()) }
     // Ktor Auth plugin の refreshTokens フック実体。AuthApi.refresh() は cookie 経由で
     // refresh するため引数不要。新 access_token を返すか、refresh 不能なら null。

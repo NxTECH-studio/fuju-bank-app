@@ -20,11 +20,17 @@ import io.ktor.client.HttpClientConfig as KtorClientConfig
 /**
  * shared 側 HttpClient を組み立てるための設定。
  *
- * - [authTokenProvider]: 現在の access_token を返す（無ければ null）。
+ * - [authTokenProvider]: 現在の access_token を返す（無ければ null）。`installAuth = false` の
+ *   ときは参照されない。
  * - [cookiesStorage]: AuthCore の HttpOnly refresh_token cookie を永続化するための storage。
  *   Android は EncryptedSharedPreferences、iOS は Keychain で実装する。
  * - [tokenRefresher]: 401 時の refresh フック。cookie 経由で `/v1/auth/refresh` を叩いて
  *   新しい access_token を返す。null なら自動 refresh しない。
+ * - [installAuth]: Ktor `Auth { bearer { ... } }` プラグインを取り付けるか。
+ *   AuthCore の `/v1/auth` 配下（login / refresh / logout / mfaVerify）は cookie 認証なので
+ *   Auth プラグインを噛ませると、refresh が 401 を返した瞬間に refreshTokens ブロックが
+ *   再帰起動して `refreshTokensDeferred` の自己 await で deadlock する。それらの API 用には
+ *   `installAuth = false` の専用クライアントを用意して回避する。
  */
 data class HttpClientConfig(
     val baseUrl: String,
@@ -32,6 +38,7 @@ data class HttpClientConfig(
     val authTokenProvider: suspend () -> String?,
     val cookiesStorage: CookiesStorage,
     val tokenRefresher: AuthTokenRefresher? = null,
+    val installAuth: Boolean = true,
 )
 
 expect fun createHttpClient(config: HttpClientConfig): HttpClient
@@ -64,20 +71,22 @@ internal fun KtorClientConfig<*>.applyCommon(config: HttpClientConfig) {
     install(HttpCookies) {
         storage = config.cookiesStorage
     }
-    install(Auth) {
-        bearer {
-            loadTokens {
-                config.authTokenProvider()?.let { access ->
-                    // refresh_token は HttpCookies plugin が管理するため空文字を渡す。
-                    // Ktor の BearerTokens API は refresh_token フィールド必須だが、
-                    // refreshTokens ブロックでも cookie 経由で refresh するので未使用。
-                    BearerTokens(access, "")
+    if (config.installAuth) {
+        install(Auth) {
+            bearer {
+                loadTokens {
+                    config.authTokenProvider()?.let { access ->
+                        // refresh_token は HttpCookies plugin が管理するため空文字を渡す。
+                        // Ktor の BearerTokens API は refresh_token フィールド必須だが、
+                        // refreshTokens ブロックでも cookie 経由で refresh するので未使用。
+                        BearerTokens(access, "")
+                    }
                 }
-            }
-            config.tokenRefresher?.let { refresher ->
-                refreshTokens {
-                    val newAccess = refresher.refresh() ?: return@refreshTokens null
-                    BearerTokens(newAccess, "")
+                config.tokenRefresher?.let { refresher ->
+                    refreshTokens {
+                        val newAccess = refresher.refresh() ?: return@refreshTokens null
+                        BearerTokens(newAccess, "")
+                    }
                 }
             }
         }
