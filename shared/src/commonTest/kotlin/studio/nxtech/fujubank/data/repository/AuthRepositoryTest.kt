@@ -179,6 +179,32 @@ class AuthRepositoryTest {
 
     @Test
     fun login_invalid_credentials_returns_failure() = runTest {
+        // AuthCore は本番でフラット形式 `{"error":"CODE","message":"..."}` を返すため
+        // bank API のネスト形式とは別経路。両形式を受け入れることを確認する。
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """{"error":"INVALID_CREDENTIALS","message":"invalid credentials"}""",
+                ),
+                status = HttpStatusCode.Unauthorized,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val storage = FakeTokenStorage()
+        val repo = repository(engine, storage)
+
+        val result = repo.login(identifier = "u", password = "p")
+
+        val failure = assertIs<NetworkResult.Failure>(result)
+        assertEquals(ApiErrorCode.INVALID_CREDENTIALS, failure.error.code)
+        assertEquals("invalid credentials", failure.error.message)
+        assertNull(storage.access)
+    }
+
+    @Test
+    fun login_bank_style_nested_error_envelope_also_works() = runTest {
+        // bank API スタイルのネスト形式 `{"error":{"code":"...","message":"..."}}` も
+        // 引き続き受け入れる。
         val engine = MockEngine {
             respond(
                 content = ByteReadChannel(
@@ -195,6 +221,7 @@ class AuthRepositoryTest {
 
         val failure = assertIs<NetworkResult.Failure>(result)
         assertEquals(ApiErrorCode.INVALID_CREDENTIALS, failure.error.code)
+        assertEquals("bad creds", failure.error.message)
         assertNull(storage.access)
     }
 
