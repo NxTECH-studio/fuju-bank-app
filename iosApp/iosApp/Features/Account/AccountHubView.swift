@@ -22,19 +22,35 @@ struct AccountHubView: View {
     @State private var editingField: AccountInfoField?
 
     var body: some View {
-        ScrollView {
+        // MVP は受け取り専用のため AuthCore 側に email/displayName 更新 API が揃うまで
+        // 編集 UI を無効化する。鉛筆アイコン非表示 + onEdit* no-op ガードで「タップしても
+        // 何も起きない」状態にし、AccountInfoEditSheetView 側のコードは復活前提で残す。
+        let editingEnabled = viewModel.editingEnabled
+
+        // プロフィール取得失敗・取得前は空文字で来るので、UI 側で「-」プレースホルダに置換する。
+        let displayNameOrPlaceholder = viewModel.profile.displayName.isEmpty
+            ? Self.profilePlaceholder : viewModel.profile.displayName
+        let emailOrPlaceholder = viewModel.profile.email.isEmpty
+            ? Self.profilePlaceholder : viewModel.profile.email
+        let accountIdOrPlaceholder = viewModel.profile.accountId.isEmpty
+            ? Self.profilePlaceholder : viewModel.profile.accountId
+
+        return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 ProfileCardView(
-                    displayName: viewModel.profile.displayName,
-                    accountId: viewModel.profile.accountId,
+                    displayName: displayNameOrPlaceholder,
+                    accountId: accountIdOrPlaceholder,
+                    editable: editingEnabled,
                 )
 
                 sectionLabel("アカウント情報")
                 AccountInfoSectionView(
-                    displayName: viewModel.profile.displayName,
-                    email: viewModel.profile.email,
-                    onEditDisplayName: { editingField = .displayName },
-                    onEditEmail: { editingField = .email },
+                    displayName: displayNameOrPlaceholder,
+                    email: emailOrPlaceholder,
+                    // editable=false の間は呼ばれないが、将来復活させた際の経路として残す。
+                    onEditDisplayName: { if editingEnabled { editingField = .displayName } },
+                    onEditEmail: { if editingEnabled { editingField = .email } },
+                    editable: editingEnabled,
                 )
 
                 sectionLabel("設定")
@@ -84,6 +100,9 @@ struct AccountHubView: View {
             }
         }
     }
+
+    /// プロフィール未取得 / 取得失敗時のフィールド表示プレースホルダ（Android `PROFILE_PLACEHOLDER` と対称）。
+    private static let profilePlaceholder = "-"
 
     /// Figma `697:8394` の「アカウント情報」「設定」見出し（12pt Bold）。
     private func sectionLabel(_ text: String) -> some View {

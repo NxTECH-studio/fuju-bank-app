@@ -10,6 +10,9 @@ struct AccountInfoSectionView: View {
     let email: String
     let onEditDisplayName: () -> Void
     let onEditEmail: () -> Void
+    /// MVP では AuthCore に email/displayName 更新 API が無いため編集 UI を無効化する
+    /// （`editable=false` で鉛筆アイコンごと非表示）。Android `AccountInfoSection` と対称。
+    var editable: Bool = true
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,6 +21,7 @@ struct AccountInfoSectionView: View {
                 value: displayName,
                 onEditTap: onEditDisplayName,
                 editAccessibilityLabel: "表示名を編集",
+                editable: editable,
             )
             Divider()
                 .frame(height: 1)
@@ -28,6 +32,7 @@ struct AccountInfoSectionView: View {
                 value: email,
                 onEditTap: onEditEmail,
                 editAccessibilityLabel: "メールアドレスを編集",
+                editable: editable,
             )
         }
         .frame(maxWidth: .infinity)
@@ -43,6 +48,7 @@ struct AccountInfoSectionView: View {
         value: String,
         onEditTap: @escaping () -> Void,
         editAccessibilityLabel: String,
+        editable: Bool,
     ) -> some View {
         HStack(alignment: .center, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
@@ -55,17 +61,21 @@ struct AccountInfoSectionView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button(action: onEditTap) {
-                Image("EditPencil")
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 18, height: 18)
-                    .foregroundStyle(FujuBankPalette.textTertiary)
-                    .frame(width: 36, height: 36)
+            // MVP では編集 UI を無効化。鉛筆ボタンは将来の復活前提でコードを残し、
+            // `editable=false` のときだけ非表示にする。
+            if editable {
+                Button(action: onEditTap) {
+                    Image("EditPencil")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
+                        .foregroundStyle(FujuBankPalette.textTertiary)
+                        .frame(width: 36, height: 36)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(editAccessibilityLabel)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(editAccessibilityLabel)
         }
         .padding(.leading, 16)
         .padding(.trailing, 8)
