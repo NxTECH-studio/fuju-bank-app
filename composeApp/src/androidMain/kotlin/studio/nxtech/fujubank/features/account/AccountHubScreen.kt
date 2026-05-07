@@ -52,8 +52,19 @@ fun AccountHubScreen(
     modifier: Modifier = Modifier,
 ) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
-    // 編集中フィールド。プロセス再生成時はシートを閉じた状態で復元する。
+    // 編集中フィールド。MVP では編集 UI 無効化のため常に null だが、将来復活時に
+    // 再利用できるよう state とシート分岐自体は保持する。
     var editingField by rememberSaveable { mutableStateOf<AccountInfoField?>(null) }
+
+    // MVP は受け取り専用のため AuthCore 側に email/displayName 更新 API が揃うまで
+    // 編集 UI を無効化する。鉛筆アイコン非表示 + onClick no-op で「タップしても何も
+    // 起きない」状態にし、AccountInfoEditSheet 側のコードは復活前提で残す。
+    val editingEnabled = false
+
+    // プロフィール取得失敗・取得前は空文字で来るので、UI 側で「-」プレースホルダに置換する。
+    val displayNameOrPlaceholder = profile.displayName.ifBlank { PROFILE_PLACEHOLDER }
+    val emailOrPlaceholder = profile.email.ifBlank { PROFILE_PLACEHOLDER }
+    val accountIdOrPlaceholder = profile.accountId.ifBlank { PROFILE_PLACEHOLDER }
 
     Column(
         modifier = modifier
@@ -64,16 +75,19 @@ fun AccountHubScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         ProfileCard(
-            displayName = profile.displayName,
-            accountId = profile.accountId,
+            displayName = displayNameOrPlaceholder,
+            accountId = accountIdOrPlaceholder,
+            editable = editingEnabled,
         )
 
         SectionLabel(text = "アカウント情報")
         AccountInfoSection(
-            displayName = profile.displayName,
-            email = profile.email,
-            onEditDisplayName = { editingField = AccountInfoField.DisplayName },
-            onEditEmail = { editingField = AccountInfoField.Email },
+            displayName = displayNameOrPlaceholder,
+            email = emailOrPlaceholder,
+            // editable=false の間は呼ばれないが、将来復活させた際の経路として残す。
+            onEditDisplayName = { if (editingEnabled) editingField = AccountInfoField.DisplayName },
+            onEditEmail = { if (editingEnabled) editingField = AccountInfoField.Email },
+            editable = editingEnabled,
         )
 
         SectionLabel(text = "設定")
@@ -86,6 +100,8 @@ fun AccountHubScreen(
         )
     }
 
+    // editingEnabled=false の間 editingField は常に null（鉛筆アイコン非表示のため
+    // セットされない）。AccountInfoEditSheet 経路自体は将来の復活を見越して残す。
     when (editingField) {
         AccountInfoField.DisplayName -> AccountInfoEditSheet(
             title = "表示名を編集",
@@ -114,6 +130,9 @@ fun AccountHubScreen(
         null -> Unit
     }
 }
+
+/** プロフィール未取得 / 取得失敗時のフィールド表示プレースホルダ。 */
+private const val PROFILE_PLACEHOLDER = "-"
 
 /** Figma `697:8394` の「アカウント情報」「設定」見出し（12sp Bold）。 */
 @Composable

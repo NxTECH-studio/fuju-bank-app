@@ -41,6 +41,7 @@ fun AccountInfoSection(
     onEditDisplayName: () -> Unit,
     onEditEmail: () -> Unit,
     modifier: Modifier = Modifier,
+    editable: Boolean = true,
 ) {
     Column(
         modifier = modifier
@@ -58,6 +59,7 @@ fun AccountInfoSection(
             value = displayName,
             onEditClick = onEditDisplayName,
             editContentDescription = "表示名を編集",
+            editable = editable,
         )
         HorizontalDivider(
             modifier = Modifier.padding(horizontal = 16.dp),
@@ -69,6 +71,7 @@ fun AccountInfoSection(
             value = email,
             onEditClick = onEditEmail,
             editContentDescription = "メールアドレスを編集",
+            editable = editable,
         )
     }
 }
@@ -79,6 +82,7 @@ private fun InfoRow(
     value: String,
     onEditClick: () -> Unit,
     editContentDescription: String,
+    editable: Boolean,
 ) {
     Row(
         modifier = Modifier
@@ -111,16 +115,20 @@ private fun InfoRow(
                 ),
             )
         }
-        IconButton(
-            onClick = onEditClick,
-            modifier = Modifier.size(36.dp),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_edit_pencil),
-                contentDescription = editContentDescription,
-                modifier = Modifier.size(18.dp),
-                tint = FujuBankColors.TextTertiary,
-            )
+        // MVP では AuthCore に email/displayName 更新 API が無いため編集 UI を無効化する
+        // （`editable=false` で鉛筆アイコンごと非表示）。コードは将来 API 提供時の復活前提で残す。
+        if (editable) {
+            IconButton(
+                onClick = onEditClick,
+                modifier = Modifier.size(36.dp),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_edit_pencil),
+                    contentDescription = editContentDescription,
+                    modifier = Modifier.size(18.dp),
+                    tint = FujuBankColors.TextTertiary,
+                )
+            }
         }
     }
 }
