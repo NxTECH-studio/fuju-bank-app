@@ -3,10 +3,12 @@ package studio.nxtech.fujubank.di
 import com.russhwolf.settings.Settings
 import io.ktor.client.HttpClient
 import kotlin.test.Test
+import kotlinx.coroutines.CoroutineScope
 import org.koin.core.annotation.KoinExperimentalAPI
 import org.koin.test.verify.verify
 import studio.nxtech.fujubank.auth.PersistentCookiesStorageFactory
 import studio.nxtech.fujubank.auth.TokenStorageFactory
+import studio.nxtech.fujubank.data.repository.ProfileRepository
 
 class SharedModuleVerifyTest {
 
@@ -18,11 +20,15 @@ class SharedModuleVerifyTest {
         // プラットフォーム側で登録されるため、ここでは external dependency として扱う。
         // Settings は signupModule 側で 1 度だけ登録され accountModule から共有参照されるため、
         // 単一モジュールごとに verify する都合上 external 扱いにする。
+        // ProfileRepository (userModule 提供) / CoroutineScope (realtimeModule 提供) も
+        // accountModule の RemoteAccountProfileProvider から横断的に参照するため external 扱い。
         val extraTypes = listOf(
             HttpClient::class,
             TokenStorageFactory::class,
             PersistentCookiesStorageFactory::class,
             Settings::class,
+            ProfileRepository::class,
+            CoroutineScope::class,
         )
         modules.forEach { it.verify(extraTypes = extraTypes) }
     }
