@@ -4,6 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.repository.ProfileRepository
@@ -32,15 +33,21 @@ class RemoteAccountProfileProvider(
     override val profile: StateFlow<AccountProfile> = _profile.asStateFlow()
 
     init {
+        // NOTE: `getMyProfile()` は内部で `runCatchingNetwork` を通り例外を `NetworkResult` に
+        //       畳み込むため、ここで `runCatching` を再度被せると `CancellationException` まで
+        //       握り潰し構造化並行性を壊す（kotlin.runCatching の既知 footgun）。
+        //       sealed の網羅 when で扱い、Failure / NetworkFailure は空のまま据え置く。
+        //       ログ収集 SDK 導入は別タスク。
+        // NOTE: `init { scope.launch }` でコンストラクタから `this` がワーカースレッドに
+        //       見える形になるが、現状参照する `_profile` は val + 初期化済みなので安全。
+        //       副作用フィールドを後から追加する場合はここから参照しないこと
+        //       （必要なら `start()` 明示パターンに切り替える）。
         scope.launch {
-            runCatching { profileRepository.getMyProfile() }
-                .onSuccess { result ->
-                    if (result is NetworkResult.Success) {
-                        _profile.value = result.value.toAccountProfile()
-                    }
-                    // Failure / NetworkFailure は空のまま据え置き。
-                    // ログ収集 SDK 導入は別タスク。
-                }
+            when (val result = profileRepository.getMyProfile()) {
+                is NetworkResult.Success -> _profile.value = result.value.toAccountProfile()
+                is NetworkResult.Failure,
+                is NetworkResult.NetworkFailure -> Unit
+            }
         }
     }
 
@@ -50,10 +57,7 @@ class RemoteAccountProfileProvider(
      * 呼ばれる経路は現在無い。AuthCore に更新 API が来たら本実装を書き換える。
      */
     override fun updateProfile(displayName: String, email: String) {
-        _profile.value = _profile.value.copy(
-            displayName = displayName,
-            email = email,
-        )
+        _profile.update { it.copy(displayName = displayName, email = email) }
     }
 }
 
