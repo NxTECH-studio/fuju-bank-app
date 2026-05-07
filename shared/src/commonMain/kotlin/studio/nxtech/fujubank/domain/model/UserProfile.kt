@@ -17,4 +17,7 @@ data class UserProfile(
     val iconUrl: String?,
     val mfaEnabled: Boolean,
     val balanceFuju: Long,
+    // bank `/users/me` の表示名（将来追加予定）。現状サーバが返さないため nullable。
+    // AccountHub 表示時のフォールバック順は RemoteAccountProfileProvider 側で実装する。
+    val name: String? = null,
 )

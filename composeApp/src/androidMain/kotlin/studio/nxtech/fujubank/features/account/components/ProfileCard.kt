@@ -41,6 +41,7 @@ fun ProfileCard(
     displayName: String,
     accountId: String,
     modifier: Modifier = Modifier,
+    editable: Boolean = true,
 ) {
     Column(
         modifier = modifier
@@ -84,11 +85,14 @@ fun ProfileCard(
                     color = FujuBankColors.TextPrimary,
                 ),
             )
-            Image(
-                painter = painterResource(R.drawable.ic_edit_pencil),
-                contentDescription = "表示名を編集",
-                modifier = Modifier.size(18.dp),
-            )
+            // MVP では編集 UI を無効化。鉛筆アイコンは将来の復活前提でコードを残す。
+            if (editable) {
+                Image(
+                    painter = painterResource(R.drawable.ic_edit_pencil),
+                    contentDescription = "表示名を編集",
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
         Text(
             text = "ID: $accountId",

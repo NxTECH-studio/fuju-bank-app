@@ -18,6 +18,10 @@ data class UserResponse(
     // 現行 (2026-05) の `/users/me` は返さないため nullable にする。
     @SerialName("sub")
     val subject: String? = null,
+    // bank サーバ側に表示名カラムが入る前提のフォワード互換。現状は未提供のため
+    // nullable + default null で受け、AccountHub 側ではフォールバックで埋める。
+    @SerialName("name")
+    val name: String? = null,
     // bigint: クライアント側は小数計算に関与しないため Long で受ける。
     @SerialName("balance_fuju")
     val balanceFuju: Long,

@@ -10,6 +10,9 @@ import SwiftUI
 struct ProfileCardView: View {
     let displayName: String
     let accountId: String
+    /// MVP では編集 UI を無効化。鉛筆アイコンは将来の復活前提でコードを残し、
+    /// `editable=false` のときだけ非表示にする。Android `ProfileCard` と対称。
+    var editable: Bool = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -29,13 +32,15 @@ struct ProfileCardView: View {
                 Text(displayName)
                     .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(FujuBankPalette.textPrimary)
-                Image("EditPencil")
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 18, height: 18)
-                    .foregroundStyle(FujuBankPalette.textPrimary)
-                    .accessibilityLabel("表示名を編集")
+                if editable {
+                    Image("EditPencil")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
+                        .foregroundStyle(FujuBankPalette.textPrimary)
+                        .accessibilityLabel("表示名を編集")
+                }
             }
 
             Text("ID: \(accountId)")

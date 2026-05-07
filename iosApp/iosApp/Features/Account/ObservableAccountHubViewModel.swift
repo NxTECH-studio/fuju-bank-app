@@ -14,6 +14,12 @@ import Shared
 final class ObservableAccountHubViewModel: ObservableObject {
     @Published private(set) var profile: AccountProfile
 
+    /// MVP は受け取り専用で AuthCore 側に email/displayName 更新 API が揃っていないため、
+    /// 編集 UI は一旦無効化する。Android `AccountHubScreen` の `editingEnabled = false` と
+    /// 対称。鉛筆アイコン非表示 + sheet 起動経路の no-op ガードに用いる。
+    /// `AccountInfoEditSheetView` 自体は将来の復活前提でコードを残す。
+    let editingEnabled: Bool = false
+
     private let provider: AccountProfileProvider
     private var profileToken: FlowToken?
 
