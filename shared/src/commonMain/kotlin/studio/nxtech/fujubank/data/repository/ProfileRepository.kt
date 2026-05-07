@@ -72,6 +72,7 @@ class ProfileRepository(
                 iconUrl = authCore.iconUrl,
                 mfaEnabled = authCore.mfaEnabled,
                 balanceFuju = bank.balanceFuju,
+                name = bank.name,
             ),
         )
     }
