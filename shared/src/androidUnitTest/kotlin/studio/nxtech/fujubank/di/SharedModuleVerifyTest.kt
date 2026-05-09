@@ -8,7 +8,9 @@ import org.koin.core.annotation.KoinExperimentalAPI
 import org.koin.test.verify.verify
 import studio.nxtech.fujubank.account.AccountProfileProvider
 import studio.nxtech.fujubank.auth.PersistentCookiesStorageFactory
+import studio.nxtech.fujubank.auth.TokenStorage
 import studio.nxtech.fujubank.auth.TokenStorageFactory
+import studio.nxtech.fujubank.data.repository.AuthRepository
 import studio.nxtech.fujubank.data.repository.ProfileRepository
 
 class SharedModuleVerifyTest {
@@ -25,6 +27,8 @@ class SharedModuleVerifyTest {
         // accountModule の RemoteAccountProfileProvider から横断的に参照するため external 扱い。
         // AccountProfileProvider は accountModule 提供で sessionModule の
         // SessionResetCoordinator が横断参照するため external 扱い。
+        // AuthRepository / TokenStorage は authModule 提供で sessionModule の
+        // TokenExpiryWatcher が横断参照するため external 扱い。
         val extraTypes = listOf(
             HttpClient::class,
             TokenStorageFactory::class,
@@ -33,6 +37,8 @@ class SharedModuleVerifyTest {
             ProfileRepository::class,
             CoroutineScope::class,
             AccountProfileProvider::class,
+            AuthRepository::class,
+            TokenStorage::class,
         )
         modules.forEach { it.verify(extraTypes = extraTypes) }
     }

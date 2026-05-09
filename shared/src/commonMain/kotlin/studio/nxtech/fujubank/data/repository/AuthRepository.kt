@@ -1,5 +1,7 @@
 package studio.nxtech.fujubank.data.repository
 
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import studio.nxtech.fujubank.auth.TokenStorage
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.remote.api.AuthApi
@@ -23,6 +25,15 @@ class AuthRepository(
     private val tokenStorage: TokenStorage,
     private val nowMillis: () -> Long = { 0L },
 ) {
+    /**
+     * 並行する refresh 呼び出しを直列化するための Mutex。
+     *
+     * Ktor `Auth` plugin の 401-driven refresh と [studio.nxtech.fujubank.session.TokenExpiryWatcher]
+     * の proactive refresh が同じ refresh_token cookie を二重消費すると、AuthCore 側で
+     * `TOKEN_REVOKED` が返って refresh_family ごと失効する。`withLock` で 1 本に絞り、
+     * 後続呼び出しは先行呼び出しの完了後に最新の access_token を読み直すだけで済むようにする。
+     */
+    private val refreshMutex = Mutex()
     suspend fun login(
         identifier: String,
         password: String,
@@ -70,20 +81,19 @@ class AuthRepository(
             }
         }
 
-    suspend fun refresh(): NetworkResult<Unit> =
-        authApi.refresh().let { result ->
-            when (result) {
-                is NetworkResult.Success -> {
-                    tokenStorage.saveAccess(
-                        token = result.value.accessToken,
-                        expiresAt = expiresAtFrom(result.value.expiresIn),
-                    )
-                    NetworkResult.Success(Unit)
-                }
-                is NetworkResult.Failure -> result
-                is NetworkResult.NetworkFailure -> result
+    suspend fun refresh(): NetworkResult<Unit> = refreshMutex.withLock {
+        when (val result = authApi.refresh()) {
+            is NetworkResult.Success -> {
+                tokenStorage.saveAccess(
+                    token = result.value.accessToken,
+                    expiresAt = expiresAtFrom(result.value.expiresIn),
+                )
+                NetworkResult.Success(Unit)
             }
+            is NetworkResult.Failure -> result
+            is NetworkResult.NetworkFailure -> result
         }
+    }
 
     suspend fun logout(): NetworkResult<Unit> {
         val result = authApi.logout()
