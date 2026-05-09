@@ -132,15 +132,19 @@ class UserApiTest {
                 content = ByteReadChannel(
                     """
                     {
-                      "transactions": [
+                      "data": [
                         {
-                          "id": "txn_1",
+                          "entry_id": 100,
+                          "transaction_id": "txn_1",
                           "transaction_kind": "mint",
+                          "direction": "credit",
                           "amount": 500,
-                          "from_user_id": null,
-                          "to_user_id": "usr_01HZY8X2B7",
                           "artifact_id": "art_1",
-                          "occurred_at": "2026-04-21T00:00:00Z"
+                          "counterparty_user_id": null,
+                          "memo": null,
+                          "metadata": null,
+                          "occurred_at": "2026-04-21T00:00:00Z",
+                          "created_at": "2026-04-21T00:00:01Z"
                         }
                       ]
                     }
@@ -155,8 +159,8 @@ class UserApiTest {
         val result = api.transactions("usr_01HZY8X2B7")
 
         val success = assertIs<NetworkResult.Success<TransactionListResponse>>(result)
-        assertEquals(1, success.value.transactions.size)
-        assertEquals(TransactionKind.MINT, success.value.transactions[0].kind)
+        assertEquals(1, success.value.data.size)
+        assertEquals(TransactionKind.MINT, success.value.data[0].kind)
     }
 
     @Test

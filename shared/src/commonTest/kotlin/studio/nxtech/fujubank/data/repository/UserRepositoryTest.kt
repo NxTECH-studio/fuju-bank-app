@@ -102,15 +102,19 @@ class UserRepositoryTest {
                 content = ByteReadChannel(
                     """
                     {
-                      "transactions": [
+                      "data": [
                         {
-                          "id": "txn_mint",
+                          "entry_id": 200,
+                          "transaction_id": "txn_mint",
                           "transaction_kind": "mint",
+                          "direction": "credit",
                           "amount": 500,
-                          "from_user_id": null,
-                          "to_user_id": "usr_me",
                           "artifact_id": "art_1",
-                          "occurred_at": "2026-04-21T00:00:00Z"
+                          "counterparty_user_id": null,
+                          "memo": null,
+                          "metadata": null,
+                          "occurred_at": "2026-04-21T00:00:00Z",
+                          "created_at": "2026-04-21T00:00:01Z"
                         }
                       ]
                     }
@@ -142,15 +146,19 @@ class UserRepositoryTest {
                 content = ByteReadChannel(
                     """
                     {
-                      "transactions": [
+                      "data": [
                         {
-                          "id": "txn_out",
+                          "entry_id": 201,
+                          "transaction_id": "txn_out",
                           "transaction_kind": "transfer",
+                          "direction": "debit",
                           "amount": 200,
-                          "from_user_id": "usr_me",
-                          "to_user_id": "usr_other",
                           "artifact_id": null,
-                          "occurred_at": "2026-04-21T01:00:00Z"
+                          "counterparty_user_id": "usr_other",
+                          "memo": null,
+                          "metadata": null,
+                          "occurred_at": "2026-04-21T01:00:00Z",
+                          "created_at": "2026-04-21T01:00:01Z"
                         }
                       ]
                     }
@@ -179,15 +187,19 @@ class UserRepositoryTest {
                 content = ByteReadChannel(
                     """
                     {
-                      "transactions": [
+                      "data": [
                         {
-                          "id": "txn_in",
+                          "entry_id": 202,
+                          "transaction_id": "txn_in",
                           "transaction_kind": "transfer",
+                          "direction": "credit",
                           "amount": 300,
-                          "from_user_id": "usr_other",
-                          "to_user_id": "usr_me",
                           "artifact_id": null,
-                          "occurred_at": "2026-04-21T02:00:00Z"
+                          "counterparty_user_id": "usr_other",
+                          "memo": null,
+                          "metadata": null,
+                          "occurred_at": "2026-04-21T02:00:00Z",
+                          "created_at": "2026-04-21T02:00:01Z"
                         }
                       ]
                     }
@@ -212,7 +224,7 @@ class UserRepositoryTest {
     fun transactions_empty_list_maps_to_empty_domain_list() = runTest {
         val engine = MockEngine {
             respond(
-                content = ByteReadChannel("""{"transactions":[]}"""),
+                content = ByteReadChannel("""{"data":[]}"""),
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
