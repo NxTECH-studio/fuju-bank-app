@@ -36,6 +36,9 @@ enum RecentTransactionsState {
 /// TODO(A6): realtimeRepository.events を collect して残高ライブ更新する slot
 @MainActor
 final class HomeViewModel: ObservableObject {
+    /// ホームの「最近の取引」セクションに表示する件数。Android 側 `HomeViewModel.RECENT_LIMIT` と揃える。
+    private static let recentLimit: Int32 = 3
+
     @Published private(set) var state: HomeUiState = .loading
 
     private let profileRepository: ProfileRepository
@@ -91,6 +94,12 @@ final class HomeViewModel: ObservableObject {
         inFlightProfile?.cancel(cause: nil)
         inFlightRecent?.cancel(cause: nil)
         pendingRecent = .loading
+        // refresh 中も Recent セクションは loading 表示にして、
+        // Android 側 (HomeViewModel.kt:87-94) と挙動を揃える。
+        // profile は前回値を保持しつつ refreshing 相当の見せ方にする。
+        if case let .loaded(profile, revealed, _) = state {
+            state = .loaded(profile: profile, revealed: revealed, recentTransactions: .loading)
+        }
         kickProfile()
         kickRecent()
     }
@@ -128,7 +137,7 @@ final class HomeViewModel: ObservableObject {
         inFlightRecent = TransactionsFlowIosKt.fetchRecentTransactions(
             userRepository: userRepository,
             sessionStore: sessionStore,
-            limit: 3,
+            limit: Self.recentLimit,
         ) { [weak self] outcome in
             Task { @MainActor in
                 guard let self else { return }
@@ -145,6 +154,9 @@ final class HomeViewModel: ObservableObject {
                     // ホーム本体を落とさず、Recent セクションだけエラー表示にする。
                     nextRecent = .error(message: "最近の取引を取得できませんでした")
                 default:
+                    // TransactionsLoadOutcome は shared sealed class。Swift には網羅性が
+                    // 効かないため将来 case 追加時の保険。debug ビルドで気づけるよう assertionFailure。
+                    assertionFailure("Unknown TransactionsLoadOutcome subtype: \(outcome)")
                     nextRecent = .error(message: "最近の取引を取得できませんでした")
                 }
                 self.pendingRecent = nextRecent

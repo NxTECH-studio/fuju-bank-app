@@ -4,12 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.repository.ProfileRepository
 import studio.nxtech.fujubank.data.repository.UserRepository
@@ -96,9 +96,9 @@ class HomeViewModel(
         }
         loadJob = viewModelScope.launch {
             // 片方が失敗してももう片方を待ってから state を確定させたいので、
-            // coroutineScope で 2 本を並列 await する（recent 側は内部で例外を握るため
-            // ここで scope 全体が落ちることはない）。
-            val (profileResult, recentResult) = coroutineScope {
+            // supervisorScope で 2 本を並列 await する。Repository が例外を NetworkResult に
+            // 包む前提だが、片側で握り漏れた例外があっても兄弟がキャンセルされないよう保険として supervisor を使う。
+            val (profileResult, recentResult) = supervisorScope {
                 val p = async { profileRepository.getMyProfile() }
                 val t = async { fetchRecentTransactions() }
                 p.await() to t.await()

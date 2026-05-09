@@ -238,6 +238,7 @@
 1. **視線秒数（gazedSeconds）の API 拡張** — `TransactionDto` に滞留秒数 / 視線強度を載せ、サブタイトル「○秒みつめられた」と取引詳細の感情データ (`18 秒` / `0.94`) を実値に差し替える。
 2. **名前解決 API** — `userId.takeLast(6)` の短縮 ID 表示を、相手ユーザー名 / アーティファクト名表示に置き換える。
 3. **`UserRepository.dummyTransactions()` の整理** — debug ビルドで返している 25 件ハードコードを `BuildKonfig.USE_DUMMY_PROFILE` の用途縮小と合わせて整理する。
+4. **Android からも `shared.fetchRecentTransactions` を再利用する形に統合** — 現状 Android `HomeViewModel.fetchRecentTransactions()` と `shared/iosMain/.../TransactionsFlowIos.fetchRecentTransactions` で session→userId 解決 / sortedByDescending().take() / Failure メッセージがほぼ二重実装になっている。`commonMain` に `suspend fun fetchRecentTransactions(limit): TransactionsLoadOutcome` を抽出し、Android VM / iOS facade の両方からそれを呼ぶ形に DRY 化する。Recent タイトル組み立てロジック (`Transaction.toRecentItem` / `TransactionRowVariant.from`) の共通化も同時に検討。
 
 ## 未決事項
 
