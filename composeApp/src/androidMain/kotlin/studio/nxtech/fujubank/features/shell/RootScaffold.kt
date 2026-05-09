@@ -42,6 +42,7 @@ import studio.nxtech.fujubank.account.AccountProfileProvider
 import studio.nxtech.fujubank.account.NotificationSettingsPreferences
 import studio.nxtech.fujubank.account.PrivacyContent
 import studio.nxtech.fujubank.account.PrivacyPreferences
+import studio.nxtech.fujubank.data.repository.AuthRepository
 import studio.nxtech.fujubank.data.repository.ProfileRepository
 import studio.nxtech.fujubank.data.repository.UserRepository
 import studio.nxtech.fujubank.domain.model.Transaction
@@ -144,6 +145,8 @@ fun RootScaffold() {
                             initializer {
                                 AccountHubViewModel(
                                     profileProvider = KoinPlatform.getKoin().get<AccountProfileProvider>(),
+                                    authRepository = KoinPlatform.getKoin().get<AuthRepository>(),
+                                    sessionStore = KoinPlatform.getKoin().get<SessionStore>(),
                                 )
                             }
                         },

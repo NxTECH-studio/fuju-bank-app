@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,9 +54,12 @@ fun AccountHubScreen(
     modifier: Modifier = Modifier,
 ) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
+    val isLoggingOut by viewModel.isLoggingOut.collectAsStateWithLifecycle()
     // 編集中フィールド。MVP では編集 UI 無効化のため常に null だが、将来復活時に
     // 再利用できるよう state とシート分岐自体は保持する。
     var editingField by rememberSaveable { mutableStateOf<AccountInfoField?>(null) }
+    // ログアウト確認ダイアログの表示制御（client-bank-16）。プロセス再生成でも復元する。
+    var showLogoutConfirm by rememberSaveable { mutableStateOf(false) }
 
     // MVP は受け取り専用のため AuthCore 側に email/displayName 更新 API が揃うまで
     // 編集 UI を無効化する。鉛筆アイコン非表示 + onClick no-op で「タップしても何も
@@ -96,7 +101,44 @@ fun AccountHubScreen(
                 SettingsRowSpec(label = "通知", onClick = onNavigateNotifications),
                 SettingsRowSpec(label = "プライバシー設定", onClick = onNavigatePrivacy),
                 SettingsRowSpec(label = "パスワード変更", onClick = onNavigatePasswordChange),
+                // client-bank-16: 既存の「設定」末尾にログアウト行を追加する。
+                // 行は通常スタイル（黒テキスト）で、destructive 表示は確認ダイアログの
+                // 「ログアウト」ボタンに閉じる。logout 中は二度押しを防ぐためダイアログを開かない。
+                SettingsRowSpec(
+                    label = "ログアウト",
+                    onClick = { if (!isLoggingOut) showLogoutConfirm = true },
+                ),
             ),
+        )
+    }
+
+    if (showLogoutConfirm) {
+        AlertDialog(
+            // 画面外タップ / Back での dismiss は無効化する（明示的に
+            // 「ログアウト」「キャンセル」のいずれかを選ばせる UX）。
+            onDismissRequest = {},
+            title = { Text("ログアウトしますか？") },
+            text = { Text("再度利用するには再ログインが必要になります。") },
+            confirmButton = {
+                TextButton(
+                    enabled = !isLoggingOut,
+                    onClick = {
+                        showLogoutConfirm = false
+                        viewModel.logout()
+                    },
+                ) {
+                    // destructive: 既存 FujuBankColors.Error (= 0xFFD32F2F) を流用。
+                    Text("ログアウト", color = FujuBankColors.Error)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !isLoggingOut,
+                    onClick = { showLogoutConfirm = false },
+                ) {
+                    Text("キャンセル")
+                }
+            },
         )
     }
 
