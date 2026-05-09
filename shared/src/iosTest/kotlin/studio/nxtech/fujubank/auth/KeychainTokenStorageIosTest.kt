@@ -4,6 +4,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 /**
  * iOS actual の `KeychainTokenStorage` 最小スモーク。
@@ -52,6 +53,15 @@ class KeychainTokenStorageIosTest {
         // 落ちないこと。これにより iosMain の actual が KeychainHelper の戻り値を
         // 正しくハンドリング（runCatching せず errSecXXX を握り潰す）していることを保証する。
         storage.saveAccess("at_smoke", expiresAt = 1L)
+        // entitlement 制約上 round-trip の値検証はできないが、API 呼び出し自体が
+        // 例外を握り潰せていることだけ確認する（getOrNull が呼べる ＝ 例外が外に漏れていない）。
+        val loaded = runCatching { storage.loadAccess() }
+        assertTrue(
+            loaded.isSuccess,
+            "loadAccess() must not throw even when SecItemAdd fails on simulator",
+        )
+        // 戻り値（null か "at_smoke"）はシミュレータの entitlement 状況依存なので検証しない。
+        loaded.getOrNull()
         storage.clear()
     }
 }

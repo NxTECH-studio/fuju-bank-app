@@ -11,6 +11,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.utils.io.ByteReadChannel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import studio.nxtech.fujubank.auth.TokenStorage
@@ -19,6 +20,7 @@ import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.remote.api.AuthApi
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
@@ -48,7 +50,7 @@ class AuthRepositoryTest {
         }
     }
 
-    private fun httpClient(engine: MockEngine, withCookies: Boolean = true): HttpClient =
+    private fun httpClient(engine: MockEngine): HttpClient =
         HttpClient(engine) {
             expectSuccess = true
             install(ContentNegotiation) {
@@ -59,26 +61,27 @@ class AuthRepositoryTest {
                     },
                 )
             }
-            if (withCookies) {
-                install(HttpCookies)
-            }
+            install(HttpCookies)
             defaultRequest {
-                url("https://authcore.example.test")
+                url(BASE_URL)
             }
         }
 
     private fun repository(
         engine: MockEngine,
         storage: TokenStorage,
-        baseUrl: String = "https://authcore.example.test",
-        withCookies: Boolean = true,
+        baseUrl: String = BASE_URL,
     ): AuthRepository = AuthRepository(
         authApi = AuthApi(
-            client = httpClient(engine, withCookies = withCookies),
+            client = httpClient(engine),
             authCoreBaseUrl = baseUrl,
         ),
         tokenStorage = storage,
     )
+
+    companion object {
+        private const val BASE_URL = "https://authcore.example.test"
+    }
 
     @Test
     fun login_success_saves_access_and_returns_authenticated() = runTest {
@@ -135,7 +138,7 @@ class AuthRepositoryTest {
         val repo = AuthRepository(
             authApi = AuthApi(
                 client = httpClient(engine),
-                authCoreBaseUrl = "https://authcore.example.test",
+                authCoreBaseUrl = BASE_URL,
             ),
             tokenStorage = storage,
             nowMillis = { 1_000_000L },
@@ -312,6 +315,7 @@ class AuthRepositoryTest {
         assertIs<NetworkResult.Success<Unit>>(result)
         assertEquals(1, storage.clearCalls)
         assertNull(storage.access)
+        assertNull(storage.expiresAt)
     }
 
     @Test
@@ -404,6 +408,24 @@ class AuthRepositoryTest {
         assertNull(storage.access)
     }
 
+    @Test
+    fun login_propagates_cancellation_instead_of_swallowing() = runTest {
+        // 協調キャンセルの再 throw を検証する。`runCatchingNetwork` は
+        // CancellationException を NetworkFailure に握り潰さず再 throw する責務がある。
+        // 将来 `runCatching { ... }` 等で素朴に書き換えてキャンセル協調が壊れたら
+        // ここで気づけるようにする。
+        val engine = MockEngine {
+            throw CancellationException("simulated cancellation")
+        }
+        val storage = FakeTokenStorage()
+        val repo = repository(engine, storage)
+
+        assertFailsWith<CancellationException> {
+            repo.login(identifier = "u", password = "p")
+        }
+        assertNull(storage.access)
+    }
+
     // ---------- 追加: トークン期限の境界値 ----------
 
     @Test
@@ -423,7 +445,7 @@ class AuthRepositoryTest {
         val repo = AuthRepository(
             authApi = AuthApi(
                 client = httpClient(engine),
-                authCoreBaseUrl = "https://authcore.example.test",
+                authCoreBaseUrl = BASE_URL,
             ),
             tokenStorage = storage,
             nowMillis = { 5_000L },
@@ -450,7 +472,7 @@ class AuthRepositoryTest {
         val repo = AuthRepository(
             authApi = AuthApi(
                 client = httpClient(engine),
-                authCoreBaseUrl = "https://authcore.example.test",
+                authCoreBaseUrl = BASE_URL,
             ),
             tokenStorage = storage,
             nowMillis = { 0L },
@@ -517,7 +539,7 @@ class AuthRepositoryTest {
         val repo = AuthRepository(
             authApi = AuthApi(
                 client = httpClient(engine),
-                authCoreBaseUrl = "https://authcore.example.test",
+                authCoreBaseUrl = BASE_URL,
             ),
             tokenStorage = storage,
             nowMillis = { 2_000L },
@@ -555,18 +577,23 @@ class AuthRepositoryTest {
         // failure でもローカル clear は走る。
         assertEquals(1, storage.clearCalls)
         assertNull(storage.access)
+        assertNull(storage.expiresAt)
     }
 
     @Test
     fun logout_clears_storage_even_when_engine_throws() = runTest {
         val engine = MockEngine { throw RuntimeException("offline") }
-        val storage = FakeTokenStorage().apply { access = "at" }
+        val storage = FakeTokenStorage().apply {
+            access = "at"
+            expiresAt = 1L
+        }
         val repo = repository(engine, storage)
 
         val result = repo.logout()
         assertIs<NetworkResult.NetworkFailure>(result)
         assertEquals(1, storage.clearCalls)
         assertNull(storage.access)
+        assertNull(storage.expiresAt)
     }
 
     // ---------- 追加: MFA verify 失敗系 ----------
@@ -658,13 +685,14 @@ class AuthRepositoryTest {
         val repo = AuthRepository(
             authApi = AuthApi(
                 client = httpClient(engine),
-                authCoreBaseUrl = "https://authcore.example.test",
+                authCoreBaseUrl = BASE_URL,
             ),
             tokenStorage = storage,
             nowMillis = { 10_000L },
         )
 
-        repo.verifyMfa(preToken = "pt", code = "123456")
+        val result = repo.verifyMfa(preToken = "pt", code = "123456")
+        assertIs<NetworkResult.Success<Unit>>(result)
         assertEquals(10_000L + 120L * 1_000L, storage.expiresAt)
     }
 
@@ -717,9 +745,11 @@ class AuthRepositoryTest {
 }
 
 // テスト便宜のためのリクエスト body 文字列化拡張。
+// 想定外の OutgoingContent サブタイプが渡されたら空文字でごまかさず即座にテストを失敗させる。
+// （SUT が body 構築方法を変えた場合のサイレントな黙殺を防ぐ。）
 private suspend fun io.ktor.http.content.OutgoingContent.toByteArrayString(): String =
     when (this) {
         is io.ktor.http.content.TextContent -> text
         is io.ktor.http.content.ByteArrayContent -> bytes().decodeToString()
-        else -> ""
+        else -> error("unexpected OutgoingContent type: $this")
     }

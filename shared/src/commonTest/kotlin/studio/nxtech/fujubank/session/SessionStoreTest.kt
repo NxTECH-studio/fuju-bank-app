@@ -11,7 +11,10 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.utils.io.ByteReadChannel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import studio.nxtech.fujubank.auth.TokenStorage
@@ -45,7 +48,7 @@ class SessionStoreTest {
         }
     }
 
-    private fun httpClient(engine: MockEngine, withCookies: Boolean = true): HttpClient =
+    private fun httpClient(engine: MockEngine): HttpClient =
         HttpClient(engine) {
             expectSuccess = true
             install(ContentNegotiation) {
@@ -56,7 +59,7 @@ class SessionStoreTest {
                     },
                 )
             }
-            if (withCookies) install(HttpCookies)
+            install(HttpCookies)
             defaultRequest {
                 url("https://example.test")
             }
@@ -99,11 +102,14 @@ class SessionStoreTest {
             )
         }
         val storage = FakeTokenStorage(initialAccess = "at_old")
+        // 1 つの HttpClient を AuthApi / UserApi / UserMeApi で共有する。
+        // これにより HttpCookies の CookiesStorage も実プロダクト同様に共有される。
+        val client = httpClient(engine)
         val authRepo = AuthRepository(
-            authApi = AuthApi(client = httpClient(engine), authCoreBaseUrl = "https://authcore.test"),
+            authApi = AuthApi(client = client, authCoreBaseUrl = "https://authcore.test"),
             tokenStorage = storage,
         )
-        val userRepo = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
+        val userRepo = UserRepository(UserApi(client), UserMeApi(client))
 
         val store = SessionStore()
         store.bootstrap(authRepo, userRepo)
@@ -145,11 +151,12 @@ class SessionStoreTest {
             }
         }
         val storage = FakeTokenStorage(initialAccess = null)
+        val client = httpClient(engine)
         val authRepo = AuthRepository(
-            authApi = AuthApi(client = httpClient(engine), authCoreBaseUrl = "https://authcore.test"),
+            authApi = AuthApi(client = client, authCoreBaseUrl = "https://authcore.test"),
             tokenStorage = storage,
         )
-        val userRepo = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
+        val userRepo = UserRepository(UserApi(client), UserMeApi(client))
 
         val store = SessionStore()
         store.bootstrap(authRepo, userRepo)
@@ -171,11 +178,12 @@ class SessionStoreTest {
             )
         }
         val storage = FakeTokenStorage(initialAccess = null)
+        val client = httpClient(engine)
         val authRepo = AuthRepository(
-            authApi = AuthApi(client = httpClient(engine), authCoreBaseUrl = "https://authcore.test"),
+            authApi = AuthApi(client = client, authCoreBaseUrl = "https://authcore.test"),
             tokenStorage = storage,
         )
-        val userRepo = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
+        val userRepo = UserRepository(UserApi(client), UserMeApi(client))
 
         val store = SessionStore()
         store.bootstrap(authRepo, userRepo)
@@ -195,11 +203,12 @@ class SessionStoreTest {
             )
         }
         val storage = FakeTokenStorage(initialAccess = "at_old")
+        val client = httpClient(engine)
         val authRepo = AuthRepository(
-            authApi = AuthApi(client = httpClient(engine), authCoreBaseUrl = "https://authcore.test"),
+            authApi = AuthApi(client = client, authCoreBaseUrl = "https://authcore.test"),
             tokenStorage = storage,
         )
-        val userRepo = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
+        val userRepo = UserRepository(UserApi(client), UserMeApi(client))
 
         val store = SessionStore()
         store.bootstrap(authRepo, userRepo)
@@ -247,26 +256,24 @@ class SessionStoreTest {
 
     // ---------- 追加: state Flow の観測 ----------
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun state_flow_emits_each_transition_in_order() = runTest {
         // 状態遷移が StateFlow に順序通り反映されること。UI が collectAsState() で
         // 受けるのと同じ経路。
+        // backgroundScope + UnconfinedTestDispatcher なら collect は emission 直後に
+        // 走るので yield() なしで同期できる。runTest 終了時に backgroundScope は
+        // 自動でキャンセルされるため job 管理も不要。
         val store = SessionStore()
         val emitted = mutableListOf<SessionState>()
-        val job = launch {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             store.state.collect { emitted += it }
         }
-        // 初期値 Unauthenticated が積まれるまで yield。
-        kotlinx.coroutines.yield()
 
         store.setMfaPending("pt")
-        kotlinx.coroutines.yield()
         store.setAuthenticated("usr_1")
-        kotlinx.coroutines.yield()
         store.clear()
-        kotlinx.coroutines.yield()
 
-        job.cancel()
         assertEquals(
             listOf(
                 SessionState.Unauthenticated,
@@ -301,15 +308,57 @@ class SessionStoreTest {
             )
         }
         val storage = FakeTokenStorage(initialAccess = "at_old")
+        val client = httpClient(engine)
         val authRepo = AuthRepository(
-            authApi = AuthApi(client = httpClient(engine), authCoreBaseUrl = "https://authcore.test"),
+            authApi = AuthApi(client = client, authCoreBaseUrl = "https://authcore.test"),
             tokenStorage = storage,
         )
-        val userRepo = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
+        val userRepo = UserRepository(UserApi(client), UserMeApi(client))
 
         val store = SessionStore()
         store.bootstrap(authRepo, userRepo)
         store.bootstrap(authRepo, userRepo)
+
+        assertEquals(1, getMeCalls)
+        assertEquals(true, store.bootstrapped.value)
+    }
+
+    @Test
+    fun bootstrap_called_concurrently_does_not_re_request() = runTest {
+        // 並行起動でも getMe が 1 回しか走らないこと。
+        // SessionStore.bootstrapMutex.withLock { if (bootstrapStarted) return } の
+        // 並行保証（race-free な二重起動防止）を直接検証する。
+        var getMeCalls = 0
+        val engine = MockEngine { request ->
+            if (request.url.encodedPath == "/users/me") getMeCalls += 1
+            respond(
+                content = ByteReadChannel(
+                    """
+                    {
+                      "id": 9,
+                      "balance_fuju": 0,
+                      "created_at": "2026-04-21T12:34:56Z"
+                    }
+                    """.trimIndent(),
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val storage = FakeTokenStorage(initialAccess = "at_old")
+        val client = httpClient(engine)
+        val authRepo = AuthRepository(
+            authApi = AuthApi(client = client, authCoreBaseUrl = "https://authcore.test"),
+            tokenStorage = storage,
+        )
+        val userRepo = UserRepository(UserApi(client), UserMeApi(client))
+
+        val store = SessionStore()
+        val jobs = listOf(
+            launch { store.bootstrap(authRepo, userRepo) },
+            launch { store.bootstrap(authRepo, userRepo) },
+        )
+        jobs.joinAll()
 
         assertEquals(1, getMeCalls)
         assertEquals(true, store.bootstrapped.value)
@@ -328,11 +377,12 @@ class SessionStoreTest {
             )
         }
         val storage = FakeTokenStorage(initialAccess = null)
+        val client = httpClient(engine)
         val authRepo = AuthRepository(
-            authApi = AuthApi(client = httpClient(engine), authCoreBaseUrl = "https://authcore.test"),
+            authApi = AuthApi(client = client, authCoreBaseUrl = "https://authcore.test"),
             tokenStorage = storage,
         )
-        val userRepo = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
+        val userRepo = UserRepository(UserApi(client), UserMeApi(client))
 
         val store = SessionStore()
         assertEquals(false, store.bootstrapped.value)
