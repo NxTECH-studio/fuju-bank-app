@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -141,7 +140,6 @@ private fun MfaVerifyInputContent(
             enabled = !isSubmitting,
             onCodeChange = onCodeChange,
             focusRequester = focusRequester,
-            onImeDone = onSubmit,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp),
@@ -182,10 +180,10 @@ private fun OtpSlotRow(
     enabled: Boolean,
     onCodeChange: (String) -> Unit,
     focusRequester: FocusRequester,
-    onImeDone: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // 単一の隠し BasicTextField に全文字を集約し、視覚は 6 個の Box で表現する OTP の定番パターン。
+    // 6 桁完了時の自動 submit は誤入力からの復帰余地を奪うため行わず、確認は CTA タップ必須に統一する。
     BasicTextField(
         value = code,
         onValueChange = onCodeChange,
@@ -196,9 +194,8 @@ private fun OtpSlotRow(
         textStyle = TextStyle(color = Color.Transparent, fontSize = 1.sp),
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.NumberPassword,
-            imeAction = ImeAction.Done,
+            imeAction = ImeAction.None,
         ),
-        keyboardActions = KeyboardActions(onDone = { onImeDone() }),
         modifier = modifier.focusRequester(focusRequester),
         decorationBox = {
             Row(
