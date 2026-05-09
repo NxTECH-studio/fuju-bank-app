@@ -13,6 +13,11 @@ permissions:
   contents: read
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # ビルド & lint 専用 job。テスト失敗とビルド失敗のシグナルを分離する目的で、
+  # `:shared:allTests` 等のテスト実行は test-jvm / test-ios 側に寄せている。
+  # （client-bank-20: 認証系 shared テストの拡充と CI test job 新設）
+  # ---------------------------------------------------------------------------
   build-and-check:
     name: Build & Check (Android / shared)
     runs-on: ubuntu-latest
@@ -30,9 +35,6 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Run shared tests
-        run: ./gradlew :shared:allTests
-
       - name: Assemble Android debug
         run: ./gradlew :composeApp:assembleDebug
 
@@ -40,7 +42,7 @@ jobs:
         run: ./gradlew :composeApp:lintDebug
 
   build-ios-framework:
-    name: Build & test iOS shared framework
+    name: Build iOS shared framework
     runs-on: macos-latest
     timeout-minutes: 45
     steps:
@@ -66,9 +68,6 @@ jobs:
 
       - name: Link Debug framework (iosSimulatorArm64)
         run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
-
-      - name: Run iOS shared tests (iosSimulatorArm64)
-        run: ./gradlew :shared:iosSimulatorArm64Test
 
   build-ios-app:
     name: Build iOS app (Xcode)
@@ -110,3 +109,67 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY=""
+
+  # ---------------------------------------------------------------------------
+  # テスト専用 job (JVM 側): commonTest + androidUnitTest を ubuntu で実行。
+  # ビルド失敗とテスト失敗を分離して読めるよう、build-and-check からは
+  # `:shared:allTests` ステップを外している。
+  # ---------------------------------------------------------------------------
+  test-jvm:
+    name: Tests (commonTest + androidUnitTest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      # `:shared:allTests` を ubuntu で叩くと iosTest 系も解決対象に入って
+      # Linux で K/N コンパイルが起きる懸念があるため、JVM 側ターゲットだけを
+      # 明示的に指定する。
+      # - testDebugUnitTest: Android ユニットテスト（commonTest も actual 側で展開される）
+      # - jvmTest 相当は KMP プラグインに無いため、androidTest で commonTest をカバー
+      - name: Run shared tests (JVM)
+        run: ./gradlew :shared:testDebugUnitTest
+
+  # ---------------------------------------------------------------------------
+  # テスト専用 job (iOS 側): iosSimulatorArm64Test を macOS で実行。
+  # macOS runner は ubuntu の 10 倍課金されるため、`pull_request` トリガーの
+  # 範囲のみで動かす（ci.yml 全体が PR トリガー固定）。
+  # Konan キャッシュは build-ios-framework と同じキー戦略で共有する。
+  # ---------------------------------------------------------------------------
+  test-ios:
+    name: Tests (iosSimulatorArm64)
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Cache Konan
+        uses: actions/cache@v5
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('**/gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            konan-${{ runner.os }}-
+
+      - name: Run shared tests (iosSimulatorArm64)
+        run: ./gradlew :shared:iosSimulatorArm64Test
