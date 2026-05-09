@@ -13,7 +13,7 @@ import java.net.Inet4Address
 // を起こす。Dns.SYSTEM の解決結果を IPv4 (Inet4Address) 優先に並べ替えて返すことで、
 // OkHttp の Happy Eyeballs が IPv4 を先に試すようにする。IPv4 が無い環境では
 // IPv6 を返すため、IPv6-only ネットワークでも fallback で動く。
-private val IPv4PreferredDns = Dns { hostname ->
+private val IPV4_PREFERRED_DNS = Dns { hostname ->
     Dns.SYSTEM.lookup(hostname).sortedByDescending { it is Inet4Address }
 }
 
@@ -21,7 +21,7 @@ actual fun createHttpClient(config: HttpClientConfig): HttpClient =
     HttpClient(OkHttp) {
         engine {
             config {
-                dns(IPv4PreferredDns)
+                dns(IPV4_PREFERRED_DNS)
             }
         }
         applyCommon(config)
