@@ -13,11 +13,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.koin.mp.KoinPlatform
 import studio.nxtech.fujubank.data.repository.AuthRepository
 import studio.nxtech.fujubank.data.repository.UserRepository
@@ -34,6 +37,7 @@ import studio.nxtech.fujubank.features.welcome.WelcomeScreen
 import studio.nxtech.fujubank.session.SessionResetCoordinator
 import studio.nxtech.fujubank.session.SessionState
 import studio.nxtech.fujubank.session.SessionStore
+import studio.nxtech.fujubank.session.TokenExpiryWatcher
 import studio.nxtech.fujubank.signup.SignupCompletionSignal
 import studio.nxtech.fujubank.signup.SignupWelcomePreferences
 import studio.nxtech.fujubank.splash.SplashConfig
@@ -60,12 +64,23 @@ fun App() {
     val signupCompletionSignal = remember { koin.get<SignupCompletionSignal>() }
     val signupWelcomePreferences = remember { koin.get<SignupWelcomePreferences>() }
     val sessionResetCoordinator = remember { koin.get<SessionResetCoordinator>() }
+    val tokenExpiryWatcher = remember { koin.get<TokenExpiryWatcher>() }
 
     // Authenticated → Unauthenticated 遷移時に Provider singleton キャッシュを破棄するための
     // 観測を 1 回だけ起動する。Coordinator 内で二重起動防止フラグがあるため、Activity 再生成で
     // 再度呼ばれても副作用は無い。
     LaunchedEffect(Unit) {
         sessionResetCoordinator.start()
+    }
+
+    // ON_RESUME 時に access_token の期限を確認し、閾値を切っていれば proactive に refresh
+    // させる。Authenticated 以外や `expiresAt == null` の場合は Watcher 内で no-op になる。
+    // バックグラウンドから戻ってきた瞬間に走るので、ユーザーの最初のアクションで 401→refresh
+    // の二段階通信が走る待ち時間を削減できる。
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        sessionStore.scope.launch {
+            tokenExpiryWatcher.checkNow()
+        }
     }
 
     // 画面回転で Activity が再生成されても Splash を再表示しないよう rememberSaveable で保持。
