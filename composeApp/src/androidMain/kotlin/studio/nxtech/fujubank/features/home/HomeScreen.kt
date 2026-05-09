@@ -1,13 +1,17 @@
 package studio.nxtech.fujubank.features.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -16,6 +20,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -24,7 +30,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import studio.nxtech.fujubank.features.home.components.BalanceCard
 import studio.nxtech.fujubank.features.home.components.FujuBankHeader
-import studio.nxtech.fujubank.features.home.components.RecentTransactionItem
 import studio.nxtech.fujubank.features.home.components.RecentTransactionsSection
 import studio.nxtech.fujubank.theme.FujuBankColors
 import studio.nxtech.fujubank.theme.NotoSansJP
@@ -34,12 +39,9 @@ import studio.nxtech.fujubank.theme.NotoSansJP
  *
  * - ヘッダー（左 48dp 空 / 中央 fuju 銀行 ロゴ + chevron / 右 通知ベル）
  * - 残高カード（48sp の数値 + 「ふじゅ〜」単位、QR / バーコード / マスクトグルは旧デザインから撤去）
- * - 「最近の取引履歴」セクション（モック 3 件 + もっとみる）
+ * - 「最近の取引履歴」セクション（API 取得済み 3 件 + もっとみる）
  *
  * ボトムナビは [studio.nxtech.fujubank.features.shell.RootScaffold] が描画する。
- *
- * 注: 取引履歴のモック表示は Figma `709:8658` の見た目を再現するための暫定。
- *     バックエンドからの最近の取引取得 API は本タスクのスコープ外（後続タスクで対応）。
  *
  * 注: `onSendReceive` / `onShowToast` は旧 ActionTiles 用のコールバック。新デザインでは
  *     画面内で発火する箇所がないが、`HomeScreen` の API シグネチャを変えない方針のため引数として残している。
@@ -68,6 +70,7 @@ fun HomeScreen(
                 state = current,
                 onTransactionHistory = onTransactionHistory,
                 onNotificationClick = { onShowToast("通知機能は実装中です") },
+                onRecentRetry = viewModel::refreshRecent,
             )
         }
     }
@@ -120,6 +123,7 @@ private fun LoadedContent(
     state: HomeUiState.Loaded,
     onTransactionHistory: () -> Unit,
     onNotificationClick: () -> Unit,
+    onRecentRetry: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -129,19 +133,163 @@ private fun LoadedContent(
     ) {
         FujuBankHeader(onNotificationClick = onNotificationClick)
         BalanceCard(balanceFuju = state.profile.balanceFuju)
-        RecentTransactionsSection(
-            items = MOCK_RECENT_TRANSACTIONS,
-            onMore = onTransactionHistory,
-        )
+        when (val recent = state.recentTransactions) {
+            RecentTransactionsState.Loading -> RecentLoadingPlaceholder()
+            is RecentTransactionsState.Ready -> {
+                if (recent.items.isEmpty()) {
+                    RecentEmptyPlaceholder(onMore = onTransactionHistory)
+                } else {
+                    RecentTransactionsSection(
+                        items = recent.items,
+                        onMore = onTransactionHistory,
+                    )
+                }
+            }
+            is RecentTransactionsState.Error -> RecentErrorPlaceholder(
+                message = recent.message,
+                onRetry = onRecentRetry,
+                onMore = onTransactionHistory,
+            )
+        }
     }
 }
 
-// Figma `709:8658` の見本値そのまま。バックエンド統合は後続タスクで実施。
-private val MOCK_RECENT_TRANSACTIONS: List<RecentTransactionItem> = List(3) {
-    RecentTransactionItem(
-        title = "トマトのイラスト",
-        amount = 42,
-        sign = "+",
-        timestamp = "2025/3/4 12:03:03",
-    )
+@Composable
+private fun RecentLoadingPlaceholder() {
+    // セクション内に小さい CircularProgressIndicator を出す。ready 時の縦サイズと
+    // 大きく食い違わないよう、カード相当の高さ 96dp を確保する。
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        SectionHeaderPlaceholder()
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(96.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(
+                color = FujuBankColors.BrandPink,
+                strokeWidth = 2.dp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecentEmptyPlaceholder(onMore: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        SectionHeaderPlaceholder(onMore = onMore)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(elevation = 4.dp, shape = RoundedCornerShape(20.dp), clip = false)
+                .clip(RoundedCornerShape(20.dp))
+                .background(FujuBankColors.Surface)
+                .padding(24.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "取引履歴はまだありません",
+                style = TextStyle(
+                    fontFamily = NotoSansJP,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = FujuBankColors.TextSecondary,
+                ),
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecentErrorPlaceholder(
+    message: String,
+    onRetry: () -> Unit,
+    onMore: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        SectionHeaderPlaceholder(onMore = onMore)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(elevation = 4.dp, shape = RoundedCornerShape(20.dp), clip = false)
+                .clip(RoundedCornerShape(20.dp))
+                .background(FujuBankColors.Surface)
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = message,
+                style = TextStyle(
+                    fontFamily = NotoSansJP,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = FujuBankColors.TextSecondary,
+                ),
+                textAlign = TextAlign.Center,
+            )
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = FujuBankColors.BrandPink,
+                    contentColor = FujuBankColors.Surface,
+                ),
+            ) {
+                Text("再試行")
+            }
+        }
+    }
+}
+
+/**
+ * Loading / Empty / Error 共通の最近の取引セクションヘッダ。
+ * `RecentTransactionsSection` 内のヘッダと見た目を揃えるため、ここに切り出す。
+ */
+@Composable
+private fun SectionHeaderPlaceholder(onMore: (() -> Unit)? = null) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = "最近の取引履歴",
+            style = TextStyle(
+                fontFamily = NotoSansJP,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = FujuBankColors.TextPrimary,
+            ),
+        )
+        if (onMore != null) {
+            Text(
+                text = "もっとみる",
+                modifier = Modifier.clickable(onClick = onMore),
+                style = TextStyle(
+                    fontFamily = NotoSansJP,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = FujuBankColors.LinkBlue,
+                ),
+            )
+        }
+    }
 }

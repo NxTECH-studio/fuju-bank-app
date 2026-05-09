@@ -128,6 +128,8 @@ fun RootScaffold() {
                             initializer {
                                 HomeViewModel(
                                     profileRepository = KoinPlatform.getKoin().get<ProfileRepository>(),
+                                    userRepository = KoinPlatform.getKoin().get<UserRepository>(),
+                                    sessionStore = KoinPlatform.getKoin().get<SessionStore>(),
                                 )
                             }
                         },

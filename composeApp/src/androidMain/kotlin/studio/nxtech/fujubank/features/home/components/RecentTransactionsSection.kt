@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import studio.nxtech.fujubank.R
+import studio.nxtech.fujubank.domain.model.TransactionDirection
 import studio.nxtech.fujubank.format.CurrencyFormatter
 import studio.nxtech.fujubank.theme.FujuBankColors
 import studio.nxtech.fujubank.theme.NotoSansJP
@@ -101,6 +102,13 @@ private fun SectionHeader(onMore: () -> Unit) {
 
 @Composable
 private fun RecentTransactionCard(item: RecentTransactionItem) {
+    // sign と金額色は direction から派生させる。Outgoing は黒/`-`、Mint/Incoming はピンク/`+`。
+    val sign = if (item.direction == TransactionDirection.Outgoing) "-" else "+"
+    val amountColor = if (item.direction == TransactionDirection.Outgoing) {
+        FujuBankColors.TextPrimary
+    } else {
+        FujuBankColors.BrandPink
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -129,12 +137,12 @@ private fun RecentTransactionCard(item: RecentTransactionItem) {
                 ),
             )
             Text(
-                text = "${item.sign}${CurrencyFormatter.formatAmount(item.amount)} ${CurrencyFormatter.UNIT}",
+                text = "${sign}${CurrencyFormatter.formatAmount(item.amount)} ${CurrencyFormatter.UNIT}",
                 style = TextStyle(
                     fontFamily = NotoSansJP,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = FujuBankColors.BrandPink,
+                    color = amountColor,
                 ),
             )
         }
@@ -153,11 +161,14 @@ private fun RecentTransactionCard(item: RecentTransactionItem) {
 
 /**
  * ホーム画面で表示する「最近の取引履歴」1 件分の表示モデル。
- * バックエンド統合前のため、文字列とサインを呼び出し側で組み立ててそのまま流し込む形に留める。
+ *
+ * `direction` から sign（`+`/`-`）と金額色（ピンク/黒）を派生させる。
+ * 名前解決 / アーティファクト名取得は後続タスクで対応するため、`title` は呼び出し側で
+ * 短縮 ID を組み込んで作成する（取引一覧の `TransactionRow` と同じロジック）。
  */
 data class RecentTransactionItem(
     val title: String,
     val amount: Long,
-    val sign: String,
+    val direction: TransactionDirection,
     val timestamp: String,
 )

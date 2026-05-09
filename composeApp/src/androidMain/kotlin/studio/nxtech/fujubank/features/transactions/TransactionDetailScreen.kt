@@ -242,7 +242,7 @@ private fun DetailTransactionRow(transaction: Transaction) {
                         ),
                     )
                     Text(
-                        text = TRANSACTION_ROW_SUBTITLE_PLACEHOLDER,
+                        text = transactionRowSubtitle(transaction),
                         style = TextStyle(
                             fontFamily = NotoSansJP,
                             fontSize = 12.sp,
