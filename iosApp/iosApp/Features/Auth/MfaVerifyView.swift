@@ -213,8 +213,8 @@ private struct MfaWelcomeView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task {
-            // 自動進行: 約 1.8 秒間「ようこそ」を表示してから次の Brand 画面へ。
-            try? await Task.sleep(nanoseconds: 1_800_000_000)
+            // 自動進行: 「ようこそ」を表示してから次の Brand 画面へ。
+            try? await Task.sleep(nanoseconds: MfaOnboardingDurations.welcomeNs)
             onAdvance()
         }
     }
@@ -237,11 +237,17 @@ private struct MfaBrandView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task {
-            // 自動進行: 約 1.5 秒間ロゴを表示してから setAuthenticated → ホームへ。
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            // 自動進行: ブランドロゴを表示してから setAuthenticated → ホームへ。
+            try? await Task.sleep(nanoseconds: MfaOnboardingDurations.brandNs)
             onAdvance()
         }
     }
+}
+
+// 自動進行 stage の表示時間。Figma に決定情報がないため UX の定番値（1.5〜2 秒）から選定。
+private enum MfaOnboardingDurations {
+    static let welcomeNs: UInt64 = 1_800_000_000
+    static let brandNs: UInt64 = 1_500_000_000
 }
 
 // MARK: - Shared building blocks

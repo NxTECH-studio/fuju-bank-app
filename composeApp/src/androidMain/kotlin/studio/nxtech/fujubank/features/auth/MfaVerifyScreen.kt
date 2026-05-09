@@ -326,11 +326,15 @@ private fun PageIndicator(activeIndex: Int, total: Int) {
 
 // --- Onboarding: Welcome ------------------------------------------------------
 
+// 自動進行 stage の表示時間。Figma に決定情報がないため UX の定番値（1.5〜2 秒）から選定。
+private const val WELCOME_DURATION_MS = 1800L
+private const val BRAND_DURATION_MS = 1500L
+
 @Composable
 private fun MfaWelcomeContent(onAdvance: () -> Unit) {
     LaunchedEffect(Unit) {
-        // 自動進行: 約 1.8 秒間「ようこそ」を表示してから次の Brand 画面へ。
-        delay(1800)
+        // 自動進行: 「ようこそ」を表示してから次の Brand 画面へ。
+        delay(WELCOME_DURATION_MS)
         onAdvance()
     }
     Box(
@@ -356,8 +360,8 @@ private fun MfaWelcomeContent(onAdvance: () -> Unit) {
 @Composable
 private fun MfaBrandContent(onAdvance: () -> Unit) {
     LaunchedEffect(Unit) {
-        // 自動進行: 約 1.5 秒間ブランドロゴを表示してから setAuthenticated → ホームへ。
-        delay(1500)
+        // 自動進行: ブランドロゴを表示してから setAuthenticated → ホームへ。
+        delay(BRAND_DURATION_MS)
         onAdvance()
     }
     Box(

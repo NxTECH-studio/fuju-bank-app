@@ -56,6 +56,9 @@ final class MfaVerifyViewModel: ObservableObject {
             errorMessage = "6 桁のコードを入力してください"
             return
         }
+        // submit 開始時に念のため pendingUserId を破棄。Input phase で submit を再試行するたびに
+        // 直前の verify 結果を引き継がないようにする防御措置。
+        pendingUserId = nil
         isSubmitting = true
         errorMessage = nil
 

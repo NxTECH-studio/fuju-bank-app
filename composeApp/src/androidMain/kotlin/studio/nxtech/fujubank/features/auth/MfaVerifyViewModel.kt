@@ -75,6 +75,9 @@ class MfaVerifyViewModel(
             _state.update { it.copy(errorMessage = "6 桁のコードを入力してください") }
             return
         }
+        // submit 開始時に念のため pendingUserId を破棄。Input phase で submit を再試行するたびに
+        // 直前の verify 結果を引き継がないようにする防御措置。
+        pendingUserId = null
         _state.update { it.copy(isSubmitting = true, errorMessage = null) }
         viewModelScope.launch {
             // Recovery code 入力 UI は仮設で隠しているが、AuthRepository.verifyMfa の
