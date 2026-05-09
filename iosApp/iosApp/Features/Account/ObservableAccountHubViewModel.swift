@@ -14,6 +14,11 @@ import Shared
 final class ObservableAccountHubViewModel: ObservableObject {
     @Published private(set) var profile: AccountProfile
 
+    /// ログアウト処理中フラグ（client-bank-16）。true の間は確認ダイアログの「ログアウト」
+    /// ボタンを `disabled(...)` にしてリスト行タップでもダイアログを開かないようにする。
+    /// Android `AccountHubViewModel.isLoggingOut` と対称。
+    @Published private(set) var isLoggingOut: Bool = false
+
     /// MVP は受け取り専用で AuthCore 側に email/displayName 更新 API が揃っていないため、
     /// 編集 UI は一旦無効化する。Android `AccountHubScreen` の `editingEnabled = false` と
     /// 対称。鉛筆アイコン非表示 + sheet 起動経路の no-op ガードに用いる。
@@ -51,5 +56,27 @@ final class ObservableAccountHubViewModel: ObservableObject {
     /// メールアドレスのみ更新。表示名は現在値を維持する。
     func updateEmail(_ email: String) {
         provider.updateProfile(displayName: profile.displayName, email: email)
+    }
+
+    /// ログアウト処理（client-bank-16）。
+    ///
+    /// `AuthFlowIosKt.logoutAndClear` がサーバ呼び出しの結果に関わらず最後に
+    /// `SessionStore.clear()` を呼んで `Unauthenticated` に倒すので、UI 側は完了を待って
+    /// `isLoggingOut` を戻すだけで良い（Login 画面への遷移は `AppRoot` 側のセッション分岐に任せる）。
+    /// 二度押し防止に `isLoggingOut` でガードする（Android `AccountHubViewModel.logout` と対称）。
+    func logout() {
+        guard !isLoggingOut else { return }
+        isLoggingOut = true
+        AuthFlowIosKt.logoutAndClear(
+            authRepository: KoinIosKt.authRepository(),
+            sessionStore: KoinIosKt.sessionStore()
+        ) { [weak self] in
+            // logoutAndClear のコールバックは shared 側 SessionStore.scope (Dispatchers.Main)
+            // で発火するが、@MainActor の整合をはっきりさせるため Task でホップする
+            // （他 Observable VM と同パターン）。
+            Task { @MainActor in
+                self?.isLoggingOut = false
+            }
+        }
     }
 }

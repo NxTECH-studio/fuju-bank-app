@@ -20,6 +20,8 @@ struct AccountHubView: View {
     let onSelectDestination: (AccountDestination) -> Void
     /// 編集中フィールド。`nil` のときシートは閉じている。
     @State private var editingField: AccountInfoField?
+    /// ログアウト確認ダイアログの表示制御（client-bank-16）。
+    @State private var showLogoutConfirm: Bool = false
 
     var body: some View {
         // MVP は受け取り専用のため AuthCore 側に email/displayName 更新 API が揃うまで
@@ -58,6 +60,11 @@ struct AccountHubView: View {
                     .init(label: "通知") { onSelectDestination(.notifications) },
                     .init(label: "プライバシー設定") { onSelectDestination(.privacy) },
                     .init(label: "パスワード変更") { onSelectDestination(.passwordChange) },
+                    // client-bank-16: 「設定」末尾にログアウト行を追加。行は通常スタイル
+                    // （黒テキスト）で、destructive 表示は confirmationDialog 側に閉じる。
+                    .init(label: "ログアウト") {
+                        if !viewModel.isLoggingOut { showLogoutConfirm = true }
+                    },
                 ])
             }
             .padding(.horizontal, 16)
@@ -65,6 +72,20 @@ struct AccountHubView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(FujuBankPalette.background.ignoresSafeArea())
+        .confirmationDialog(
+            "ログアウトしますか？",
+            isPresented: $showLogoutConfirm,
+            titleVisibility: .visible,
+        ) {
+            // role: .destructive で iOS 標準の赤色になる（自前 color 指定は不要）。
+            Button("ログアウト", role: .destructive) {
+                viewModel.logout()
+            }
+            .disabled(viewModel.isLoggingOut)
+            Button("キャンセル", role: .cancel) { }
+        } message: {
+            Text("再度利用するには再ログインが必要になります。")
+        }
         .sheet(item: $editingField) { field in
             switch field {
             case .displayName:
