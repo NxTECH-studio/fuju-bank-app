@@ -20,6 +20,10 @@ struct AppRoot: View {
     // AuthenticatedPlaceholderView を出す。プロセス kill で消える設計（永続化しない）。
     @State private var bypassAuth = false
     @State private var signupRoute: SignupRoute = .none
+    // ScenePhase が `.active` に遷移した瞬間に access_token の期限を on-demand check する。
+    // 閾値内なら proactive に refresh、Authenticated 以外や `expiresAt == null` の場合は
+    // shared 側 Watcher で no-op になる。
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
@@ -41,6 +45,14 @@ struct AppRoot: View {
                 default:
                     unauthenticatedRouter
                 }
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            Task {
+                // suspend な checkNow() はバックグラウンドでも安全。失敗時の clear は
+                // shared 側 Watcher 内で行うため、ここでは結果を握り潰すだけで良い。
+                try? await KoinIosKt.tokenExpiryWatcher().checkNow()
             }
         }
         // bootstrap の起動は SplashGate に移管したのでここでは行わない。

@@ -1,5 +1,6 @@
 package studio.nxtech.fujubank.di
 
+import kotlin.time.Clock
 import org.koin.dsl.module
 import studio.nxtech.fujubank.auth.TokenStorage
 import studio.nxtech.fujubank.auth.TokenStorageFactory
@@ -8,13 +9,22 @@ import studio.nxtech.fujubank.data.remote.api.AuthApi
 import studio.nxtech.fujubank.data.repository.AuthRepository
 import studio.nxtech.fujubank.network.AuthTokenRefresher
 import studio.nxtech.fujubank.session.SessionStore
+import studio.nxtech.fujubank.session.invalidateSession
 
 val authModule = module {
     single<TokenStorage> { get<TokenStorageFactory>().create() }
     // AuthApi は Auth プラグイン無しの専用 HttpClient を使う。同じクライアントだと
     // refresh が 401 を返したときに refreshTokens ブロックが再帰起動して deadlock する。
     single { AuthApi(get(qualifier = AUTHCORE_CLIENT_QUALIFIER), defaultAuthCoreBaseUrl()) }
-    single { AuthRepository(get(), get()) }
+    // nowMillis に実時刻を渡さないと AuthRepository.expiresAtFrom() が常に null を返し、
+    // proactive な期限監視（TokenExpiryWatcher）が機能しなくなるので必ず注入する。
+    single {
+        AuthRepository(
+            authApi = get(),
+            tokenStorage = get(),
+            nowMillis = { Clock.System.now().toEpochMilliseconds() },
+        )
+    }
     // Ktor Auth plugin の refreshTokens フック実体。AuthApi.refresh() は cookie 経由で
     // refresh するため引数不要。新 access_token を返すか、refresh 不能なら null。
     single<AuthTokenRefresher> {
@@ -51,8 +61,7 @@ internal fun createAuthTokenRefresher(
     when (authRepository.refresh()) {
         is NetworkResult.Success -> tokenStorage.loadAccess()
         is NetworkResult.Failure -> {
-            tokenStorage.clear()
-            sessionStore.clear()
+            invalidateSession(tokenStorage, sessionStore)
             null
         }
         is NetworkResult.NetworkFailure -> null
