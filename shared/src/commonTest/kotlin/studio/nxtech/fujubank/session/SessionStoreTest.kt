@@ -11,6 +11,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.utils.io.ByteReadChannel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import studio.nxtech.fujubank.auth.TokenStorage
@@ -203,6 +204,140 @@ class SessionStoreTest {
         val store = SessionStore()
         store.bootstrap(authRepo, userRepo)
 
+        assertEquals(SessionState.Unauthenticated, store.current)
+    }
+
+    // ---------- 追加: state 遷移 ----------
+
+    @Test
+    fun state_can_loop_between_authenticated_and_unauthenticated() {
+        // 一度ログイン → ログアウト → 再ログインのループが通ること。
+        val store = SessionStore()
+        store.setAuthenticated("usr_1")
+        assertIs<SessionState.Authenticated>(store.current)
+
+        store.clear()
+        assertEquals(SessionState.Unauthenticated, store.current)
+
+        store.setAuthenticated("usr_2")
+        val auth2 = assertIs<SessionState.Authenticated>(store.current)
+        assertEquals("usr_2", auth2.userId)
+    }
+
+    @Test
+    fun mfa_pending_can_be_cancelled_back_to_unauthenticated() {
+        // MFA 入力画面でユーザがキャンセルしたとき、Unauthenticated に戻れること。
+        val store = SessionStore()
+        store.setMfaPending("pt_x")
+        assertIs<SessionState.MfaPending>(store.current)
+
+        store.clear()
+        assertEquals(SessionState.Unauthenticated, store.current)
+    }
+
+    @Test
+    fun setMfaPending_overwrites_previous_pre_token() {
+        // 同じ識別子で再 login したときに古い preToken が残らないこと。
+        val store = SessionStore()
+        store.setMfaPending("pt_old")
+        store.setMfaPending("pt_new")
+        val mfa = assertIs<SessionState.MfaPending>(store.current)
+        assertEquals("pt_new", mfa.preToken)
+    }
+
+    // ---------- 追加: state Flow の観測 ----------
+
+    @Test
+    fun state_flow_emits_each_transition_in_order() = runTest {
+        // 状態遷移が StateFlow に順序通り反映されること。UI が collectAsState() で
+        // 受けるのと同じ経路。
+        val store = SessionStore()
+        val emitted = mutableListOf<SessionState>()
+        val job = launch {
+            store.state.collect { emitted += it }
+        }
+        // 初期値 Unauthenticated が積まれるまで yield。
+        kotlinx.coroutines.yield()
+
+        store.setMfaPending("pt")
+        kotlinx.coroutines.yield()
+        store.setAuthenticated("usr_1")
+        kotlinx.coroutines.yield()
+        store.clear()
+        kotlinx.coroutines.yield()
+
+        job.cancel()
+        assertEquals(
+            listOf(
+                SessionState.Unauthenticated,
+                SessionState.MfaPending("pt"),
+                SessionState.Authenticated("usr_1"),
+                SessionState.Unauthenticated,
+            ),
+            emitted,
+        )
+    }
+
+    // ---------- 追加: bootstrap 二重起動防止 ----------
+
+    @Test
+    fun bootstrap_called_twice_does_not_re_request() = runTest {
+        // 二度目の bootstrap は即 return する。getMe を 2 回叩かないこと。
+        var getMeCalls = 0
+        val engine = MockEngine { request ->
+            if (request.url.encodedPath == "/users/me") getMeCalls += 1
+            respond(
+                content = ByteReadChannel(
+                    """
+                    {
+                      "id": 7,
+                      "balance_fuju": 0,
+                      "created_at": "2026-04-21T12:34:56Z"
+                    }
+                    """.trimIndent(),
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val storage = FakeTokenStorage(initialAccess = "at_old")
+        val authRepo = AuthRepository(
+            authApi = AuthApi(client = httpClient(engine), authCoreBaseUrl = "https://authcore.test"),
+            tokenStorage = storage,
+        )
+        val userRepo = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
+
+        val store = SessionStore()
+        store.bootstrap(authRepo, userRepo)
+        store.bootstrap(authRepo, userRepo)
+
+        assertEquals(1, getMeCalls)
+        assertEquals(true, store.bootstrapped.value)
+    }
+
+    @Test
+    fun bootstrap_marks_bootstrapped_true_even_on_failure() = runTest {
+        // 失敗ルートでも bootstrapped は true に遷移する（Splash 解除のため）。
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """{"error":{"code":"TOKEN_REVOKED","message":"x"}}""",
+                ),
+                status = HttpStatusCode.Unauthorized,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val storage = FakeTokenStorage(initialAccess = null)
+        val authRepo = AuthRepository(
+            authApi = AuthApi(client = httpClient(engine), authCoreBaseUrl = "https://authcore.test"),
+            tokenStorage = storage,
+        )
+        val userRepo = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)))
+
+        val store = SessionStore()
+        assertEquals(false, store.bootstrapped.value)
+        store.bootstrap(authRepo, userRepo)
+        assertEquals(true, store.bootstrapped.value)
         assertEquals(SessionState.Unauthenticated, store.current)
     }
 }
