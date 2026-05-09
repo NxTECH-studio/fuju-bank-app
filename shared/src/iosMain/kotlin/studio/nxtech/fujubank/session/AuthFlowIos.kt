@@ -1,5 +1,6 @@
 package studio.nxtech.fujubank.session
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import studio.nxtech.fujubank.data.remote.ApiError
 import studio.nxtech.fujubank.data.remote.NetworkResult
@@ -132,6 +133,35 @@ fun verifyMfaAndProvision(
             )
         }
         onResult(outcome)
+    }
+}
+
+/**
+ * Swift から `logoutAndClear(...) { ... }` 形で呼ぶための logout ヘルパー（client-bank-16）。
+ *
+ * AuthRepository.logout() はサーバ失敗時もローカル `tokenStorage.clear()` を行うため、
+ * 戻り値は意図的に無視する。常に最後に [SessionStore.clear] を呼んで `Unauthenticated` に
+ * 倒し、UI へのエラー通知は出さない方針（client-bank-16 確定事項）。
+ *
+ * `runCatching` は [CancellationException] を握り潰すため、明示的な try/catch で再 throw する
+ * プロジェクト共通パターンに合わせる（`NetworkResult.runCatchingNetwork` と同等）。
+ */
+fun logoutAndClear(
+    authRepository: AuthRepository,
+    sessionStore: SessionStore,
+    onComplete: () -> Unit,
+) {
+    sessionStore.scope.launch {
+        try {
+            authRepository.logout()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            // logout は失敗しても UI に通知しない方針。最終的に sessionStore.clear() で
+            // Unauthenticated に倒すので、ユーザーから見ればログアウト成功と区別不能。
+        }
+        sessionStore.clear()
+        onComplete()
     }
 }
 
