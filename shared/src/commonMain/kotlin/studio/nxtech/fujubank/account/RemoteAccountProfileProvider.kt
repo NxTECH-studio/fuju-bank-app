@@ -59,6 +59,16 @@ class RemoteAccountProfileProvider(
     override fun updateProfile(displayName: String, email: String) {
         _profile.update { it.copy(displayName = displayName, email = email) }
     }
+
+    /**
+     * ログアウト時に呼ばれ、in-memory のプロフィールキャッシュを空に戻す。
+     * 次回ログイン時には新しい `RemoteAccountProfileProvider` が Koin から生成され
+     * 改めて `getMyProfile()` を叩く設計だが、Koin singleton なので本実装が再利用される
+     * ケースでも前ユーザーの displayName / email が残らないよう明示的に空に戻す。
+     */
+    override fun reset() {
+        _profile.value = EMPTY_PROFILE
+    }
 }
 
 /** 取得失敗・取得前の空状態。AccountHub 側で「-」プレースホルダに置換される。 */

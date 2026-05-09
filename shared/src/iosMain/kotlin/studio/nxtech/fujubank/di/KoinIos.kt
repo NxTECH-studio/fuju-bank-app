@@ -9,6 +9,7 @@ import studio.nxtech.fujubank.data.remote.api.UserApi
 import studio.nxtech.fujubank.data.repository.AuthRepository
 import studio.nxtech.fujubank.data.repository.ProfileRepository
 import studio.nxtech.fujubank.data.repository.UserRepository
+import studio.nxtech.fujubank.session.SessionResetCoordinator
 import studio.nxtech.fujubank.session.SessionStore
 import studio.nxtech.fujubank.signup.SignupCompletionSignal
 import studio.nxtech.fujubank.signup.SignupWelcomePreferences
@@ -34,6 +35,8 @@ fun authRepository(): AuthRepository = KoinPlatform.getKoin().get()
 fun userRepository(): UserRepository = KoinPlatform.getKoin().get()
 
 fun sessionStore(): SessionStore = KoinPlatform.getKoin().get()
+
+fun sessionResetCoordinator(): SessionResetCoordinator = KoinPlatform.getKoin().get()
 
 fun signupCompletionSignal(): SignupCompletionSignal = KoinPlatform.getKoin().get()
 
