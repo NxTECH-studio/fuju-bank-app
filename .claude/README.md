@@ -70,7 +70,7 @@ root/
 - **ソースセット境界**: `commonMain` に依存特化コードを書かない（Android / iOS SDK 直呼び禁止）。必要なら `expect`/`actual` で切る
 - **Compose Multiplatform**: UI ロジックは `commonMain` 側に寄せ、`androidMain` / `iosMain` は薄いアダプタに留める
 - **iOS ビルド検証**: macOS 環境では `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64` が通るまでを最低ラインとする
-- **ブランチ運用**: `develop` → `main` の2段を想定するが、`develop` が無ければ `main` をベースにする（ソロ開発 OK）
+- **ブランチ運用**: ソロ開発のため `main` only。タスク着手時に `feature/<task-id>-<slug>` を main から切り、PR で main にマージする（`develop` ブランチは設けない）
 
 ## カスタマイズ
 
