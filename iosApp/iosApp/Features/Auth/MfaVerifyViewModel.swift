@@ -1,75 +1,113 @@
 import Foundation
 import Shared
 
-/// MFA 入力画面の状態管理。pre_token を SessionStore.MfaPending から受け取って保持する。
+/// MFA 入力 → 検証成功後オンボーディング 3 画面（成功 / ようこそ / fujupay ロゴ）まで含めた状態管理。
+///
+/// SessionStore は最終 stage（`OnboardingStage.brand` 完了時）まで `setAuthenticated` を呼ばず
+/// MfaPending のまま保つことで、AppRoot は MfaVerifyView を表示し続ける。
 @MainActor
 final class MfaVerifyViewModel: ObservableObject {
-    enum InputMode {
-        case totp
-        case recovery
+    enum OnboardingStage {
+        case success
+        case welcome
+        case brand
     }
 
-    @Published var mode: InputMode = .totp
-    @Published var code: String = ""
+    enum Phase: Equatable {
+        case input
+        case onboarding(OnboardingStage)
+    }
+
+    @Published private(set) var phase: Phase = .input
+    @Published var code: String = "" {
+        didSet {
+            // 数字のみ・最大 6 桁にサニタイズ。SwiftUI の didSet ループを避けるため
+            // 変化があるときだけ書き戻す。
+            let sanitized = Self.sanitize(code)
+            if sanitized != code {
+                code = sanitized
+                return
+            }
+            if errorMessage != nil {
+                errorMessage = nil
+            }
+        }
+    }
     @Published private(set) var isSubmitting: Bool = false
     @Published var errorMessage: String?
 
     private let preToken: String
+    private var pendingUserId: String?
 
     init(preToken: String) {
         self.preToken = preToken
     }
 
-    func switchMode(to newMode: InputMode) {
-        guard !isSubmitting else { return }
-        mode = newMode
-        code = ""
-        errorMessage = nil
-    }
+    static let codeLength = 6
 
     func cancel() {
-        // 一段階目に戻す。AuthCore の pre_token は時限式なので破棄しても問題ない。
+        // 一段階目に戻す。pre_token は時限式なので破棄しても問題ない。Input phase 専用。
         KoinIosKt.sessionStore().clear()
     }
 
     func submit() {
-        guard !isSubmitting else { return }
-        let trimmed = code.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else {
-            errorMessage = "コードを入力してください"
+        guard !isSubmitting, phase == .input else { return }
+        guard code.count >= Self.codeLength else {
+            errorMessage = "6 桁のコードを入力してください"
             return
         }
+        // submit 開始時に念のため pendingUserId を破棄。Input phase で submit を再試行するたびに
+        // 直前の verify 結果を引き継がないようにする防御措置。
+        pendingUserId = nil
         isSubmitting = true
         errorMessage = nil
 
-        let totp: String? = mode == .totp ? trimmed : nil
-        let recovery: String? = mode == .recovery ? trimmed : nil
-
-        AuthFlowIosKt.verifyMfaAndProvision(
+        // Recovery code 入力 UI は仮設で隠しているが、recoveryCode パラメータは
+        // 後続タスク用にコードレベルで残しておく（常に nil）。
+        AuthFlowIosKt.verifyMfaWithoutAuthenticating(
             authRepository: KoinIosKt.authRepository(),
             userRepository: KoinIosKt.userRepository(),
             sessionStore: KoinIosKt.sessionStore(),
             preToken: preToken,
-            code: totp,
-            recoveryCode: recovery
+            code: code,
+            recoveryCode: nil
         ) { [weak self] outcome in
             Task { @MainActor in
                 guard let self else { return }
                 self.isSubmitting = false
                 switch outcome {
-                case is AuthFlowOutcome.Authenticated:
-                    // SessionStore 側で Authenticated に切り替わるので AppRoot が遷移する。
+                case let verified as MfaVerifyOutcome.Verified:
+                    self.pendingUserId = verified.userId
                     self.code = ""
                     self.errorMessage = nil
-                case let failure as AuthFlowOutcome.Failure:
+                    self.phase = .onboarding(.success)
+                case let failure as MfaVerifyOutcome.Failure:
                     self.errorMessage = failure.message
-                case let netFailure as AuthFlowOutcome.NetworkFailure:
+                case let netFailure as MfaVerifyOutcome.NetworkFailure:
                     self.errorMessage = netFailure.message
                 default:
-                    // MfaRequired はここでは到達しない（MFA 側のエンドポイントは MFA を要求しない）。
                     self.errorMessage = "未知のエラーが発生しました"
                 }
             }
         }
+    }
+
+    func advanceOnboarding() {
+        guard case let .onboarding(stage) = phase else { return }
+        switch stage {
+        case .success:
+            phase = .onboarding(.welcome)
+        case .welcome:
+            phase = .onboarding(.brand)
+        case .brand:
+            guard let userId = pendingUserId else { return }
+            pendingUserId = nil
+            KoinIosKt.sessionStore().setAuthenticated(userId: userId)
+        }
+    }
+
+    private static func sanitize(_ raw: String) -> String {
+        let digits = raw.filter { $0.isASCII && $0.isNumber }
+        return String(digits.prefix(codeLength))
     }
 }

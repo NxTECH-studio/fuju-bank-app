@@ -62,6 +62,53 @@ fun loginAndProvision(
 }
 
 /**
+ * MFA 確認 → provisionMe まで終わったが、SessionStore は **MfaPending のまま** 維持して
+ * userId だけ返すバリエーション。MFA 検証成功後に UI 内でオンボーディング画面を挟む際、
+ * Authenticated への遷移タイミングを呼び出し側でコントロールするために使う。
+ *
+ * 呼び出し側はオンボーディング完了時に `sessionStore.setAuthenticated(userId)` を呼ぶ責務を持つ。
+ */
+fun verifyMfaWithoutAuthenticating(
+    authRepository: AuthRepository,
+    userRepository: UserRepository,
+    sessionStore: SessionStore,
+    preToken: String,
+    code: String?,
+    recoveryCode: String?,
+    onResult: (MfaVerifyOutcome) -> Unit,
+) {
+    sessionStore.scope.launch {
+        val outcome = when (val verify = authRepository.verifyMfa(preToken, code = code, recoveryCode = recoveryCode)) {
+            is NetworkResult.Success -> when (val provision = userRepository.provisionMe()) {
+                is NetworkResult.Success -> MfaVerifyOutcome.Verified(provision.value.id)
+                is NetworkResult.Failure -> MfaVerifyOutcome.Failure(
+                    message = AuthErrorMessages.forMfa(provision.error),
+                    error = provision.error,
+                )
+                is NetworkResult.NetworkFailure -> MfaVerifyOutcome.NetworkFailure(
+                    message = AuthErrorMessages.forNetworkFailure(),
+                )
+            }
+            is NetworkResult.Failure -> MfaVerifyOutcome.Failure(
+                message = AuthErrorMessages.forMfa(verify.error),
+                error = verify.error,
+            )
+            is NetworkResult.NetworkFailure -> MfaVerifyOutcome.NetworkFailure(
+                message = AuthErrorMessages.forNetworkFailure(),
+            )
+        }
+        onResult(outcome)
+    }
+}
+
+/** [verifyMfaWithoutAuthenticating] の結果。Authenticated 遷移は呼び出し側が後で行う。 */
+sealed class MfaVerifyOutcome {
+    data class Verified(val userId: String) : MfaVerifyOutcome()
+    data class Failure(val message: String, val error: ApiError) : MfaVerifyOutcome()
+    data class NetworkFailure(val message: String) : MfaVerifyOutcome()
+}
+
+/**
  * MFA 確認 → 成功なら provisionMe → SessionStore に Authenticated を伝搬。
  */
 fun verifyMfaAndProvision(
