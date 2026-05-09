@@ -3,21 +3,48 @@ import Shared
 
 /// ホーム画面で表示する「最近の取引履歴」1 件分の表示モデル。
 ///
-/// バックエンド統合前のため、文字列とサインを呼び出し側で組み立ててそのまま流し込む形に留める。
-/// Android 側の `RecentTransactionItem` (data class) と意味論を揃えてある。
+/// `direction` から sign（`+`/`-`）と金額色（ピンク/黒）を派生させる。Android 側
+/// `RecentTransactionItem` と意味論を揃えてある。名前解決 / アーティファクト名取得は
+/// 後続タスクで対応するため、`title` は呼び出し側で短縮 ID を組み込んで作成する。
 struct RecentTransactionItem: Identifiable {
     let id: String
     let title: String
     let amount: Int64
-    let sign: String
+    let direction: TransactionDirection
     let timestamp: String
+}
+
+extension RecentTransactionItem {
+    /// shared `Transaction` を表示用 `RecentTransactionItem` に変換する。
+    /// タイトル組み立ては `TransactionRow.swift` の `TransactionRowVariant` と同じロジック。
+    static func fromShared(_ transaction: Shared.Transaction) -> RecentTransactionItem {
+        let direction = transaction.direction
+        let title: String
+        if direction == TransactionDirection.mint {
+            let suffix = transaction.artifactId.map { String($0.suffix(TransactionDisplay.shortIdLength)) }
+            title = suffix.map { "アーティファクト \($0)" } ?? "発行"
+        } else if direction == TransactionDirection.incoming {
+            let from = transaction.counterpartyUserId.map { String($0.suffix(TransactionDisplay.shortIdLength)) }
+            title = from.map { "\($0) からもらいました" } ?? "入金"
+        } else {
+            let to = transaction.counterpartyUserId.map { String($0.suffix(TransactionDisplay.shortIdLength)) }
+            title = to.map { "\($0) に送りました" } ?? "送金"
+        }
+        let timestamp = TransactionDateFormatterIosKt.formatTransactionDateTimeSlashForIos(instant: transaction.occurredAt)
+        return RecentTransactionItem(
+            id: transaction.id,
+            title: title,
+            amount: transaction.amount,
+            direction: direction,
+            timestamp: timestamp,
+        )
+    }
 }
 
 /// ホーム画面の「最近の取引履歴」セクション — Figma `709:8658` 準拠。
 ///
 /// セクションヘッダー（タイトル + もっとみる）と、白背景・角丸 20 の取引カード 3 枚を
-/// 縦に並べる。バックエンド連携は本タスクのスコープ外のため、表示するアイテムは呼び出し側
-/// からモックを渡す。
+/// 縦に並べる。
 struct RecentTransactionsSection: View {
     let items: [RecentTransactionItem]
     let onMore: () -> Void
@@ -66,15 +93,19 @@ private struct RecentTransactionCard: View {
     let item: RecentTransactionItem
 
     var body: some View {
+        // sign と金額色は direction から派生させる。Outgoing は黒/`-`、Mint/Incoming はピンク/`+`。
+        let isOutgoing = item.direction == TransactionDirection.outgoing
+        let sign = isOutgoing ? "-" : "+"
+        let amountColor: Color = isOutgoing ? FujuBankPalette.textPrimary : FujuBankPalette.brandPink
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .top) {
                 Text(item.title)
                     .font(FujuBankTypography.title)
                     .foregroundStyle(FujuBankPalette.textPrimary)
                 Spacer()
-                Text("\(item.sign)\(CurrencyFormatter.shared.formatAmount(amount: item.amount)) \(CurrencyFormatter.shared.UNIT)")
+                Text("\(sign)\(CurrencyFormatter.shared.formatAmount(amount: item.amount)) \(CurrencyFormatter.shared.UNIT)")
                     .font(FujuBankTypography.rowAmount)
-                    .foregroundStyle(FujuBankPalette.brandPink)
+                    .foregroundStyle(amountColor)
             }
             Text(item.timestamp)
                 .font(FujuBankTypography.caption)

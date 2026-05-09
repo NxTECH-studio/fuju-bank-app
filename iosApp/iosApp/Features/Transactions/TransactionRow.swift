@@ -10,7 +10,8 @@ import Shared
 /// バックエンドからアーティファクト画像を取れる仕組みが整うまでは X ロゴで仮置きし、画像取得後に
 /// 「画像 + 左上 X バッジ」バリアントを差し込めるようにこの 1 ファイルにまとめておく。
 ///
-/// サブタイトル「18秒みつめられた」は Figma 上の固定文。視線データ統合は後続タスク。
+/// サブタイトルは `TransactionDisplay.rowSubtitle(transaction:)` で direction 別に分岐。
+/// 視線秒数（gazedSeconds）の API 拡張は後続タスクで対応。
 struct TransactionRowView: View {
     let transaction: Shared.Transaction
 
@@ -23,7 +24,7 @@ struct TransactionRowView: View {
                     Text(variant.title)
                         .font(FujuBankTypography.title)
                         .foregroundStyle(FujuBankPalette.textPrimary)
-                    Text(TransactionDisplay.subtitlePlaceholder)
+                    Text(TransactionDisplay.rowSubtitle(transaction: transaction))
                         .font(FujuBankTypography.caption)
                         .foregroundStyle(FujuBankPalette.textSecondary)
                 }

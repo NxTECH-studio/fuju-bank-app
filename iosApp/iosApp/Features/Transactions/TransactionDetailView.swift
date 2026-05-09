@@ -137,7 +137,7 @@ private struct DetailTransactionRow: View {
                         Text(title)
                             .font(FujuBankTypography.title)
                             .foregroundStyle(FujuBankPalette.textPrimary)
-                        Text(TransactionDisplay.subtitlePlaceholder)
+                        Text(TransactionDisplay.rowSubtitle(transaction: transaction))
                             .font(FujuBankTypography.caption)
                             .foregroundStyle(FujuBankPalette.textSecondary)
                     }

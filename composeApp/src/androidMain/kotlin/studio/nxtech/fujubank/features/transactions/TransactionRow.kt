@@ -41,7 +41,8 @@ import studio.nxtech.fujubank.util.formatTransactionDateTimeSlash
  * バックエンドからアーティファクト画像を取れる仕組みが整うまでは X ロゴで仮置きし、画像取得後に
  * 「画像 + 左上 X バッジ」バリアントを差し込めるようにこの 1 ファイルにまとめておく。
  *
- * サブタイトル `18秒みつめられた` は Figma 上の固定文。視線データ統合は後続タスクで対応。
+ * サブタイトルは `transactionRowSubtitle(transaction)` で direction 別に分岐させる。
+ * 視線秒数（gazedSeconds）の API 拡張は後続タスクで対応する。
  */
 @Composable
 fun TransactionRow(
@@ -84,7 +85,7 @@ fun TransactionRow(
                         ),
                     )
                     Text(
-                        text = TRANSACTION_ROW_SUBTITLE_PLACEHOLDER,
+                        text = transactionRowSubtitle(transaction),
                         style = TextStyle(
                             fontFamily = NotoSansJP,
                             fontSize = 12.sp,

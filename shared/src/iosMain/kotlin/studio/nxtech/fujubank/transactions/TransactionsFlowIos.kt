@@ -60,3 +60,39 @@ fun fetchMyTransactions(
     ensureActive()
     onResult(outcome)
 }
+
+/**
+ * Swift 側 `HomeViewModel` から「最近 N 件の取引」を取るためのファサード。
+ * 既存 [fetchMyTransactions] と同じ流れで取得し、`Loaded` 時に時系列降順で `limit` 件に絞る。
+ *
+ * ホームでは Recent セクションの失敗をホーム全体に伝播させたくないため、Swift 側で
+ * `Failure` / `NetworkFailure` / `Unauthenticated` を握り潰してセクション内エラー表示にする。
+ */
+fun fetchRecentTransactions(
+    userRepository: UserRepository,
+    sessionStore: SessionStore,
+    limit: Int,
+    onResult: (TransactionsLoadOutcome) -> Unit,
+): Job = transactionsScope.launch {
+    val sessionUserId = (sessionStore.current as? SessionState.Authenticated)?.userId
+    val userId = sessionUserId ?: if (userRepository.useDummyData) "" else null
+    val outcome = if (userId == null) {
+        TransactionsLoadOutcome.Unauthenticated
+    } else {
+        when (val result = userRepository.transactions(userId)) {
+            is NetworkResult.Success -> TransactionsLoadOutcome.Loaded(
+                transactions = result.value
+                    .sortedByDescending { it.occurredAt }
+                    .take(limit),
+            )
+            is NetworkResult.Failure -> TransactionsLoadOutcome.Failure(
+                message = "最近の取引を取得できませんでした",
+            )
+            is NetworkResult.NetworkFailure -> TransactionsLoadOutcome.NetworkFailure(
+                message = "通信エラーが発生しました",
+            )
+        }
+    }
+    ensureActive()
+    onResult(outcome)
+}
