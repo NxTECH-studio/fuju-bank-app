@@ -81,7 +81,8 @@ root/
 │       │   │   └── repository/                         # AuthRepository / UserRepository / ProfileRepository / LedgerRepository / ArtifactRepository / RealtimeRepository
 │       │   ├── di/                                     # SharedModule / AuthModule / UserModule / SessionModule / SignupModule / AccountModule / LedgerModule / ArtifactModule / RealtimeModule / Qualifiers / BuildConfigFacade
 │       │   ├── domain/model/
-│       │   ├── session/                                # SessionStore / SessionState / AuthErrorMessages
+│       │   ├── account/                                # AccountProfileProvider（Remote / Dummy） / NotificationSettingsPreferences / PrivacyPreferences
+│       │   ├── session/                                # SessionStore / SessionState / AuthErrorMessages / SessionResetCoordinator / TokenExpiryWatcher
 │       │   └── network/                                # HttpClientFactory（expect, installAuth フラグあり） / AuthTokenRefresher
 │       ├── androidMain/kotlin/studio/nxtech/fujubank/
 │       │   ├── auth/                                   # EncryptedSharedPreferences 実装（actual: TokenStorage / PersistentCookiesStorage）
@@ -168,7 +169,7 @@ fun initKoin(
 | `ledgerModule` | `LedgerApi` / `LedgerRepository` | `shared/commonMain` |
 | `artifactModule` | `ArtifactApi` / `ArtifactRepository` | `shared/commonMain` |
 | `realtimeModule(cableUrl)` | `cableUrl`（`CABLE_URL_QUALIFIER`） / `CoroutineScope`（`APP_SCOPE_QUALIFIER`, `SupervisorJob + Dispatchers.Default`） / `UserChannelClient` / `RealtimeRepository` | `shared/commonMain` |
-| `sessionModule` | `SessionStore`（プロセス内で唯一のセッション状態ホルダー） | `shared/commonMain` |
+| `sessionModule` | `SessionStore`（プロセス内で唯一のセッション状態ホルダー） / `SessionResetCoordinator`（`Authenticated → Unauthenticated` 遷移を観測して `AccountProfileProvider.reset()` を発火） / `TokenExpiryWatcher`（resume 契機の on-demand expiry チェック。`nowMillis = { Clock.System.now().toEpochMilliseconds() }`） | `shared/commonMain` |
 | `signupModule` | `SignupCompletionSignal` ほか signup フロー連携用 single | `shared/commonMain` |
 | `accountModule` | `SignupWelcomePreferences` ほかアカウント設定連携用 single | `shared/commonMain` |
 | `androidPlatformModule` | `TokenStorageFactory(androidContext())` / `PersistentCookiesStorageFactory` / `CookiesStorage`（single, bank / AuthCore で共有） / Bearer 用 `HttpClient`（OkHttp + `installAuth = true`） / AuthCore 用 `HttpClient(AUTHCORE_CLIENT_QUALIFIER)`（OkHttp + `installAuth = false`） | `shared/androidMain` |
@@ -398,6 +399,8 @@ external_user_id として読み、内部で連番 `id` の user 行を `lazy pr
 5. **401 / 403**: `ResponseException` → `runCatchingNetwork` → `NetworkResult.Failure(ApiError)`。
    `ApiErrorCode` に応じて前節の方針で処理します。
 6. **ログアウト**: `AuthRepository.logout()` → `AuthApi.logout()` でサーバ側 refresh family を revoke し、`TokenStorage.clear()` で local の access を破棄。cookie は `PersistentCookiesStorage` 側に残るが、access 無しでは認証済み扱いにならない。
+7. **resume 契機の事前リフレッシュ**: `TokenExpiryWatcher.checkNow()` を Android `Lifecycle.Event.ON_RESUME` / iOS `ScenePhase = .active` から呼ぶ。`expiresAt - 60s` を過ぎていれば `AuthRepository.refresh()` を kick する。401-driven の自動リフレッシュ（4. の `refreshTokens`）は「リクエスト時に失敗してから」のリアクティブ動作だが、こちらは「foreground 復帰時に先回りで」走らせるプロアクティブ動作。`refresh` が API エラーを返したら `SessionStore` を `Unauthenticated` に倒す（`NetworkFailure` のときは何もせず、次の resume / 401-driven refresh に委ねる ─ 圏外復帰で毎回ログアウトされる UX を避けるため）。
+8. **logout / refresh 失敗時のローカルキャッシュ破棄**: `SessionResetCoordinator` がアプリ起動時に `start()` され、`SessionStore.state` を観測して `Authenticated → Unauthenticated` の遷移エッジで `AccountProfileProvider.reset()` を呼ぶ。VM 内 state は画面 unmount で自然破棄されるが、Koin singleton として保持しているプロフィールキャッシュは明示的に reset しないと前ユーザーの情報が残るためこの調停役を置いている。`Unauthenticated` 起動時を logout と誤認しないよう、直前状態を保持して遷移エッジでのみ発火する設計。
 
 ### トークン保管（`expect` / `actual`）
 
@@ -520,6 +523,9 @@ debug / release ビルドとも本番 API（`*.fujupay.app`）を直接叩くた
 | UI（未実装） | 送金フォーム / HUD / Artifact 投稿（MVP 範囲外: `project_mvp_scope.md` 参照、受け取り専用 MVP） |
 | baseUrl / cableUrl | BuildKonfig 経由化済み。debug / release とも本番（`*.fujupay.app`）を向く |
 | MFA / リフレッシュトークン | 実装済み: MFA は `AuthRepository.login` → `LoginResult.NeedsMfa` → `MfaVerifyScreen` の経路。リフレッシュは Auth プラグインの `refreshTokens` + `AuthTokenRefresher`（`AUTHCORE_CLIENT_QUALIFIER` 経由のため自己再帰 deadlock しない） |
+| access_token の proactive 期限監視 | 実装済み: `TokenExpiryWatcher.checkNow()` を Android `Lifecycle.Event.ON_RESUME` / iOS `ScenePhase = .active` から呼ぶ。`DEFAULT_REFRESH_THRESHOLD_MS = 60_000` 以内なら refresh を先回り起動。API 失敗時は session を `Unauthenticated` に倒し、`NetworkFailure` 時は no-op |
+| logout 時のローカル state 破棄 | 実装済み: `SessionResetCoordinator` をアプリ起動時に `start()` し、`Authenticated → Unauthenticated` の遷移エッジで `AccountProfileProvider.reset()` を発火。Koin singleton 経由のプロフィールキャッシュにユーザー切替時の残骸が出ないことを保証 |
+| CI | テストとビルドで job を分離: `build-and-check`（Android assemble + lint）/ `build-ios-framework` / `build-ios-app`（xcodebuild）/ `test-jvm`（`:shared:testDebugUnitTest`）/ `test-ios`（`:shared:iosSimulatorArm64Test`）の 5 job 構成。Pull Request トリガー固定で `concurrency: cancel-in-progress` 有効 |
 
 ## 関連リポジトリ
 
