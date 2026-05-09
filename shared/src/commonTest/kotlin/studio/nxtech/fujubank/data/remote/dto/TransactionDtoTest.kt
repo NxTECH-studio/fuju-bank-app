@@ -14,13 +14,17 @@ class TransactionDtoTest {
     fun transactionDto_deserializes_mint_payload() {
         val payload = """
             {
-              "id": "txn_01HZY8X2B7",
+              "entry_id": 100,
+              "transaction_id": "txn_01HZY8X2B7",
               "transaction_kind": "mint",
+              "direction": "credit",
               "amount": 1000,
-              "from_user_id": null,
-              "to_user_id": "usr_01HZY8X2B7",
               "artifact_id": "art_01HZY8X2B7",
-              "occurred_at": "2026-04-21T12:34:56Z"
+              "counterparty_user_id": null,
+              "memo": null,
+              "metadata": null,
+              "occurred_at": "2026-04-21T12:34:56Z",
+              "created_at": "2026-04-21T12:34:57Z"
             }
         """.trimIndent()
 
@@ -28,10 +32,10 @@ class TransactionDtoTest {
 
         assertEquals("txn_01HZY8X2B7", decoded.id)
         assertEquals(TransactionKind.MINT, decoded.kind)
+        assertEquals(TransactionDirectionWire.CREDIT, decoded.direction)
         assertEquals(1_000L, decoded.amount)
-        assertNull(decoded.fromUserId)
-        assertEquals("usr_01HZY8X2B7", decoded.toUserId)
         assertEquals("art_01HZY8X2B7", decoded.artifactId)
+        assertNull(decoded.counterpartyUserId)
         assertEquals("2026-04-21T12:34:56Z", decoded.occurredAt)
     }
 
@@ -39,21 +43,23 @@ class TransactionDtoTest {
     fun transactionDto_deserializes_transfer_payload() {
         val payload = """
             {
-              "id": "txn_02HZY8X2B7",
+              "entry_id": 101,
+              "transaction_id": "txn_02HZY8X2B7",
               "transaction_kind": "transfer",
+              "direction": "debit",
               "amount": 500,
-              "from_user_id": "usr_sender",
-              "to_user_id": "usr_receiver",
               "artifact_id": null,
-              "occurred_at": "2026-04-21T12:35:00Z"
+              "counterparty_user_id": "usr_other",
+              "occurred_at": "2026-04-21T12:35:00Z",
+              "created_at": "2026-04-21T12:35:01Z"
             }
         """.trimIndent()
 
         val decoded = json.decodeFromString(TransactionDto.serializer(), payload)
 
         assertEquals(TransactionKind.TRANSFER, decoded.kind)
-        assertEquals("usr_sender", decoded.fromUserId)
-        assertEquals("usr_receiver", decoded.toUserId)
+        assertEquals(TransactionDirectionWire.DEBIT, decoded.direction)
+        assertEquals("usr_other", decoded.counterpartyUserId)
         assertNull(decoded.artifactId)
     }
 
@@ -62,10 +68,10 @@ class TransactionDtoTest {
         val original = TransactionDto(
             id = "txn_01HZY8X2B7",
             kind = TransactionKind.MINT,
+            direction = TransactionDirectionWire.CREDIT,
             amount = 1_000L,
-            fromUserId = null,
-            toUserId = "usr_01HZY8X2B7",
             artifactId = "art_01HZY8X2B7",
+            counterpartyUserId = null,
             occurredAt = "2026-04-21T12:34:56Z",
         )
         val encoded = json.encodeToString(TransactionDto.serializer(), original)
@@ -78,10 +84,10 @@ class TransactionDtoTest {
         val original = TransactionDto(
             id = "txn_02HZY8X2B7",
             kind = TransactionKind.TRANSFER,
+            direction = TransactionDirectionWire.DEBIT,
             amount = 500L,
-            fromUserId = "usr_sender",
-            toUserId = "usr_receiver",
             artifactId = null,
+            counterpartyUserId = "usr_other",
             occurredAt = "2026-04-21T12:35:00Z",
         )
         val encoded = json.encodeToString(TransactionDto.serializer(), original)
@@ -99,16 +105,26 @@ class TransactionDtoTest {
     }
 
     @Test
+    fun transactionDirectionWire_serializes_as_lowercase() {
+        val credit =
+            json.encodeToString(TransactionDirectionWire.serializer(), TransactionDirectionWire.CREDIT)
+        val debit =
+            json.encodeToString(TransactionDirectionWire.serializer(), TransactionDirectionWire.DEBIT)
+        assertEquals("\"credit\"", credit)
+        assertEquals("\"debit\"", debit)
+    }
+
+    @Test
     fun transactionDto_handles_bigint_amount() {
         // bigint の範囲を確認（Int では溢れる値）。
         val payload = """
             {
-              "id": "txn_big",
+              "transaction_id": "txn_big",
               "transaction_kind": "mint",
+              "direction": "credit",
               "amount": 9223372036854775807,
-              "from_user_id": null,
-              "to_user_id": "usr_1",
               "artifact_id": "art_1",
+              "counterparty_user_id": null,
               "occurred_at": "2026-04-21T00:00:00Z"
             }
         """.trimIndent()
@@ -121,23 +137,23 @@ class TransactionDtoTest {
     @Test
     fun transactionListResponse_roundtrips() {
         val original = TransactionListResponse(
-            transactions = listOf(
+            data = listOf(
                 TransactionDto(
                     id = "txn_01",
                     kind = TransactionKind.MINT,
+                    direction = TransactionDirectionWire.CREDIT,
                     amount = 1_000L,
-                    fromUserId = null,
-                    toUserId = "usr_1",
                     artifactId = "art_1",
+                    counterpartyUserId = null,
                     occurredAt = "2026-04-21T12:34:56Z",
                 ),
                 TransactionDto(
                     id = "txn_02",
                     kind = TransactionKind.TRANSFER,
+                    direction = TransactionDirectionWire.DEBIT,
                     amount = 500L,
-                    fromUserId = "usr_1",
-                    toUserId = "usr_2",
                     artifactId = null,
+                    counterpartyUserId = "usr_2",
                     occurredAt = "2026-04-21T12:35:00Z",
                 ),
             ),
@@ -145,20 +161,20 @@ class TransactionDtoTest {
         val encoded = json.encodeToString(TransactionListResponse.serializer(), original)
         val decoded = json.decodeFromString(TransactionListResponse.serializer(), encoded)
         assertEquals(original, decoded)
-        assertEquals(2, decoded.transactions.size)
+        assertEquals(2, decoded.data.size)
     }
 
     @Test
     fun transactionListResponse_ignores_unknown_fields() {
         val payload = """
             {
-              "transactions": [],
+              "data": [],
               "next_cursor": "abc"
             }
         """.trimIndent()
 
         val decoded = json.decodeFromString(TransactionListResponse.serializer(), payload)
 
-        assertEquals(0, decoded.transactions.size)
+        assertEquals(0, decoded.data.size)
     }
 }

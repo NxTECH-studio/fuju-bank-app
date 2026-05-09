@@ -8,6 +8,7 @@ import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.remote.api.UserApi
 import studio.nxtech.fujubank.data.remote.api.UserMeApi
 import studio.nxtech.fujubank.data.remote.dto.CreateUserRequest
+import studio.nxtech.fujubank.data.remote.dto.TransactionDirectionWire
 import studio.nxtech.fujubank.data.remote.dto.TransactionDto
 import studio.nxtech.fujubank.data.remote.dto.UserResponse
 import studio.nxtech.fujubank.data.remote.map
@@ -48,9 +49,9 @@ class UserRepository(
     suspend fun getMe(): NetworkResult<User> =
         userMeApi.getMe().map { it.toDomain() }
 
-    // `userId` は API のパスパラメータであると同時に、`Transaction.counterpartyUserId`
-    // を決定する際の「自分」としても使われる。サーバーは JWT 認証により自身の取引
-    // しか返さない前提。
+    // server (`/users/:id/transactions`) は JWT 認証により自身の取引のみを返し、
+    // direction (credit/debit) と counterparty_user_id を確定済みで返してくる。
+    // そのため client 側で `myUserId` 比較による direction 推定は行わない。
     suspend fun transactions(userId: String): NetworkResult<List<Transaction>> {
         if (useDummyData) {
             // 通信を伴わない UI 確認用フェイクデータ。loading 状態を観察できるよう少しだけ待つ。
@@ -70,7 +71,7 @@ class UserRepository(
             )
         }
         return userApi.transactions(userId).map { response ->
-            response.transactions.map { it.toDomain(myUserId = userId) }
+            response.data.map { it.toDomain() }
         }
     }
 }
@@ -81,31 +82,26 @@ private fun UserResponse.toDomain(): User = User(
     createdAt = Instant.parse(createdAt),
 )
 
-private fun TransactionDto.toDomain(myUserId: String): Transaction = Transaction(
+private fun TransactionDto.toDomain(): Transaction = Transaction(
     id = id,
     kind = kind,
-    direction = direction(myUserId),
+    direction = resolveDirection(kind, direction),
     amount = amount,
-    counterpartyUserId = counterpartyUserId(myUserId),
+    counterpartyUserId = counterpartyUserId,
     artifactId = artifactId,
     occurredAt = Instant.parse(occurredAt),
 )
 
-// mint: 常に null（相手なし）。
-// transfer: 自分が from なら to、自分が to なら from を返す。
-private fun TransactionDto.counterpartyUserId(myUserId: String): String? = when (kind) {
-    TransactionKind.MINT -> null
-    TransactionKind.TRANSFER -> if (fromUserId == myUserId) toUserId else fromUserId
-}
-
-// mint: 常に Incoming 扱い (実体は新規発行)。
-// transfer: 自分が from なら Outgoing、それ以外は Incoming。
-private fun TransactionDto.direction(myUserId: String): TransactionDirection = when (kind) {
+// mint は常に Mint 扱い（現 MVP では burn = mint+debit が発生しない契約）。
+// transfer は server の credit/debit をそのまま Incoming/Outgoing にマップする。
+private fun resolveDirection(
+    kind: TransactionKind,
+    wire: TransactionDirectionWire,
+): TransactionDirection = when (kind) {
     TransactionKind.MINT -> TransactionDirection.Mint
-    TransactionKind.TRANSFER -> if (fromUserId == myUserId) {
-        TransactionDirection.Outgoing
-    } else {
-        TransactionDirection.Incoming
+    TransactionKind.TRANSFER -> when (wire) {
+        TransactionDirectionWire.CREDIT -> TransactionDirection.Incoming
+        TransactionDirectionWire.DEBIT -> TransactionDirection.Outgoing
     }
 }
 
