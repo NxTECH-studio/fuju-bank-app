@@ -159,9 +159,13 @@ fun logoutAndClear(
         } catch (_: Throwable) {
             // logout は失敗しても UI に通知しない方針。最終的に sessionStore.clear() で
             // Unauthenticated に倒すので、ユーザーから見ればログアウト成功と区別不能。
+        } finally {
+            // scope cancel / 例外いずれでも clear と onComplete を必ず通す。
+            // SessionStore.clear() は同期的な state 更新のみで suspend しないため
+            // CancellationException 中でも安全に実行できる。
+            sessionStore.clear()
+            onComplete()
         }
-        sessionStore.clear()
-        onComplete()
     }
 }
 

@@ -1,7 +1,6 @@
 package studio.nxtech.fujubank.features.account
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -56,11 +55,15 @@ class AccountHubViewModel(
      * - `runCatching` は [CancellationException] を握り潰してしまうため、明示的な
      *   try/catch で再 throw するプロジェクト共通パターンに合わせる
      *   （`shared/.../NetworkResult.kt` の `runCatchingNetwork` と同等）。
+     * - 起点 scope は [SessionStore.scope]（app lifecycle に紐付く SupervisorJob）。
+     *   logout 進行中に AccountHub から離脱して VM が cancel されても、サーバ呼び出し→
+     *   `sessionStore.clear()` まで完走させるため `viewModelScope` ではなくこちらを使う。
+     *   iOS 側 `AuthFlowIos.logoutAndClear` と同じ scope 戦略。
      */
     fun logout() {
         if (_isLoggingOut.value) return
         _isLoggingOut.value = true
-        viewModelScope.launch {
+        sessionStore.scope.launch {
             try {
                 authRepository.logout()
             } catch (e: CancellationException) {
@@ -68,9 +71,11 @@ class AccountHubViewModel(
             } catch (_: Throwable) {
                 // logout は失敗しても UI に通知しない方針（最終的に sessionStore.clear で
                 // Unauthenticated に倒すので、ユーザーから見ればログアウト成功と区別不能）。
+            } finally {
+                // 親 scope が cancel されても clear と flag リセットは必ず実行する。
+                sessionStore.clear()
+                _isLoggingOut.value = false
             }
-            sessionStore.clear()
-            _isLoggingOut.value = false
         }
     }
 }

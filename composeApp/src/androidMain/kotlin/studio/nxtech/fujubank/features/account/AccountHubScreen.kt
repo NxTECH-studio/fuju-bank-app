@@ -114,8 +114,9 @@ fun AccountHubScreen(
 
     if (showLogoutConfirm) {
         AlertDialog(
-            // logout 進行中は誤操作防止のため画面外タップ／Back では閉じない。
-            onDismissRequest = { if (!isLoggingOut) showLogoutConfirm = false },
+            // 画面外タップ / Back での dismiss は無効化する（明示的に
+            // 「ログアウト」「キャンセル」のいずれかを選ばせる UX）。
+            onDismissRequest = {},
             title = { Text("ログアウトしますか？") },
             text = { Text("再度利用するには再ログインが必要になります。") },
             confirmButton = {
