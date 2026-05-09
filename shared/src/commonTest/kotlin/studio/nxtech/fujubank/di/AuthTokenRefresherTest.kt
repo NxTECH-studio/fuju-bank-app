@@ -150,4 +150,81 @@ class AuthTokenRefresherTest {
         val auth = assertIs<SessionState.Authenticated>(sessionStore.current)
         assertEquals("usr_1", auth.userId)
     }
+
+    @Test
+    fun refresh_invalid_refresh_token_clears_storage_and_session() = runTest {
+        // INVALID_REFRESH_TOKEN（refresh cookie 自体が壊れている）でも
+        // TOKEN_REVOKED と同様に Failure 扱いで clear が走る。
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """{"error":"TOKEN_INVALID","message":"refresh token invalid"}""",
+                ),
+                status = HttpStatusCode.Unauthorized,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val storage = FakeTokenStorage(initialAccess = "at_old")
+        val sessionStore = SessionStore().apply { setAuthenticated("usr_1") }
+        val refresher = createAuthTokenRefresher(
+            authRepository = authRepository(engine, storage),
+            tokenStorage = storage,
+            sessionStore = sessionStore,
+        )
+
+        val token = refresher.refresh()
+        assertNull(token)
+        assertEquals(1, storage.clearCalls)
+        assertNull(storage.access)
+        assertEquals(SessionState.Unauthenticated, sessionStore.current)
+    }
+
+    @Test
+    fun refresh_clears_token_storage_before_session_state_unauthenticated() = runTest {
+        // tokenStorage.clear() が sessionStore.clear() より先に走ること。
+        // UI が Unauthenticated を観測した時点で残存トークンが無いことを保証する。
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """{"error":"TOKEN_REVOKED","message":"x"}""",
+                ),
+                status = HttpStatusCode.Unauthorized,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        // clear() が呼ばれた瞬間の sessionStore.current を記録する FakeTokenStorage。
+        val sessionStore = SessionStore().apply { setAuthenticated("usr_1") }
+        val sessionStateAtClear = mutableListOf<SessionState>()
+        val storage = object : TokenStorage {
+            var access: String? = "at_old"
+            var clearCalls: Int = 0
+
+            override suspend fun loadAccess(): String? = access
+            override suspend fun loadExpiresAt(): Long? = null
+            override suspend fun saveAccess(token: String, expiresAt: Long?) {
+                access = token
+            }
+            override suspend fun clear() {
+                clearCalls += 1
+                access = null
+                // clear() が呼ばれた瞬間に sessionStore がまだ Authenticated であることを期待。
+                sessionStateAtClear += sessionStore.current
+            }
+        }
+        val refresher = createAuthTokenRefresher(
+            authRepository = authRepository(engine, storage),
+            tokenStorage = storage,
+            sessionStore = sessionStore,
+        )
+
+        refresher.refresh()
+
+        assertEquals(1, storage.clearCalls)
+        assertEquals(
+            listOf<SessionState>(SessionState.Authenticated("usr_1")),
+            sessionStateAtClear,
+            "tokenStorage.clear() は sessionStore.clear() より先に呼ばれるべき",
+        )
+        assertEquals(SessionState.Unauthenticated, sessionStore.current)
+    }
 }
