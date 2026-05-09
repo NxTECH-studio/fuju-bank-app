@@ -276,6 +276,13 @@
    ユーザー横断で残しても問題ない想定。要 user 確認。
 3. **proactive expiry 監視** → `client-bank-19`
 4. **多端末セッション同期 / リモートからの強制 logout 受信** — MVP 外。
+5. **`RealtimeRepository.cache` の reset** — userId-keyed `SharedFlow` を Koin singleton
+   で保持しているが、MVP は受け取り専用かつ自分の userId 以外の subscription は発生しない
+   ため、ログアウト→再ログインで前ユーザー分の cache entry が残ってもデータ漏洩にはならない。
+   送信 / 多端末ユースケースが入る段階で `Resettable` interface 化する想定。
+6. **再ログイン時の `RemoteAccountProfileProvider` 再 fetch トリガー** — `reset()` で空に戻すが、
+   `init` の `getMyProfile()` は singleton 再利用時に再走らないため、新ユーザーの
+   プロフィールを取り直す責務は AccountHub 側 / `Authenticated` 遷移 hook 側で別途設計する。
 
 ## 未決事項
 

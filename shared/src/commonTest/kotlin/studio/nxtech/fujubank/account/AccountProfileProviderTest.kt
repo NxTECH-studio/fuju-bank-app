@@ -2,6 +2,7 @@ package studio.nxtech.fujubank.account
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 
 class AccountProfileProviderTest {
 
@@ -12,7 +13,7 @@ class AccountProfileProviderTest {
 
         provider.updateProfile(displayName = "別ユーザー", email = "other@example.com")
         // 編集後の値は initial と異なる前提（テストの自己確認）。
-        kotlin.test.assertNotEquals(initial, provider.profile.value)
+        assertNotEquals(initial, provider.profile.value)
 
         provider.reset()
         assertEquals(initial, provider.profile.value)

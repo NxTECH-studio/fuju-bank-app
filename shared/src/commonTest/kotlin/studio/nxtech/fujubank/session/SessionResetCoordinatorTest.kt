@@ -1,16 +1,15 @@
 package studio.nxtech.fujubank.session
 
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import studio.nxtech.fujubank.account.AccountProfile
 import studio.nxtech.fujubank.account.AccountProfileProvider
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 class SessionResetCoordinatorTest {
 
@@ -27,23 +26,11 @@ class SessionResetCoordinatorTest {
         }
     }
 
-    private fun coordinator(
-        sessionStore: SessionStore,
-        provider: FakeAccountProfileProvider,
-        scope: CoroutineScope,
-    ): SessionResetCoordinator =
-        SessionResetCoordinator(
-            sessionStore = sessionStore,
-            accountProfileProvider = provider,
-            scope = scope,
-        )
-
     @Test
     fun authenticatedToUnauthenticatedTriggersResetExactlyOnce() = runTest {
         val store = SessionStore()
         val provider = FakeAccountProfileProvider()
-        val testScope = TestScope(StandardTestDispatcher(testScheduler))
-        coordinator(store, provider, testScope).start()
+        SessionResetCoordinator(store, provider, scope = backgroundScope).start()
         testScheduler.runCurrent()
 
         store.setAuthenticated("u1")
@@ -58,8 +45,7 @@ class SessionResetCoordinatorTest {
     fun initialUnauthenticatedDoesNotTriggerReset() = runTest {
         val store = SessionStore()
         val provider = FakeAccountProfileProvider()
-        val testScope = TestScope(StandardTestDispatcher(testScheduler))
-        coordinator(store, provider, testScope).start()
+        SessionResetCoordinator(store, provider, scope = backgroundScope).start()
         testScheduler.runCurrent()
 
         // 初期値の Unauthenticated emit のみで遷移無し。
@@ -70,8 +56,7 @@ class SessionResetCoordinatorTest {
     fun unauthenticatedToMfaPendingDoesNotTriggerReset() = runTest {
         val store = SessionStore()
         val provider = FakeAccountProfileProvider()
-        val testScope = TestScope(StandardTestDispatcher(testScheduler))
-        coordinator(store, provider, testScope).start()
+        SessionResetCoordinator(store, provider, scope = backgroundScope).start()
         testScheduler.runCurrent()
 
         store.setMfaPending("pt_1")
@@ -84,8 +69,7 @@ class SessionResetCoordinatorTest {
     fun authenticatedToMfaPendingDoesNotTriggerReset() = runTest {
         val store = SessionStore()
         val provider = FakeAccountProfileProvider()
-        val testScope = TestScope(StandardTestDispatcher(testScheduler))
-        coordinator(store, provider, testScope).start()
+        SessionResetCoordinator(store, provider, scope = backgroundScope).start()
         testScheduler.runCurrent()
 
         store.setAuthenticated("u1")
@@ -100,8 +84,7 @@ class SessionResetCoordinatorTest {
     fun multipleLogoutCyclesTriggerResetEachTime() = runTest {
         val store = SessionStore()
         val provider = FakeAccountProfileProvider()
-        val testScope = TestScope(StandardTestDispatcher(testScheduler))
-        coordinator(store, provider, testScope).start()
+        SessionResetCoordinator(store, provider, scope = backgroundScope).start()
         testScheduler.runCurrent()
 
         repeat(3) {
@@ -118,15 +101,14 @@ class SessionResetCoordinatorTest {
     fun startIsIdempotent() = runTest {
         val store = SessionStore()
         val provider = FakeAccountProfileProvider()
-        val testScope = TestScope(StandardTestDispatcher(testScheduler))
-        val coord = coordinator(store, provider, testScope)
+        val coord = SessionResetCoordinator(store, provider, scope = backgroundScope)
         val first = coord.start()
         val second = coord.start()
         testScheduler.runCurrent()
 
         // 2 回目の start() は no-op で null を返す。
-        kotlin.test.assertNotNull(first)
-        kotlin.test.assertNull(second)
+        assertNotNull(first)
+        assertNull(second)
 
         store.setAuthenticated("u1")
         testScheduler.runCurrent()

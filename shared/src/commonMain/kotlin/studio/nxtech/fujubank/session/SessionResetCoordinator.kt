@@ -1,5 +1,6 @@
 package studio.nxtech.fujubank.session
 
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -14,8 +15,8 @@ import studio.nxtech.fujubank.account.AccountProfileProvider
  *   ここでは VM 内 state には触れず Provider 系 singleton のみ reset する。
  * - 起動経路は Android `App.kt` の `LaunchedEffect(Unit)` / iOS `iOSApp.init` などから
  *   1 度だけ [start] を呼ぶ前提だが、二重呼び出しに備えて [started] フラグで idempotent にする。
- *   呼び出し元はいずれも Main スレッド（`LaunchedEffect` / Swift の `init`）からのため、
- *   フラグの読み書きはデータ競合せず単純な `Boolean` で十分。
+ *   呼び出し元はいずれも Main スレッドだが、将来 background 起点が増えても二重 collect が
+ *   起きないよう [Volatile] を付与している（コストは無視できる）。
  * - StateFlow の collect は `SessionStore.scope` 上で起動する。アプリプロセスが生きている間
  *   有効な scope なので Coordinator 自身が scope を所有する必要は無い（[scope] 引数で
  *   テストから差し替えられるようにはしてある）。
@@ -27,6 +28,7 @@ class SessionResetCoordinator(
     private val accountProfileProvider: AccountProfileProvider,
     private val scope: CoroutineScope = sessionStore.scope,
 ) {
+    @Volatile
     private var started: Boolean = false
 
     /**
