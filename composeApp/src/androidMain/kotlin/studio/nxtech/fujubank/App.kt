@@ -31,6 +31,7 @@ import studio.nxtech.fujubank.features.signup.SignUpFlowViewModel
 import studio.nxtech.fujubank.features.signup.SignUpOtpScreen
 import studio.nxtech.fujubank.features.signup.SignUpSuccessScreen
 import studio.nxtech.fujubank.features.welcome.WelcomeScreen
+import studio.nxtech.fujubank.session.SessionResetCoordinator
 import studio.nxtech.fujubank.session.SessionState
 import studio.nxtech.fujubank.session.SessionStore
 import studio.nxtech.fujubank.signup.SignupCompletionSignal
@@ -58,6 +59,14 @@ fun App() {
     val userRepository = remember { koin.get<UserRepository>() }
     val signupCompletionSignal = remember { koin.get<SignupCompletionSignal>() }
     val signupWelcomePreferences = remember { koin.get<SignupWelcomePreferences>() }
+    val sessionResetCoordinator = remember { koin.get<SessionResetCoordinator>() }
+
+    // Authenticated → Unauthenticated 遷移時に Provider singleton キャッシュを破棄するための
+    // 観測を 1 回だけ起動する。Coordinator 内で二重起動防止フラグがあるため、Activity 再生成で
+    // 再度呼ばれても副作用は無い。
+    LaunchedEffect(Unit) {
+        sessionResetCoordinator.start()
+    }
 
     // 画面回転で Activity が再生成されても Splash を再表示しないよう rememberSaveable で保持。
     // SystemClock.elapsedRealtime() は端末スリープ中も進むため、最低表示時間を厳密に保証する。

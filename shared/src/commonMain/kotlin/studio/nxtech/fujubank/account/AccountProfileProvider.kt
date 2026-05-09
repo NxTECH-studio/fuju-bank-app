@@ -17,6 +17,16 @@ interface AccountProfileProvider {
     val profile: StateFlow<AccountProfile>
 
     fun updateProfile(displayName: String, email: String)
+
+    /**
+     * ログアウト（`SessionState.Authenticated → Unauthenticated` 遷移）時に
+     * [studio.nxtech.fujubank.session.SessionResetCoordinator] から呼び出され、
+     * プロセス内に保持しているプロフィールキャッシュを破棄する。
+     *
+     * 実装は「次に [profile] を購読した側が前ユーザーの値を見ない」状態にすることが契約。
+     * 詳細は実装ごと（dummy は初期ダミー値、remote は空プロフィール）に異なる。
+     */
+    fun reset()
 }
 
 /**
@@ -27,20 +37,26 @@ interface AccountProfileProvider {
  * プロセス終了時に揮発する（実 API 連携時には Provider 側で永続化する）。
  */
 class DummyAccountProfileProvider : AccountProfileProvider {
-    private val _profile = MutableStateFlow(
-        // Figma `697:8394` 上の表記をそのまま保持。実 API 確定時に削除する。
-        AccountProfile(
-            displayName = "山田 花子",
-            email = "hanako@example.com",
-            accountId = "1293031294904",
-        ),
-    )
+    private val _profile = MutableStateFlow(INITIAL_PROFILE)
     override val profile: StateFlow<AccountProfile> = _profile.asStateFlow()
 
     override fun updateProfile(displayName: String, email: String) {
         _profile.value = _profile.value.copy(
             displayName = displayName,
             email = email,
+        )
+    }
+
+    override fun reset() {
+        _profile.value = INITIAL_PROFILE
+    }
+
+    private companion object {
+        // Figma `697:8394` 上の表記をそのまま保持。実 API 確定時に削除する。
+        val INITIAL_PROFILE = AccountProfile(
+            displayName = "山田 花子",
+            email = "hanako@example.com",
+            accountId = "1293031294904",
         )
     }
 }

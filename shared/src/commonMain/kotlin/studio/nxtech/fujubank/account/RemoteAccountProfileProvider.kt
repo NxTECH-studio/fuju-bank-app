@@ -59,6 +59,22 @@ class RemoteAccountProfileProvider(
     override fun updateProfile(displayName: String, email: String) {
         _profile.update { it.copy(displayName = displayName, email = email) }
     }
+
+    /**
+     * ログアウト時に呼ばれ、in-memory のプロフィールキャッシュを空に戻す。
+     *
+     * `accountModule` 上 `single<AccountProfileProvider>` で登録されており、本クラスは
+     * プロセス内で 1 度だけ生成される。再ログインでも同一インスタンスが再利用されるため、
+     * `init` の `getMyProfile()` 呼び出しは初回しか走らず、ここで明示的に空に戻さないと
+     * 前ユーザーの displayName / email が残る。
+     *
+     * 再ログイン後の再 fetch トリガー（新ユーザーのプロフィールを取りに行く責務）は
+     * 本クラスのスコープ外。AccountHub 側が必要に応じて手動 refresh するか、後続タスクで
+     * `Authenticated` 遷移時に再取得を発火する仕組みを別途追加する想定。
+     */
+    override fun reset() {
+        _profile.value = EMPTY_PROFILE
+    }
 }
 
 /** 取得失敗・取得前の空状態。AccountHub 側で「-」プレースホルダに置換される。 */
