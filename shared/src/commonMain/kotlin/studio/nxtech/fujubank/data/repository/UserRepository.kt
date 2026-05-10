@@ -7,20 +7,27 @@ import studio.nxtech.fujubank.data.remote.ApiErrorCode
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.remote.api.UserApi
 import studio.nxtech.fujubank.data.remote.api.UserMeApi
+import studio.nxtech.fujubank.data.remote.api.UserSearchApi
 import studio.nxtech.fujubank.data.remote.dto.CreateUserRequest
 import studio.nxtech.fujubank.data.remote.dto.TransactionDirectionWire
 import studio.nxtech.fujubank.data.remote.dto.TransactionDto
 import studio.nxtech.fujubank.data.remote.dto.UserResponse
+import studio.nxtech.fujubank.data.remote.dto.UserSearchResultDto
 import studio.nxtech.fujubank.data.remote.map
 import studio.nxtech.fujubank.domain.model.Transaction
 import studio.nxtech.fujubank.domain.model.TransactionDirection
 import studio.nxtech.fujubank.domain.model.TransactionKind
 import studio.nxtech.fujubank.domain.model.User
+import studio.nxtech.fujubank.domain.model.UserSearchResult
+import studio.nxtech.fujubank.session.SessionState
+import studio.nxtech.fujubank.session.SessionStore
 import kotlin.time.Instant
 
 class UserRepository(
     private val userApi: UserApi,
     private val userMeApi: UserMeApi,
+    private val userSearchApi: UserSearchApi,
+    private val sessionStore: SessionStore,
     // テストや本番では false を強制する。デフォルトは BuildKonfig 側のフラグに従う。
     val useDummyData: Boolean = BuildKonfig.USE_DUMMY_PROFILE,
 ) {
@@ -74,7 +81,33 @@ class UserRepository(
             response.data.map { it.toDomain() }
         }
     }
+
+    /**
+     * 表示名で送金先候補を検索する。
+     *
+     * - クエリ最低 2 文字バリデーションは ViewModel 側で行う前提（Repository は通過させる）。
+     * - サーバ側でも自分自身を除外する契約だが、UI 側の安全網として SessionStore の現在
+     *   `userId` と一致する候補を Repository でも弾く。
+     * - エラーは [NetworkResult] のままパススルーする（429 / 401 等は呼び出し側で UI に
+     *   反映する）。
+     */
+    suspend fun searchByDisplayName(query: String): NetworkResult<List<UserSearchResult>> {
+        val myUserId = (sessionStore.current as? SessionState.Authenticated)?.userId
+        return userSearchApi.searchByDisplayName(query).map { dtos ->
+            dtos.asSequence()
+                .map { it.toDomain() }
+                .filter { myUserId == null || it.id != myUserId }
+                .toList()
+        }
+    }
 }
+
+private fun UserSearchResultDto.toDomain(): UserSearchResult = UserSearchResult(
+    id = id.toString(),
+    publicId = publicId,
+    name = name,
+    iconUrl = iconUrl,
+)
 
 private fun UserResponse.toDomain(): User = User(
     id = id.toString(),

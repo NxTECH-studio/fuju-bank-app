@@ -21,6 +21,7 @@ import studio.nxtech.fujubank.auth.TokenStorage
 import studio.nxtech.fujubank.data.remote.api.AuthApi
 import studio.nxtech.fujubank.data.remote.api.UserApi
 import studio.nxtech.fujubank.data.remote.api.UserMeApi
+import studio.nxtech.fujubank.data.remote.api.UserSearchApi
 import studio.nxtech.fujubank.data.repository.AuthRepository
 import studio.nxtech.fujubank.data.repository.UserRepository
 import kotlin.test.Test
@@ -109,7 +110,12 @@ class SessionStoreTest {
             authApi = AuthApi(client = client, authCoreBaseUrl = "https://authcore.test"),
             tokenStorage = storage,
         )
-        val userRepo = UserRepository(UserApi(client), UserMeApi(client))
+        val userRepo = UserRepository(
+            userApi = UserApi(client),
+            userMeApi = UserMeApi(client),
+            userSearchApi = UserSearchApi(client),
+            sessionStore = SessionStore(),
+        )
 
         val store = SessionStore()
         store.bootstrap(authRepo, userRepo)
@@ -156,7 +162,12 @@ class SessionStoreTest {
             authApi = AuthApi(client = client, authCoreBaseUrl = "https://authcore.test"),
             tokenStorage = storage,
         )
-        val userRepo = UserRepository(UserApi(client), UserMeApi(client))
+        val userRepo = UserRepository(
+            userApi = UserApi(client),
+            userMeApi = UserMeApi(client),
+            userSearchApi = UserSearchApi(client),
+            sessionStore = SessionStore(),
+        )
 
         val store = SessionStore()
         store.bootstrap(authRepo, userRepo)
@@ -183,7 +194,12 @@ class SessionStoreTest {
             authApi = AuthApi(client = client, authCoreBaseUrl = "https://authcore.test"),
             tokenStorage = storage,
         )
-        val userRepo = UserRepository(UserApi(client), UserMeApi(client))
+        val userRepo = UserRepository(
+            userApi = UserApi(client),
+            userMeApi = UserMeApi(client),
+            userSearchApi = UserSearchApi(client),
+            sessionStore = SessionStore(),
+        )
 
         val store = SessionStore()
         store.bootstrap(authRepo, userRepo)
@@ -208,7 +224,12 @@ class SessionStoreTest {
             authApi = AuthApi(client = client, authCoreBaseUrl = "https://authcore.test"),
             tokenStorage = storage,
         )
-        val userRepo = UserRepository(UserApi(client), UserMeApi(client))
+        val userRepo = UserRepository(
+            userApi = UserApi(client),
+            userMeApi = UserMeApi(client),
+            userSearchApi = UserSearchApi(client),
+            sessionStore = SessionStore(),
+        )
 
         val store = SessionStore()
         store.bootstrap(authRepo, userRepo)
@@ -313,7 +334,12 @@ class SessionStoreTest {
             authApi = AuthApi(client = client, authCoreBaseUrl = "https://authcore.test"),
             tokenStorage = storage,
         )
-        val userRepo = UserRepository(UserApi(client), UserMeApi(client))
+        val userRepo = UserRepository(
+            userApi = UserApi(client),
+            userMeApi = UserMeApi(client),
+            userSearchApi = UserSearchApi(client),
+            sessionStore = SessionStore(),
+        )
 
         val store = SessionStore()
         store.bootstrap(authRepo, userRepo)
@@ -351,7 +377,12 @@ class SessionStoreTest {
             authApi = AuthApi(client = client, authCoreBaseUrl = "https://authcore.test"),
             tokenStorage = storage,
         )
-        val userRepo = UserRepository(UserApi(client), UserMeApi(client))
+        val userRepo = UserRepository(
+            userApi = UserApi(client),
+            userMeApi = UserMeApi(client),
+            userSearchApi = UserSearchApi(client),
+            sessionStore = SessionStore(),
+        )
 
         val store = SessionStore()
         val jobs = listOf(
@@ -382,7 +413,12 @@ class SessionStoreTest {
             authApi = AuthApi(client = client, authCoreBaseUrl = "https://authcore.test"),
             tokenStorage = storage,
         )
-        val userRepo = UserRepository(UserApi(client), UserMeApi(client))
+        val userRepo = UserRepository(
+            userApi = UserApi(client),
+            userMeApi = UserMeApi(client),
+            userSearchApi = UserSearchApi(client),
+            sessionStore = SessionStore(),
+        )
 
         val store = SessionStore()
         assertEquals(false, store.bootstrapped.value)

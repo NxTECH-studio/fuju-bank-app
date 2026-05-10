@@ -15,10 +15,13 @@ import kotlinx.serialization.json.Json
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.remote.api.UserApi
 import studio.nxtech.fujubank.data.remote.api.UserMeApi
+import studio.nxtech.fujubank.data.remote.api.UserSearchApi
 import studio.nxtech.fujubank.domain.model.Transaction
 import studio.nxtech.fujubank.domain.model.TransactionDirection
 import studio.nxtech.fujubank.domain.model.TransactionKind
 import studio.nxtech.fujubank.domain.model.User
+import studio.nxtech.fujubank.domain.model.UserSearchResult
+import studio.nxtech.fujubank.session.SessionStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -59,7 +62,13 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)), useDummyData = false)
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
 
         val result = repository.create(subject = "01HZY8X2B7K3J4M5N6P7Q8R9ST")
 
@@ -86,7 +95,13 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)), useDummyData = false)
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
 
         val result = repository.get("7")
 
@@ -124,7 +139,13 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)), useDummyData = false)
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
 
         val result = repository.transactions("usr_me")
 
@@ -168,7 +189,13 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)), useDummyData = false)
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
 
         val result = repository.transactions("usr_me")
 
@@ -209,7 +236,13 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)), useDummyData = false)
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
 
         val result = repository.transactions("usr_me")
 
@@ -229,7 +262,13 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)), useDummyData = false)
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
 
         val result = repository.transactions("usr_me")
 
@@ -258,7 +297,13 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)), useDummyData = false)
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
 
         val result = repository.provisionMe()
 
@@ -286,12 +331,175 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val repository = UserRepository(UserApi(httpClient(engine)), UserMeApi(httpClient(engine)), useDummyData = false)
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
 
         val result = repository.getMe()
 
         val success = assertIs<NetworkResult.Success<User>>(result)
         assertEquals("12", success.value.id)
         assertEquals(5_000L, success.value.balanceFuju)
+    }
+
+    @Test
+    fun searchByDisplayName_maps_response_and_passes_query() = runTest {
+        val engine = MockEngine { request ->
+            assertEquals("/users/search", request.url.encodedPath)
+            assertEquals("yuki", request.url.parameters["q"])
+            respond(
+                content = ByteReadChannel(
+                    """
+                    {
+                      "users": [
+                        {
+                          "id": 21,
+                          "public_id": "@yuki_a1b2",
+                          "name": "ゆき",
+                          "icon_url": "https://example.test/yuki.png"
+                        },
+                        {
+                          "id": 22,
+                          "public_id": "@yuki_c3d4",
+                          "name": "ゆき2",
+                          "icon_url": null
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
+
+        val result = repository.searchByDisplayName("yuki")
+
+        val success = assertIs<NetworkResult.Success<List<UserSearchResult>>>(result)
+        assertEquals(2, success.value.size)
+        assertEquals("21", success.value[0].id)
+        assertEquals("@yuki_a1b2", success.value[0].publicId)
+        assertEquals("ゆき", success.value[0].name)
+        assertEquals("https://example.test/yuki.png", success.value[0].iconUrl)
+        assertEquals("22", success.value[1].id)
+        assertEquals(null, success.value[1].iconUrl)
+    }
+
+    @Test
+    fun searchByDisplayName_returns_empty_list_for_zero_hit() = runTest {
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel("""{"users":[]}"""),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
+
+        val result = repository.searchByDisplayName("nobody")
+
+        val success = assertIs<NetworkResult.Success<List<UserSearchResult>>>(result)
+        assertEquals(0, success.value.size)
+    }
+
+    @Test
+    fun searchByDisplayName_excludes_self_when_authenticated() = runTest {
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """
+                    {
+                      "users": [
+                        { "id": 7, "public_id": "@me_xxxx", "name": "じぶん" },
+                        { "id": 8, "public_id": "@other_yyyy", "name": "たにん" }
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val sessionStore = SessionStore().apply { setAuthenticated(userId = "7") }
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = sessionStore,
+            useDummyData = false,
+        )
+
+        val result = repository.searchByDisplayName("any")
+
+        val success = assertIs<NetworkResult.Success<List<UserSearchResult>>>(result)
+        assertEquals(1, success.value.size)
+        assertEquals("8", success.value.single().id)
+    }
+
+    @Test
+    fun searchByDisplayName_returns_failure_on_unauthorized() = runTest {
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """{"error":"UNAUTHENTICATED","message":"login required"}""",
+                ),
+                status = HttpStatusCode.Unauthorized,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
+
+        val result = repository.searchByDisplayName("any")
+
+        val failure = assertIs<NetworkResult.Failure>(result)
+        assertEquals(401, failure.error.httpStatus)
+    }
+
+    @Test
+    fun searchByDisplayName_returns_failure_on_rate_limit() = runTest {
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """{"error":{"code":"RATE_LIMIT_EXCEEDED","message":"too many"}}""",
+                ),
+                status = HttpStatusCode.TooManyRequests,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
+
+        val result = repository.searchByDisplayName("any")
+
+        val failure = assertIs<NetworkResult.Failure>(result)
+        assertEquals(429, failure.error.httpStatus)
     }
 }
