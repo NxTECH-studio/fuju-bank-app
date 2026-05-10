@@ -15,7 +15,7 @@ import studio.nxtech.fujubank.data.repository.UserRepository
 import studio.nxtech.fujubank.domain.model.UserSearchResult
 
 /**
- * Swift から呼び出す表示名検索の結果型。
+ * Swift から呼び出す公開ID検索の結果型。
  *
  * - [Loaded]: 取得成功（自分自身は Repository で除外済み）。
  * - [Failure]: API エラー（401 / 429 等）。`message` は表示用日本語。
@@ -58,7 +58,7 @@ private inline fun launchPerCall(
 }
 
 /**
- * Swift 側 `SendRecipientView` から表示名検索を kick するためのファサード。
+ * Swift 側 `SendRecipientView` から公開ID検索を kick するためのファサード。
  * 結果は `Dispatchers.Main` で `onResult` コールバックに返す。
  */
 fun searchRecipients(
@@ -66,7 +66,7 @@ fun searchRecipients(
     query: String,
     onResult: (UserSearchOutcome) -> Unit,
 ): Job = launchPerCall {
-    val outcome = when (val result = userRepository.searchByDisplayName(query)) {
+    val outcome = when (val result = userRepository.searchByPublicId(query)) {
         is NetworkResult.Success -> UserSearchOutcome.Loaded(results = result.value)
         is NetworkResult.Failure -> UserSearchOutcome.Failure(
             message = if (result.error.code == ApiErrorCode.RATE_LIMIT_EXCEEDED) {

@@ -54,7 +54,7 @@ data class FujuBankTextStyles(
     val headline: TextStyle,
     /** リストカード内のタイトル（取引相手名・項目名）。Figma `Inter SemiBold 14`。 */
     val title: TextStyle,
-    /** 本文（メールアドレス・表示名・本文テキスト）。Figma `Inter Medium 14`。 */
+    /** 本文（メールアドレス・公開ID・本文テキスト）。Figma `Inter Medium 14`。 */
     val body: TextStyle,
     /** キャプション（タイムスタンプ・サブ説明）。Figma `Inter Regular 12`。 */
     val caption: TextStyle,

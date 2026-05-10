@@ -2,25 +2,25 @@ import SwiftUI
 
 /// アカウントハブ画面（Figma `697:8394`）の「アカウント情報」セクション。
 ///
-/// Android `AccountInfoSection.kt` と 1:1。白角丸カード内に「表示名」と「メールアドレス」の
+/// Android `AccountInfoSection.kt` と 1:1。白角丸カード内に「公開ID」と「メールアドレス」の
 /// 2 行を配置し、間に 1pt の hairline divider を挟む。各行右端に編集鉛筆アイコン
 /// (`EditPencil`) を配置し、タップで対応するフィールド単独の編集シートを開く。
 struct AccountInfoSectionView: View {
-    let displayName: String
+    let publicId: String
     let email: String
-    let onEditDisplayName: () -> Void
+    let onEditPublicId: () -> Void
     let onEditEmail: () -> Void
-    /// MVP では AuthCore に email/displayName 更新 API が無いため編集 UI を無効化する
+    /// MVP では AuthCore に email/publicId 更新 API が無いため編集 UI を無効化する
     /// （`editable=false` で鉛筆アイコンごと非表示）。Android `AccountInfoSection` と対称。
     var editable: Bool = true
 
     var body: some View {
         VStack(spacing: 0) {
             row(
-                label: "表示名",
-                value: displayName,
-                onEditTap: onEditDisplayName,
-                editAccessibilityLabel: "表示名を編集",
+                label: "公開ID",
+                value: publicId,
+                onEditTap: onEditPublicId,
+                editAccessibilityLabel: "公開IDを編集",
                 editable: editable,
             )
             Divider()

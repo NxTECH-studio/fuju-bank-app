@@ -347,7 +347,7 @@ class UserRepositoryTest {
     }
 
     @Test
-    fun searchByDisplayName_maps_response_and_passes_query() = runTest {
+    fun searchByPublicId_maps_response_and_passes_query() = runTest {
         val engine = MockEngine { request ->
             assertEquals("/users/search", request.url.encodedPath)
             assertEquals("yuki", request.url.parameters["q"])
@@ -358,14 +358,12 @@ class UserRepositoryTest {
                       "users": [
                         {
                           "id": 21,
-                          "public_id": "@yuki_a1b2",
-                          "name": "ゆき",
+                          "public_id": "yuki_a1b2",
                           "icon_url": "https://example.test/yuki.png"
                         },
                         {
                           "id": 22,
-                          "public_id": "@yuki_c3d4",
-                          "name": "ゆき2",
+                          "public_id": "yuki_c3d4",
                           "icon_url": null
                         }
                       ]
@@ -384,20 +382,20 @@ class UserRepositoryTest {
             useDummyData = false,
         )
 
-        val result = repository.searchByDisplayName("yuki")
+        val result = repository.searchByPublicId("yuki")
 
         val success = assertIs<NetworkResult.Success<List<UserSearchResult>>>(result)
         assertEquals(2, success.value.size)
         assertEquals("21", success.value[0].id)
-        assertEquals("@yuki_a1b2", success.value[0].publicId)
-        assertEquals("ゆき", success.value[0].name)
+        assertEquals("yuki_a1b2", success.value[0].publicId)
         assertEquals("https://example.test/yuki.png", success.value[0].iconUrl)
         assertEquals("22", success.value[1].id)
+        assertEquals("yuki_c3d4", success.value[1].publicId)
         assertEquals(null, success.value[1].iconUrl)
     }
 
     @Test
-    fun searchByDisplayName_returns_empty_list_for_zero_hit() = runTest {
+    fun searchByPublicId_returns_empty_list_for_zero_hit() = runTest {
         val engine = MockEngine {
             respond(
                 content = ByteReadChannel("""{"users":[]}"""),
@@ -413,22 +411,22 @@ class UserRepositoryTest {
             useDummyData = false,
         )
 
-        val result = repository.searchByDisplayName("nobody")
+        val result = repository.searchByPublicId("nobody")
 
         val success = assertIs<NetworkResult.Success<List<UserSearchResult>>>(result)
         assertEquals(0, success.value.size)
     }
 
     @Test
-    fun searchByDisplayName_excludes_self_when_authenticated() = runTest {
+    fun searchByPublicId_excludes_self_when_authenticated() = runTest {
         val engine = MockEngine {
             respond(
                 content = ByteReadChannel(
                     """
                     {
                       "users": [
-                        { "id": 7, "public_id": "@me_xxxx", "name": "じぶん" },
-                        { "id": 8, "public_id": "@other_yyyy", "name": "たにん" }
+                        { "id": 7, "public_id": "me_xxxx" },
+                        { "id": 8, "public_id": "other_yyyy" }
                       ]
                     }
                     """.trimIndent(),
@@ -446,7 +444,7 @@ class UserRepositoryTest {
             useDummyData = false,
         )
 
-        val result = repository.searchByDisplayName("any")
+        val result = repository.searchByPublicId("any")
 
         val success = assertIs<NetworkResult.Success<List<UserSearchResult>>>(result)
         assertEquals(1, success.value.size)
@@ -454,7 +452,7 @@ class UserRepositoryTest {
     }
 
     @Test
-    fun searchByDisplayName_returns_failure_on_unauthorized() = runTest {
+    fun searchByPublicId_returns_failure_on_unauthorized() = runTest {
         val engine = MockEngine {
             respond(
                 content = ByteReadChannel(
@@ -472,14 +470,52 @@ class UserRepositoryTest {
             useDummyData = false,
         )
 
-        val result = repository.searchByDisplayName("any")
+        val result = repository.searchByPublicId("any")
 
         val failure = assertIs<NetworkResult.Failure>(result)
         assertEquals(401, failure.error.httpStatus)
     }
 
     @Test
-    fun searchByDisplayName_returns_failure_on_rate_limit() = runTest {
+    fun searchByPublicId_filters_out_invalid_public_id_entries() = runTest {
+        // サーバ侵害や DTO 想定外応答で `public_id` に許可外文字（URL スキーム / 制御文字 / 64 字超）
+        // が混入した場合は QR / Code128 にエンコードする経路で第三者リダイレクトの誘発を招きうる。
+        // Repository 側の allowlist で黙って弾く挙動を保証する。
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """
+                    {
+                      "users": [
+                        { "id": 1, "public_id": "valid_one" },
+                        { "id": 2, "public_id": "https://evil.example/" },
+                        { "id": 3, "public_id": "valid_two" },
+                        { "id": 4, "public_id": "" }
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
+
+        val result = repository.searchByPublicId("any")
+
+        val success = assertIs<NetworkResult.Success<List<UserSearchResult>>>(result)
+        assertEquals(2, success.value.size)
+        assertEquals(listOf("valid_one", "valid_two"), success.value.map { it.publicId })
+    }
+
+    @Test
+    fun searchByPublicId_returns_failure_on_rate_limit() = runTest {
         val engine = MockEngine {
             respond(
                 content = ByteReadChannel(
@@ -497,7 +533,7 @@ class UserRepositoryTest {
             useDummyData = false,
         )
 
-        val result = repository.searchByDisplayName("any")
+        val result = repository.searchByPublicId("any")
 
         val failure = assertIs<NetworkResult.Failure>(result)
         assertEquals(429, failure.error.httpStatus)

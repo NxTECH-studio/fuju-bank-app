@@ -78,7 +78,7 @@ class SendFlowViewModel(
             return
         }
         _state.update { it.copy(searchState = SendFlowState.SearchState.Loading) }
-        when (val result = userRepository.searchByDisplayName(trimmed)) {
+        when (val result = userRepository.searchByPublicId(trimmed)) {
             is NetworkResult.Success -> _state.update {
                 it.copy(searchState = SendFlowState.SearchState.Ready(result.value))
             }

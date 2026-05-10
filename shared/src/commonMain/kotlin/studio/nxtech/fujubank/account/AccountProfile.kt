@@ -7,8 +7,8 @@ package studio.nxtech.fujubank.account
  * 画面側は必ずこの型を経由して参照する。
  */
 data class AccountProfile(
-    /** 表示名（例: 「山田 花子」）。プロフィールカードと「表示名」フィールドの両方で使う。 */
-    val displayName: String,
+    /** 公開ID（例: 「yamada_a1b2」）。プロフィールカードと「公開ID」フィールドの両方で使う。 */
+    val publicId: String,
     /** メールアドレス（例: 「hanako@example.com」）。 */
     val email: String,
     /** プロフィールカード内の ID 表記（例: 「ID: 1293031294904」）。 */

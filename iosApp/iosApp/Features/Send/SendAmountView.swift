@@ -34,7 +34,7 @@ struct SendAmountView: View {
             },
             message: {
                 if let recipient = viewModel.recipient {
-                    Text("\(recipient.name)さんに \(formatAmount(viewModel.amount))\(currencyUnit) 送りますか？")
+                    Text("@\(recipient.publicId) さんに \(formatAmount(viewModel.amount))\(currencyUnit) 送りますか？")
                 }
             },
         )
@@ -116,14 +116,9 @@ struct SendAmountView: View {
                     .clipShape(Circle())
             }
             .frame(width: 28, height: 28)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(recipient.name)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(FujuBankPalette.textPrimary)
-                Text("#" + String(recipient.publicId.suffix(4)))
-                    .font(.system(size: 11))
-                    .foregroundStyle(FujuBankPalette.textTertiary)
-            }
+            Text("@" + recipient.publicId)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(FujuBankPalette.textPrimary)
             Spacer()
         }
         .padding(.top, 4)

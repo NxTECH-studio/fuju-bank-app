@@ -13,7 +13,7 @@ enum FujuBankTypography {
     /// リストカード内のタイトル（取引相手名・項目名）。Figma `Inter SemiBold 14`。
     static let title: Font = .system(size: 14, weight: .semibold)
 
-    /// 本文（メールアドレス・表示名・本文テキスト）。Figma `Inter Medium 14`。
+    /// 本文（メールアドレス・公開ID・本文テキスト）。Figma `Inter Medium 14`。
     static let body: Font = .system(size: 14, weight: .medium)
 
     /// キャプション（タイムスタンプ・サブ説明）。Figma `Inter Regular 12`。

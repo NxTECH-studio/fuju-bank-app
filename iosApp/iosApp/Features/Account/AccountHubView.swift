@@ -4,8 +4,8 @@ import Shared
 /// アカウントハブ画面 — Figma `697:8394` 準拠（Android `AccountHubScreen` と 1:1）。
 ///
 /// 構成:
-/// - プロフィールカード（円形アバター / 表示名 + 編集鉛筆 / ID）
-/// - 「アカウント情報」セクション（表示名 / メールアドレス、各行に編集鉛筆）
+/// - プロフィールカード（円形アバター / @公開ID + 編集鉛筆 / ID）
+/// - 「アカウント情報」セクション（公開ID / メールアドレス、各行に編集鉛筆）
 /// - 「設定」セクション（通知 / プライバシー設定）
 ///
 /// 各行の鉛筆タップで `AccountInfoEditSheetView` を `.sheet(item:)` で開き、対応する
@@ -24,14 +24,14 @@ struct AccountHubView: View {
     @State private var showLogoutConfirm: Bool = false
 
     var body: some View {
-        // MVP は受け取り専用のため AuthCore 側に email/displayName 更新 API が揃うまで
+        // MVP は受け取り＋送金スコープのため AuthCore 側に email/publicId 更新 API が揃うまで
         // 編集 UI を無効化する。鉛筆アイコン非表示 + onEdit* no-op ガードで「タップしても
         // 何も起きない」状態にし、AccountInfoEditSheetView 側のコードは復活前提で残す。
         let editingEnabled = viewModel.editingEnabled
 
         // プロフィール取得失敗・取得前は空文字で来るので、UI 側で「-」プレースホルダに置換する。
-        let displayNameOrPlaceholder = viewModel.profile.displayName.isEmpty
-            ? Self.profilePlaceholder : viewModel.profile.displayName
+        let publicIdOrPlaceholder = viewModel.profile.publicId.isEmpty
+            ? Self.profilePlaceholder : viewModel.profile.publicId
         let emailOrPlaceholder = viewModel.profile.email.isEmpty
             ? Self.profilePlaceholder : viewModel.profile.email
         let accountIdOrPlaceholder = viewModel.profile.accountId.isEmpty
@@ -40,17 +40,17 @@ struct AccountHubView: View {
         return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 ProfileCardView(
-                    displayName: displayNameOrPlaceholder,
+                    publicId: publicIdOrPlaceholder,
                     accountId: accountIdOrPlaceholder,
                     editable: editingEnabled,
                 )
 
                 sectionLabel("アカウント情報")
                 AccountInfoSectionView(
-                    displayName: displayNameOrPlaceholder,
+                    publicId: publicIdOrPlaceholder,
                     email: emailOrPlaceholder,
                     // editable=false の間は呼ばれないが、将来復活させた際の経路として残す。
-                    onEditDisplayName: { if editingEnabled { editingField = .displayName } },
+                    onEditPublicId: { if editingEnabled { editingField = .publicId } },
                     onEditEmail: { if editingEnabled { editingField = .email } },
                     editable: editingEnabled,
                 )
@@ -93,17 +93,17 @@ struct AccountHubView: View {
         }
         .sheet(item: $editingField) { field in
             switch field {
-            case .displayName:
+            case .publicId:
                 AccountInfoEditSheetView(
-                    title: "表示名を編集",
-                    label: "表示名",
-                    initialValue: viewModel.profile.displayName,
+                    title: "公開IDを編集",
+                    label: "公開ID",
+                    initialValue: viewModel.profile.publicId,
                     keyboardType: .default,
-                    contentType: .name,
-                    autocapitalization: .sentences,
+                    contentType: .nickname,
+                    autocapitalization: .never,
                     validate: { !$0.isEmpty },
                     onSave: { newValue in
-                        viewModel.updateDisplayName(newValue)
+                        viewModel.updatePublicId(newValue)
                         editingField = nil
                     },
                     onCancel: { editingField = nil },
@@ -143,7 +143,7 @@ struct AccountHubView: View {
 /// 「アカウント情報」セクションで編集中のフィールド。`.sheet(item:)` の駆動値を兼ねるため
 /// `Identifiable` に準拠する。
 enum AccountInfoField: String, Identifiable {
-    case displayName
+    case publicId
     case email
 
     var id: String { rawValue }

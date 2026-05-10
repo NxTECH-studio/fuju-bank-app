@@ -51,7 +51,7 @@ import studio.nxtech.fujubank.theme.NotoSansJP
  * 送金フロー Step 1 — 送金先選択画面。
  *
  * - 上部: 戻る `<` / タイトル「送金」(中央 17sp Bold) / 余白 (右 48dp)
- * - 検索 OutlinedTextField（プレースホルダ「表示名で送金先を検索」）
+ * - 検索 OutlinedTextField（プレースホルダ「公開IDで送金先を検索」）
  * - 検索結果 LazyColumn（候補タップで bottom sheet 表示 → 「決定」で Step 2）
  *
  * 親 (RootScaffold) のボトムナビは送金フロー中は非表示にする。
@@ -84,7 +84,7 @@ fun SendRecipientScreen(
                 onValueChange = viewModel::onQueryChange,
                 placeholder = {
                     Text(
-                        text = "表示名で送金先を検索",
+                        text = "公開IDで送金先を検索",
                         style = TextStyle(
                             fontFamily = NotoSansJP,
                             fontSize = 14.sp,
@@ -110,7 +110,7 @@ fun SendRecipientScreen(
             Box(modifier = Modifier.fillMaxSize()) {
                 when (val s = state.searchState) {
                     SendFlowState.SearchState.Idle -> Hint(
-                        message = "表示名を入力して送金先を検索してください",
+                        message = "公開IDを入力して送金先を検索してください",
                     )
                     SendFlowState.SearchState.NeedsMoreChars -> Hint(
                         message = "2 文字以上で検索してください",
@@ -252,27 +252,17 @@ private fun CandidateRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         AvatarPlaceholder(size = 40.dp)
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = result.name,
-                style = TextStyle(
-                    fontFamily = NotoSansJP,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = FujuBankColors.TextPrimary,
-                ),
-                maxLines = 1,
-            )
-            Text(
-                text = publicIdSuffix(result.publicId),
-                style = TextStyle(
-                    fontFamily = NotoSansJP,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = FujuBankColors.TextTertiary,
-                ),
-            )
-        }
+        Text(
+            text = "@" + result.publicId,
+            style = TextStyle(
+                fontFamily = NotoSansJP,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = FujuBankColors.TextPrimary,
+            ),
+            maxLines = 1,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
@@ -310,21 +300,12 @@ private fun ConfirmSheetContent(
     ) {
         AvatarPlaceholder(size = 96.dp)
         Text(
-            text = candidate.name,
+            text = "@" + candidate.publicId,
             style = TextStyle(
                 fontFamily = NotoSansJP,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = FujuBankColors.TextPrimary,
-            ),
-        )
-        Text(
-            text = publicIdSuffix(candidate.publicId),
-            style = TextStyle(
-                fontFamily = NotoSansJP,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Normal,
-                color = FujuBankColors.TextTertiary,
             ),
         )
         Spacer(modifier = Modifier.size(8.dp))
@@ -363,9 +344,3 @@ private fun ConfirmSheetContent(
     }
 }
 
-/**
- * `@yuki_a1b2` のような public_id 文字列の末尾 4 桁を「#a1b2」形式に整形する。
- * AuthCore の public_id がアンダースコア区切りでも末尾だけでも、末尾 4 文字を抽出する。
- */
-private fun publicIdSuffix(publicId: String): String =
-    "#" + publicId.takeLast(4)

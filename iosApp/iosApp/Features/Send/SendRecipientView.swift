@@ -61,7 +61,7 @@ struct SendRecipientView: View {
     }
 
     private var searchField: some View {
-        TextField("表示名で送金先を検索", text: $viewModel.query)
+        TextField("公開IDで送金先を検索", text: $viewModel.query)
             .textFieldStyle(.plain)
             .font(.system(size: 14))
             .padding(.horizontal, 12)
@@ -80,7 +80,7 @@ struct SendRecipientView: View {
     private var resultsArea: some View {
         switch viewModel.searchState {
         case .idle:
-            HintView(message: "表示名を入力して送金先を検索してください")
+            HintView(message: "公開IDを入力して送金先を検索してください")
         case .needsMoreChars:
             HintView(message: "2 文字以上で検索してください")
         case .loading:
@@ -155,15 +155,10 @@ private struct CandidateRow: View {
     var body: some View {
         HStack(spacing: 12) {
             AvatarPlaceholder(size: 40)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(result.name)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(FujuBankPalette.textPrimary)
-                    .lineLimit(1)
-                Text(publicIdSuffix(result.publicId))
-                    .font(FujuBankTypography.caption)
-                    .foregroundStyle(FujuBankPalette.textTertiary)
-            }
+            Text("@" + result.publicId)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(FujuBankPalette.textPrimary)
+                .lineLimit(1)
             Spacer()
         }
         .padding(.horizontal, 16)
@@ -182,12 +177,9 @@ private struct ConfirmCandidateSheet: View {
         VStack(spacing: 12) {
             Spacer().frame(height: 8)
             AvatarPlaceholder(size: 96)
-            Text(candidate.name)
+            Text("@" + candidate.publicId)
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(FujuBankPalette.textPrimary)
-            Text(publicIdSuffix(candidate.publicId))
-                .font(FujuBankTypography.caption)
-                .foregroundStyle(FujuBankPalette.textTertiary)
             Spacer().frame(height: 8)
             Button(action: onConfirm) {
                 Text("決定")
@@ -228,11 +220,6 @@ private struct AvatarPlaceholder: View {
         }
         .frame(width: size, height: size)
     }
-}
-
-/// `@yuki_a1b2` の末尾 4 桁を `#a1b2` に整形する小ヘルパ。
-private func publicIdSuffix(_ publicId: String) -> String {
-    "#" + String(publicId.suffix(4))
 }
 
 // `Shared.UserSearchResult` を `.sheet(item:)` で扱うために Identifiable を後付けする。

@@ -5,10 +5,10 @@ import SwiftUI
 /// 構成は Android `ProfileCard.kt` と 1:1:
 /// - 白背景・角丸 20pt・薄影
 /// - 上段: 64pt の円形アバター（左寄せ）
-/// - 中段: 表示名 + 編集鉛筆アイコン
+/// - 中段: @公開ID + 編集鉛筆アイコン
 /// - 下段: 「ID: xxxxxxxxxxxxx」のグレー小文字
 struct ProfileCardView: View {
-    let displayName: String
+    let publicId: String
     let accountId: String
     /// MVP では編集 UI を無効化。鉛筆アイコンは将来の復活前提でコードを残し、
     /// `editable=false` のときだけ非表示にする。Android `ProfileCard` と対称。
@@ -29,7 +29,7 @@ struct ProfileCardView: View {
             .accessibilityLabel("プロフィールアバター")
 
             HStack(spacing: 8) {
-                Text(displayName)
+                Text("@" + publicId)
                     .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(FujuBankPalette.textPrimary)
                 if editable {
@@ -39,7 +39,7 @@ struct ProfileCardView: View {
                         .scaledToFit()
                         .frame(width: 18, height: 18)
                         .foregroundStyle(FujuBankPalette.textPrimary)
-                        .accessibilityLabel("表示名を編集")
+                        .accessibilityLabel("公開IDを編集")
                 }
             }
 

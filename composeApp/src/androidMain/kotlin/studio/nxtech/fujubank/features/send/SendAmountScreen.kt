@@ -95,10 +95,7 @@ fun SendAmountScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            RecipientChip(
-                name = recipient.name,
-                publicId = recipient.publicId,
-            )
+            RecipientChip(publicId = recipient.publicId)
             AmountDisplay(amount = state.amount)
             if (isOverBalance) {
                 Text(
@@ -192,7 +189,7 @@ fun SendAmountScreen(
             },
             text = {
                 Text(
-                    text = "${recipient.name}さんに ${CurrencyFormatter.formatAmount(state.amount)}${CurrencyFormatter.UNIT} 送りますか？",
+                    text = "@${recipient.publicId} さんに ${CurrencyFormatter.formatAmount(state.amount)}${CurrencyFormatter.UNIT} 送りますか？",
                     style = TextStyle(
                         fontFamily = NotoSansJP,
                         fontSize = 14.sp,
@@ -268,7 +265,7 @@ private fun Header(onBack: () -> Unit, backEnabled: Boolean) {
 }
 
 @Composable
-private fun RecipientChip(name: String, publicId: String) {
+private fun RecipientChip(publicId: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -289,26 +286,15 @@ private fun RecipientChip(name: String, publicId: String) {
                 modifier = Modifier.size(28.dp),
             )
         }
-        Column {
-            Text(
-                text = name,
-                style = TextStyle(
-                    fontFamily = NotoSansJP,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = FujuBankColors.TextPrimary,
-                ),
-            )
-            Text(
-                text = "#" + publicId.takeLast(4),
-                style = TextStyle(
-                    fontFamily = NotoSansJP,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = FujuBankColors.TextTertiary,
-                ),
-            )
-        }
+        Text(
+            text = "@" + publicId,
+            style = TextStyle(
+                fontFamily = NotoSansJP,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = FujuBankColors.TextPrimary,
+            ),
+        )
     }
 }
 

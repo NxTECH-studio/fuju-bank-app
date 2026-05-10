@@ -33,12 +33,12 @@ import studio.nxtech.fujubank.theme.NotoSansJP
  *
  * - 白背景・角丸 20dp・薄影
  * - 上段: 64dp の円形アバター（左寄せ）
- * - 中段: 「表示名」+ 編集鉛筆アイコン
+ * - 中段: 「@公開ID」+ 編集鉛筆アイコン
  * - 下段: 「ID: xxxxxxxxxxxxx」のグレー小文字
  */
 @Composable
 fun ProfileCard(
-    displayName: String,
+    publicId: String,
     accountId: String,
     modifier: Modifier = Modifier,
     editable: Boolean = true,
@@ -77,7 +77,7 @@ fun ProfileCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = displayName,
+                text = "@" + publicId,
                 style = TextStyle(
                     fontFamily = NotoSansJP,
                     fontSize = 22.sp,
@@ -89,7 +89,7 @@ fun ProfileCard(
             if (editable) {
                 Image(
                     painter = painterResource(R.drawable.ic_edit_pencil),
-                    contentDescription = "表示名を編集",
+                    contentDescription = "公開IDを編集",
                     modifier = Modifier.size(18.dp),
                 )
             }

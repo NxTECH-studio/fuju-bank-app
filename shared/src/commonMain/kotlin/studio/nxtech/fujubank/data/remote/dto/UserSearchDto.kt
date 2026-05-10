@@ -7,11 +7,11 @@ import kotlinx.serialization.Serializable
  * `GET /users/search?q=...` の 1 件分のレスポンス DTO。
  *
  * - [id]: bank 内部の user 主キー（Long）。`POST /ledger/transfer` の `to_user_id` に渡す。
- * - [publicId]: 末尾 4 桁を UI で識別子として表示するため公開する。
- * - [name]: AuthCore 側で登録された表示名。
- * - [iconUrl]: 円形アバターに表示する画像 URL。null 可。
+ * - [publicId]: ハンドル文字列。検索キーかつ UI の主表示。
+ * - [iconUrl]: 円形アバターに表示する画像 URL。null 可（現状サーバは常に null を返す）。
  *
- * email / balance / mfa_enabled 等の機密項目は API 側で意図的に返さない契約。
+ * name / email / balance / mfa_enabled 等の機密または ID enumeration 抑止対象は
+ * API 側で意図的に返さない契約。検索キーは public_id 前方一致 (大小無視)。
  */
 @Serializable
 data class UserSearchResultDto(
@@ -19,7 +19,6 @@ data class UserSearchResultDto(
     val id: Long,
     @SerialName("public_id")
     val publicId: String,
-    val name: String,
     @SerialName("icon_url")
     val iconUrl: String? = null,
 )

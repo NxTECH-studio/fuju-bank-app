@@ -16,7 +16,7 @@ import studio.nxtech.fujubank.session.SessionStore
  * アカウントハブ画面（Figma `697:8394`）の状態保持。
  *
  * [AccountProfileProvider] が公開する `StateFlow<AccountProfile>` を直接 UI に流し、
- * 編集操作は [updateDisplayName] / [updateEmail] で Provider に書き戻す。
+ * 編集操作は [updatePublicId] / [updateEmail] で Provider に書き戻す。
  * Provider 側が in-memory state を持つため、保存時に Provider が更新されると
  * 本 VM 経由でも UI に即時反映される。
  *
@@ -47,16 +47,16 @@ class AccountHubViewModel(
         }
     }
 
-    /** 表示名のみ更新。メールアドレスは現在値を維持する。 */
-    fun updateDisplayName(displayName: String) {
+    /** 公開IDのみ更新。メールアドレスは現在値を維持する。 */
+    fun updatePublicId(publicId: String) {
         val current = profileProvider.profile.value
-        profileProvider.updateProfile(displayName = displayName, email = current.email)
+        profileProvider.updateProfile(publicId = publicId, email = current.email)
     }
 
-    /** メールアドレスのみ更新。表示名は現在値を維持する。 */
+    /** メールアドレスのみ更新。公開IDは現在値を維持する。 */
     fun updateEmail(email: String) {
         val current = profileProvider.profile.value
-        profileProvider.updateProfile(displayName = current.displayName, email = email)
+        profileProvider.updateProfile(publicId = current.publicId, email = email)
     }
 
     /**

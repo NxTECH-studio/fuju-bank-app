@@ -18,10 +18,10 @@ class SessionResetCoordinatorTest {
         var resetCount: Int = 0
         var ensureLoadedCount: Int = 0
         private val _profile = MutableStateFlow(
-            AccountProfile(displayName = "", email = "", accountId = ""),
+            AccountProfile(publicId = "", email = "", accountId = ""),
         )
         override val profile: StateFlow<AccountProfile> = _profile.asStateFlow()
-        override fun updateProfile(displayName: String, email: String) = Unit
+        override fun updateProfile(publicId: String, email: String) = Unit
         override fun reset() {
             resetCount += 1
         }

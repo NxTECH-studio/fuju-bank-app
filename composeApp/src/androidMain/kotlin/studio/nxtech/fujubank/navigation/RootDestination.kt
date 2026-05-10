@@ -16,7 +16,7 @@ sealed interface RootDestination {
     data object TransactionHistory : RootDestination
     data object TransactionDetail : RootDestination
 
-    /** 送金フロー Step 1: 送金先選択（表示名検索 + bottom sheet 確認モーダル）。 */
+    /** 送金フロー Step 1: 送金先選択（公開ID検索 + bottom sheet 確認モーダル）。 */
     data object SendRecipient : RootDestination
 
     /** 送金フロー Step 2: 金額入力（プレビュー + 確認 AlertDialog）。 */

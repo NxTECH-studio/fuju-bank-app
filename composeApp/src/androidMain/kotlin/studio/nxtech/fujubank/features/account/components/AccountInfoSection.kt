@@ -29,16 +29,16 @@ import studio.nxtech.fujubank.theme.NotoSansJP
 /**
  * アカウントハブ画面（Figma `697:8394`）の「アカウント情報」セクション。
  *
- * 白角丸カード内に「表示名」と「メールアドレス」の 2 行を配置する。
+ * 白角丸カード内に「公開ID」と「メールアドレス」の 2 行を配置する。
  * 各行はラベル（小さなグレー）+ 値（黒）の縦積みで、行右端に編集鉛筆アイコン
  * （[R.drawable.ic_edit_pencil]）を配置する。タップで該当フィールド単独の
  * 編集シートを開く。
  */
 @Composable
 fun AccountInfoSection(
-    displayName: String,
+    publicId: String,
     email: String,
-    onEditDisplayName: () -> Unit,
+    onEditPublicId: () -> Unit,
     onEditEmail: () -> Unit,
     modifier: Modifier = Modifier,
     editable: Boolean = true,
@@ -55,10 +55,10 @@ fun AccountInfoSection(
             .background(FujuBankColors.Surface),
     ) {
         InfoRow(
-            label = "表示名",
-            value = displayName,
-            onEditClick = onEditDisplayName,
-            editContentDescription = "表示名を編集",
+            label = "公開ID",
+            value = publicId,
+            onEditClick = onEditPublicId,
+            editContentDescription = "公開IDを編集",
             editable = editable,
         )
         HorizontalDivider(
@@ -115,7 +115,7 @@ private fun InfoRow(
                 ),
             )
         }
-        // MVP では AuthCore に email/displayName 更新 API が無いため編集 UI を無効化する
+        // MVP では AuthCore に email/publicId 更新 API が無いため編集 UI を無効化する
         // （`editable=false` で鉛筆アイコンごと非表示）。コードは将来 API 提供時の復活前提で残す。
         if (editable) {
             IconButton(
