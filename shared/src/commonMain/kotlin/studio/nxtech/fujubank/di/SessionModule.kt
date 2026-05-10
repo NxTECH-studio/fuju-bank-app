@@ -16,6 +16,7 @@ val sessionModule = module {
             authRepository = get(),
             tokenStorage = get(),
             sessionStore = get(),
+            bearerCacheInvalidator = get(),
             nowMillis = { Clock.System.now().toEpochMilliseconds() },
         )
     }

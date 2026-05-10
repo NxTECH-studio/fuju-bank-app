@@ -9,6 +9,7 @@ import studio.nxtech.fujubank.data.remote.api.LoginRawResponse
 import studio.nxtech.fujubank.data.remote.dto.RegisterRequest
 import studio.nxtech.fujubank.data.remote.dto.RegisterResponse
 import studio.nxtech.fujubank.data.remote.map
+import studio.nxtech.fujubank.network.BearerCacheInvalidator
 
 /**
  * AuthCore (`fuju-system-authentication`) の認証フローを束ねる Repository。
@@ -21,10 +22,17 @@ import studio.nxtech.fujubank.data.remote.map
  *
  * refresh_token 文字列はクライアント側に存在しない（HttpCookies plugin の
  * CookiesStorage が cookie を保管・送信する）。
+ *
+ * **Bearer キャッシュ整合**: 各 token 変更ポイント（saveAccess / clear）の直後に
+ * [bearerCacheInvalidator] を呼ぶ。Ktor `Auth { bearer }` プラグインは loadTokens の結果を
+ * メモリキャッシュしており、明示的に invalidate しないと別ユーザでログインした後も
+ * 前ユーザの Bearer を送り続ける（/v1/user/profile が前ユーザのデータを返す事象の原因）。
  */
 class AuthRepository(
     private val authApi: AuthApi,
     private val tokenStorage: TokenStorage,
+    // テスト互換のためデフォルト no-op。本番は authModule で実体を注入する。
+    private val bearerCacheInvalidator: BearerCacheInvalidator = BearerCacheInvalidator { },
     private val nowMillis: () -> Long = { 0L },
 ) {
     /**
@@ -48,6 +56,7 @@ class AuthRepository(
                             token = raw.response.accessToken,
                             expiresAt = expiresAtFrom(raw.response.expiresIn),
                         )
+                        bearerCacheInvalidator.invalidate()
                         LoginResult.Authenticated(
                             accessToken = raw.response.accessToken,
                             expiresIn = raw.response.expiresIn,
@@ -76,6 +85,7 @@ class AuthRepository(
                         token = result.value.accessToken,
                         expiresAt = expiresAtFrom(result.value.expiresIn),
                     )
+                    bearerCacheInvalidator.invalidate()
                     NetworkResult.Success(Unit)
                 }
                 is NetworkResult.Failure -> result
@@ -90,6 +100,7 @@ class AuthRepository(
                     token = result.value.accessToken,
                     expiresAt = expiresAtFrom(result.value.expiresIn),
                 )
+                bearerCacheInvalidator.invalidate()
                 NetworkResult.Success(Unit)
             }
             is NetworkResult.Failure -> result
@@ -102,6 +113,7 @@ class AuthRepository(
         // サーバが落ちていてもローカルの access はクリアする。cookie は HttpCookies の
         // storage が握っているが、access が無ければ認証済み扱いにならないので OK。
         tokenStorage.clear()
+        bearerCacheInvalidator.invalidate()
         return result.map { Unit }
     }
 

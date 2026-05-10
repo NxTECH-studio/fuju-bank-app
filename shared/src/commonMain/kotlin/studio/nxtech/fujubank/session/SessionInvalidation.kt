@@ -1,6 +1,7 @@
 package studio.nxtech.fujubank.session
 
 import studio.nxtech.fujubank.auth.TokenStorage
+import studio.nxtech.fujubank.network.BearerCacheInvalidator
 
 /**
  * 「ローカルの認証 state を確実に Unauthenticated に倒す」共通操作。
@@ -22,7 +23,9 @@ import studio.nxtech.fujubank.auth.TokenStorage
 internal suspend fun invalidateSession(
     tokenStorage: TokenStorage,
     sessionStore: SessionStore,
+    bearerCacheInvalidator: BearerCacheInvalidator,
 ) {
     tokenStorage.clear()
+    bearerCacheInvalidator.invalidate()
     sessionStore.clear()
 }

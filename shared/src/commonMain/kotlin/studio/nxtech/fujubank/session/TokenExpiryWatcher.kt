@@ -5,6 +5,7 @@ import kotlinx.coroutines.sync.withLock
 import studio.nxtech.fujubank.auth.TokenStorage
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.repository.AuthRepository
+import studio.nxtech.fujubank.network.BearerCacheInvalidator
 
 /**
  * access_token の `expiresAt` を on-demand でチェックし、閾値内なら proactive に
@@ -30,6 +31,8 @@ class TokenExpiryWatcher(
     private val authRepository: AuthRepository,
     private val tokenStorage: TokenStorage,
     private val sessionStore: SessionStore,
+    // テスト互換のためデフォルト no-op。本番は sessionModule で実体を注入する。
+    private val bearerCacheInvalidator: BearerCacheInvalidator = BearerCacheInvalidator { },
     // テスト容易性のため inject 可能。本番では DI 側で `Clock.System.now().toEpochMilliseconds()`
     // を渡す。`{ 0L }` を default にしているのは、TokenStorage に保存される expiresAt は
     // [AuthRepository.expiresAtFrom] が `nowMillis() <= 0L` で null を返す設計と整合させるため
@@ -57,7 +60,7 @@ class TokenExpiryWatcher(
             if (now < expiresAt - refreshThresholdMillis) return
             when (authRepository.refresh()) {
                 is NetworkResult.Success -> Unit
-                is NetworkResult.Failure -> invalidateSession(tokenStorage, sessionStore)
+                is NetworkResult.Failure -> invalidateSession(tokenStorage, sessionStore, bearerCacheInvalidator)
                 // 通信エラー時は何もしない（次の checkNow / 401-driven refresh に委ねる）。
                 is NetworkResult.NetworkFailure -> Unit
             }
