@@ -12,6 +12,7 @@ import studio.nxtech.fujubank.auth.TokenStorage
 import studio.nxtech.fujubank.auth.TokenStorageFactory
 import studio.nxtech.fujubank.data.repository.AuthRepository
 import studio.nxtech.fujubank.data.repository.ProfileRepository
+import studio.nxtech.fujubank.session.SessionStore
 
 class SharedModuleVerifyTest {
 
@@ -29,6 +30,8 @@ class SharedModuleVerifyTest {
         // SessionResetCoordinator が横断参照するため external 扱い。
         // AuthRepository / TokenStorage は authModule 提供で sessionModule の
         // TokenExpiryWatcher が横断参照するため external 扱い。
+        // SessionStore は sessionModule 提供で userModule の UserRepository
+        // (送金先検索の自分除外ロジック) が横断参照するため external 扱い。
         val extraTypes = listOf(
             HttpClient::class,
             TokenStorageFactory::class,
@@ -39,6 +42,7 @@ class SharedModuleVerifyTest {
             AccountProfileProvider::class,
             AuthRepository::class,
             TokenStorage::class,
+            SessionStore::class,
         )
         modules.forEach { it.verify(extraTypes = extraTypes) }
     }

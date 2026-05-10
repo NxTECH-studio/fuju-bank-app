@@ -7,7 +7,7 @@ import Shared
 /// 観測できるよう公開された `AccountIosKt.observeAccountProfile`（`observeDepositEnabled` /
 /// `observeTransferEnabled` と同一パターン）を購読し、`@Published` に転写する。
 ///
-/// 編集操作は [updateDisplayName] / [updateEmail] で Provider に書き戻す。Provider 側が
+/// 編集操作は [updatePublicId] / [updateEmail] で Provider に書き戻す。Provider 側が
 /// in-memory state を持つため、保存時に Provider が更新されると `observeAccountProfile`
 /// 経由で UI に即時反映される（Android `AccountHubViewModel` と同等）。
 @MainActor
@@ -19,7 +19,7 @@ final class ObservableAccountHubViewModel: ObservableObject {
     /// Android `AccountHubViewModel.isLoggingOut` と対称。
     @Published private(set) var isLoggingOut: Bool = false
 
-    /// MVP は受け取り専用で AuthCore 側に email/displayName 更新 API が揃っていないため、
+    /// MVP は受け取り＋送金スコープで AuthCore 側に email/publicId 更新 API が揃っていないため、
     /// 編集 UI は一旦無効化する。Android `AccountHubScreen` の `editingEnabled = false` と
     /// 対称。鉛筆アイコン非表示 + sheet 起動経路の no-op ガードに用いる。
     /// `AccountInfoEditSheetView` 自体は将来の復活前提でコードを残す。
@@ -48,14 +48,14 @@ final class ObservableAccountHubViewModel: ObservableObject {
         profileToken?.close()
     }
 
-    /// 表示名のみ更新。メールアドレスは現在値を維持する。
-    func updateDisplayName(_ displayName: String) {
-        provider.updateProfile(displayName: displayName, email: profile.email)
+    /// 公開IDのみ更新。メールアドレスは現在値を維持する。
+    func updatePublicId(_ publicId: String) {
+        provider.updateProfile(publicId: publicId, email: profile.email)
     }
 
-    /// メールアドレスのみ更新。表示名は現在値を維持する。
+    /// メールアドレスのみ更新。公開IDは現在値を維持する。
     func updateEmail(_ email: String) {
-        provider.updateProfile(displayName: profile.displayName, email: email)
+        provider.updateProfile(publicId: profile.publicId, email: email)
     }
 
     /// AccountHub 画面初回表示時に呼び、プロフィールキャッシュをロードする。

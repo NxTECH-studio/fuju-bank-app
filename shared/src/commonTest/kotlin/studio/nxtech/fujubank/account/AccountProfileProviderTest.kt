@@ -11,7 +11,7 @@ class AccountProfileProviderTest {
         val provider = DummyAccountProfileProvider()
         val initial = provider.profile.value
 
-        provider.updateProfile(displayName = "別ユーザー", email = "other@example.com")
+        provider.updateProfile(publicId = "other_user", email = "other@example.com")
         // 編集後の値は initial と異なる前提（テストの自己確認）。
         assertNotEquals(initial, provider.profile.value)
 

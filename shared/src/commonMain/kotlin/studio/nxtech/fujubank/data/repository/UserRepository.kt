@@ -7,20 +7,27 @@ import studio.nxtech.fujubank.data.remote.ApiErrorCode
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.remote.api.UserApi
 import studio.nxtech.fujubank.data.remote.api.UserMeApi
+import studio.nxtech.fujubank.data.remote.api.UserSearchApi
 import studio.nxtech.fujubank.data.remote.dto.CreateUserRequest
 import studio.nxtech.fujubank.data.remote.dto.TransactionDirectionWire
 import studio.nxtech.fujubank.data.remote.dto.TransactionDto
 import studio.nxtech.fujubank.data.remote.dto.UserResponse
+import studio.nxtech.fujubank.data.remote.dto.UserSearchResultDto
 import studio.nxtech.fujubank.data.remote.map
 import studio.nxtech.fujubank.domain.model.Transaction
 import studio.nxtech.fujubank.domain.model.TransactionDirection
 import studio.nxtech.fujubank.domain.model.TransactionKind
 import studio.nxtech.fujubank.domain.model.User
+import studio.nxtech.fujubank.domain.model.UserSearchResult
+import studio.nxtech.fujubank.session.SessionState
+import studio.nxtech.fujubank.session.SessionStore
 import kotlin.time.Instant
 
 class UserRepository(
     private val userApi: UserApi,
     private val userMeApi: UserMeApi,
+    private val userSearchApi: UserSearchApi,
+    private val sessionStore: SessionStore,
     // テストや本番では false を強制する。デフォルトは BuildKonfig 側のフラグに従う。
     val useDummyData: Boolean = BuildKonfig.USE_DUMMY_PROFILE,
 ) {
@@ -74,7 +81,37 @@ class UserRepository(
             response.data.map { it.toDomain() }
         }
     }
+
+    /**
+     * 公開ID (public_id) の前方一致で送金先候補を検索する。
+     *
+     * - クエリ最低 2 文字バリデーションは ViewModel 側で行う前提（Repository は通過させる）。
+     * - サーバ側でも自分自身を除外する契約だが、UI 側の安全網として SessionStore の現在
+     *   `userId` と一致する候補を Repository でも弾く。
+     * - 取得した `public_id` は UI で `@{publicId}` として表示される他、将来 QR / Code128 に
+     *   エンコードされる可能性があるため、[isValidPublicId] の allowlist
+     *   （`[A-Za-z0-9_-]{1,64}`）で形式検証し、想定外文字を含むエントリは黙って弾く。
+     *   サーバが侵害された場合や DTO 想定外応答に備えた多層防御。
+     * - エラーは [NetworkResult] のままパススルーする（429 / 401 等は呼び出し側で UI に
+     *   反映する）。
+     */
+    suspend fun searchByPublicId(query: String): NetworkResult<List<UserSearchResult>> {
+        val myUserId = (sessionStore.current as? SessionState.Authenticated)?.userId
+        return userSearchApi.searchByPublicId(query).map { dtos ->
+            dtos.asSequence()
+                .filter { isValidPublicId(it.publicId) }
+                .map { it.toDomain() }
+                .filter { myUserId == null || it.id != myUserId }
+                .toList()
+        }
+    }
 }
+
+private fun UserSearchResultDto.toDomain(): UserSearchResult = UserSearchResult(
+    id = id.toString(),
+    publicId = publicId,
+    iconUrl = iconUrl,
+)
 
 private fun UserResponse.toDomain(): User = User(
     id = id.toString(),

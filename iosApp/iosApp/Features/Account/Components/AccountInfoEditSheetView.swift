@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// アカウント情報の単一フィールド（表示名 or メール）を編集するボトムシート。
+/// アカウント情報の単一フィールド（公開ID or メール）を編集するボトムシート。
 ///
 /// Android `AccountInfoEditSheet.kt` と 1:1 の入力 UX を SwiftUI `.sheet` で再現する:
 /// - 1 つの `TextField` を中央に配置し、下部に「保存」ボタン

@@ -48,8 +48,8 @@ class RemoteAccountProfileProvider(
      * AccountHub の編集 UI は同 MVP 期間で無効化されているため、このメソッドが UI から
      * 呼ばれる経路は現在無い。AuthCore に更新 API が来たら本実装を書き換える。
      */
-    override fun updateProfile(displayName: String, email: String) {
-        _profile.update { it.copy(displayName = displayName, email = email) }
+    override fun updateProfile(publicId: String, email: String) {
+        _profile.update { it.copy(publicId = publicId, email = email) }
     }
 
     /**
@@ -58,7 +58,7 @@ class RemoteAccountProfileProvider(
      * `accountModule` 上 `single<AccountProfileProvider>` で登録されており、本クラスは
      * プロセス内で 1 度だけ生成される。再ログインでも同一インスタンスが再利用されるため、
      * ここで明示的に空 + loaded=false に戻さないと、別ユーザでログイン後の AccountHub に
-     * 前ユーザの displayName / email が残る。
+     * 前ユーザの publicId / email が残る。
      */
     override fun reset() {
         _profile.value = EMPTY_PROFILE
@@ -89,7 +89,7 @@ class RemoteAccountProfileProvider(
 
 /** 取得失敗・取得前の空状態。AccountHub 側で「-」プレースホルダに置換される。 */
 private val EMPTY_PROFILE = AccountProfile(
-    displayName = "",
+    publicId = "",
     email = "",
     accountId = "",
 )
@@ -97,17 +97,11 @@ private val EMPTY_PROFILE = AccountProfile(
 /**
  * [UserProfile] → [AccountProfile] の変換。
  *
- * `displayName` のフォールバック順:
- *   1. bank `/users/me` の `name`（将来サーバ追加予定）
- *   2. AuthCore の `email` の `@` 前
- *   3. AuthCore の `publicId`
- *   4. 空文字（UI 側で「-」表示）
+ * AuthCore の `publicId` を `AccountProfile.publicId` にそのままマップする。
+ * AuthCore 側で必ず存在する想定だが、未取得・取得失敗時は空文字（UI 側で「-」表示）。
  */
 internal fun UserProfile.toAccountProfile(): AccountProfile = AccountProfile(
-    displayName = name?.takeIf { it.isNotBlank() }
-        ?: email?.substringBefore('@')?.takeIf { it.isNotBlank() }
-        ?: publicId.takeIf { it.isNotBlank() }
-        ?: "",
+    publicId = publicId,
     email = email.orEmpty(),
     accountId = bankUserId,
 )

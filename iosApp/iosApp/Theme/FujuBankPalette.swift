@@ -48,4 +48,10 @@ enum FujuBankPalette {
     /// drop-shadow rgba(30, 34, 42, ...) 系のシャドウベース色 (透明度は呼び出し側で指定)。
     /// Figma の銀行版カードに薄く敷くドロップシャドウに使用する。
     static let shadowTint = Color(red: 30 / 255, green: 34 / 255, blue: 42 / 255)
+
+    /// 送金プレビューカード等の薄ピンク背景 (`#FFEAF6`)。Android `FujuBankColors.LightPink` と一致。
+    static let lightPink = Color(red: 0xFF / 255, green: 0xEA / 255, blue: 0xF6 / 255)
+
+    /// 非活性 CTA の背景色 (`#E6E6E6`)。Android `FujuBankColors.DisabledButtonBg` と一致。
+    static let disabledButtonBg = Color(red: 0xE6 / 255, green: 0xE6 / 255, blue: 0xE6 / 255)
 }

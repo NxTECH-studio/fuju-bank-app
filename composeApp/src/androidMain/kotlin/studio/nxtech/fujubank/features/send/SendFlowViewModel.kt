@@ -1,0 +1,266 @@
+package studio.nxtech.fujubank.features.send
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import studio.nxtech.fujubank.data.remote.ApiErrorCode
+import studio.nxtech.fujubank.data.remote.NetworkResult
+import studio.nxtech.fujubank.data.repository.LedgerRepository
+import studio.nxtech.fujubank.data.repository.ProfileRepository
+import studio.nxtech.fujubank.data.repository.TransferResult
+import studio.nxtech.fujubank.data.repository.UserRepository
+import studio.nxtech.fujubank.domain.model.UserSearchResult
+import studio.nxtech.fujubank.session.SessionState
+import studio.nxtech.fujubank.session.SessionStore
+
+/**
+ * 送金フロー（Step 1: 送金先選択 → Step 2: 金額入力 → 実行）の状態とアクションを集約する ViewModel。
+ *
+ * ライフサイクル: 送金フロー destination 群（`SendRecipient` / `SendAmount`）の間で **同一 VM を
+ * 引き回す** 設計。`RootScaffold` 側で同じ key で `viewModel(...)` を呼び、Step 切替で再生成しない。
+ */
+class SendFlowViewModel(
+    private val userRepository: UserRepository,
+    private val ledgerRepository: LedgerRepository,
+    private val profileRepository: ProfileRepository,
+    private val sessionStore: SessionStore,
+) : ViewModel() {
+
+    private val _state = MutableStateFlow(SendFlowState())
+    val state: StateFlow<SendFlowState> = _state.asStateFlow()
+
+    // 検索クエリ用の Flow。debounce してから API を叩く。
+    private val queryFlow = MutableStateFlow("")
+    private var searchJob: Job? = null
+
+    init {
+        // 初期残高をホームと同じ ProfileRepository から取得する。失敗時は 0 のまま、
+        // CTA は「残高超過」として扱われ disable される（実 API 側でも検証されるので二重防御）。
+        loadBalance()
+        observeQuery()
+    }
+
+    private fun loadBalance() {
+        viewModelScope.launch {
+            when (val result = profileRepository.getMyProfile()) {
+                is NetworkResult.Success -> _state.update { it.copy(balance = result.value.balanceFuju) }
+                is NetworkResult.Failure, is NetworkResult.NetworkFailure -> Unit
+            }
+        }
+    }
+
+    @OptIn(FlowPreview::class)
+    private fun observeQuery() {
+        viewModelScope.launch {
+            queryFlow
+                .debounce(SEARCH_DEBOUNCE_MS)
+                .distinctUntilChanged()
+                .collect { q -> runSearch(q) }
+        }
+    }
+
+    private suspend fun runSearch(query: String) {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) {
+            _state.update { it.copy(searchState = SendFlowState.SearchState.Idle) }
+            return
+        }
+        if (trimmed.length < MIN_SEARCH_LENGTH) {
+            _state.update { it.copy(searchState = SendFlowState.SearchState.NeedsMoreChars) }
+            return
+        }
+        _state.update { it.copy(searchState = SendFlowState.SearchState.Loading) }
+        when (val result = userRepository.searchByPublicId(trimmed)) {
+            is NetworkResult.Success -> _state.update {
+                it.copy(searchState = SendFlowState.SearchState.Ready(result.value))
+            }
+            is NetworkResult.Failure -> _state.update {
+                val msg = if (result.error.code == ApiErrorCode.RATE_LIMIT_EXCEEDED) {
+                    "検索が混み合っています。しばらく待ってください"
+                } else {
+                    "検索に失敗しました"
+                }
+                it.copy(searchState = SendFlowState.SearchState.Error(msg))
+            }
+            is NetworkResult.NetworkFailure -> _state.update {
+                it.copy(searchState = SendFlowState.SearchState.Error("通信エラーが発生しました"))
+            }
+        }
+    }
+
+    fun onQueryChange(query: String) {
+        _state.update { it.copy(query = query) }
+        queryFlow.value = query
+    }
+
+    fun onCandidateTap(candidate: UserSearchResult) {
+        _state.update { it.copy(confirmCandidate = candidate) }
+    }
+
+    fun onCandidateConfirmCancel() {
+        _state.update { it.copy(confirmCandidate = null) }
+    }
+
+    /** Step 1 の bottom sheet で「決定」を押したあと、Step 2 に進む。 */
+    fun onCandidateConfirm() {
+        val candidate = _state.value.confirmCandidate ?: return
+        _state.update {
+            it.copy(
+                confirmCandidate = null,
+                recipient = candidate,
+                step = SendFlowState.Step.Amount,
+                amount = 0L,
+                error = null,
+                submission = SendFlowState.Submission.Idle,
+            )
+        }
+    }
+
+    /** Step 2 から戻る場合（Step 1 に戻り、recipient と amount をリセットする）。 */
+    fun onAmountBack() {
+        _state.update {
+            it.copy(
+                step = SendFlowState.Step.Recipient,
+                recipient = null,
+                amount = 0L,
+                error = null,
+                submission = SendFlowState.Submission.Idle,
+            )
+        }
+    }
+
+    fun onAmountChange(value: Long) {
+        // 巨大値は内部で打ち切らない。CTA 側で「残高超過」として disable する。
+        _state.update { it.copy(amount = value, error = null) }
+    }
+
+    /** カスタム数字パッドで 1 桁入力する。先頭 0 を抑制し、Long の範囲を超えないようガードする。 */
+    fun onDigitAppend(digit: Int) {
+        require(digit in 0..9) { "digit must be 0..9" }
+        val current = _state.value.amount
+        // Long.MAX_VALUE = 9223372036854775807。10 倍してから加算が overflow しないかチェック。
+        val multiplied = current * 10
+        val next = multiplied + digit
+        if (multiplied / 10 != current || next < current) {
+            // overflow: 何もしない（最大値で頭打ち）。
+            return
+        }
+        _state.update { it.copy(amount = next, error = null) }
+    }
+
+    fun onDigitDelete() {
+        _state.update { it.copy(amount = it.amount / 10, error = null) }
+    }
+
+    fun showAmountConfirm() {
+        val s = _state.value
+        if (s.recipient == null || s.amount <= 0L || s.amount > s.balance) return
+        _state.update { it.copy(showAmountConfirm = true) }
+    }
+
+    fun dismissAmountConfirm() {
+        _state.update { it.copy(showAmountConfirm = false) }
+    }
+
+    /** AlertDialog の「送金する」CTA から呼ばれる。 */
+    fun submit() {
+        val snapshot = _state.value
+        val recipient = snapshot.recipient ?: return
+        val from = (sessionStore.current as? SessionState.Authenticated)?.userId ?: run {
+            _state.update {
+                it.copy(
+                    showAmountConfirm = false,
+                    error = "セッションが無効です。もう一度ログインしてください",
+                )
+            }
+            return
+        }
+        // MFA / NetworkFailure の再試行を考慮し、前回の retryKey があれば引き継ぐ。
+        val retryKey = (snapshot.submission as? SendFlowState.Submission.MfaRequired)?.retryKey
+        _state.update {
+            it.copy(
+                showAmountConfirm = false,
+                submission = SendFlowState.Submission.Submitting,
+                error = null,
+            )
+        }
+        viewModelScope.launch {
+            val result = ledgerRepository.transfer(
+                from = from,
+                to = recipient.id,
+                amount = snapshot.amount,
+                retryKey = retryKey,
+            )
+            applyTransferResult(result)
+        }
+    }
+
+    private fun applyTransferResult(result: TransferResult) {
+        when (result) {
+            is TransferResult.Success -> _state.update {
+                it.copy(
+                    submission = SendFlowState.Submission.Success(
+                        transactionId = result.transactionId,
+                        newBalance = result.newBalance,
+                    ),
+                    balance = result.newBalance,
+                )
+            }
+            is TransferResult.MfaRequired -> _state.update {
+                // 送金時 MFA 検証 API はサーバ側で別 PR が必要 (server-bank-23)。
+                // クライアントは現状フォールバックとして「未対応エラー」を表示し、retryKey を保持する。
+                it.copy(
+                    submission = SendFlowState.Submission.MfaRequired(retryKey = result.retryKey),
+                    error = "送金時の二段階認証は現在準備中です。後ほど再度お試しください",
+                )
+            }
+            is TransferResult.Failure -> {
+                val message = mapFailureMessage(result.error.code)
+                if (result.error.code == ApiErrorCode.NOT_FOUND) {
+                    // 宛先が消えた等。Step 1 に戻して再検索を促す。
+                    _state.update {
+                        it.copy(
+                            step = SendFlowState.Step.Recipient,
+                            recipient = null,
+                            amount = 0L,
+                            submission = SendFlowState.Submission.Idle,
+                            error = message,
+                        )
+                    }
+                } else {
+                    _state.update {
+                        it.copy(
+                            submission = SendFlowState.Submission.Idle,
+                            error = message,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun mapFailureMessage(code: ApiErrorCode): String = when (code) {
+        ApiErrorCode.INSUFFICIENT_BALANCE -> "残高が不足しています"
+        ApiErrorCode.VALIDATION_FAILED -> "入力内容に誤りがあります"
+        ApiErrorCode.NOT_FOUND -> "送金先が見つかりませんでした。再度検索してください"
+        ApiErrorCode.UNAUTHENTICATED, ApiErrorCode.TOKEN_EXPIRED, ApiErrorCode.TOKEN_INVALID,
+        ApiErrorCode.TOKEN_REVOKED,
+        -> "セッションが無効です。もう一度ログインしてください"
+        ApiErrorCode.RATE_LIMIT_EXCEEDED -> "アクセスが集中しています。しばらく待ってください"
+        ApiErrorCode.AUTHCORE_UNAVAILABLE -> "認証サービスが応答していません。後ほどお試しください"
+        else -> "送金に失敗しました"
+    }
+
+    private companion object {
+        const val SEARCH_DEBOUNCE_MS = 300L
+        const val MIN_SEARCH_LENGTH = 2
+    }
+}

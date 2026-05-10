@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 interface AccountProfileProvider {
     val profile: StateFlow<AccountProfile>
 
-    fun updateProfile(displayName: String, email: String)
+    fun updateProfile(publicId: String, email: String)
 
     /**
      * ログアウト（`SessionState.Authenticated → Unauthenticated` 遷移）時に
@@ -56,9 +56,9 @@ class DummyAccountProfileProvider : AccountProfileProvider {
     private val _profile = MutableStateFlow(INITIAL_PROFILE)
     override val profile: StateFlow<AccountProfile> = _profile.asStateFlow()
 
-    override fun updateProfile(displayName: String, email: String) {
+    override fun updateProfile(publicId: String, email: String) {
         _profile.value = _profile.value.copy(
-            displayName = displayName,
+            publicId = publicId,
             email = email,
         )
     }
@@ -73,9 +73,9 @@ class DummyAccountProfileProvider : AccountProfileProvider {
     }
 
     private companion object {
-        // Figma `697:8394` 上の表記をそのまま保持。実 API 確定時に削除する。
+        // Figma `697:8394` 由来のダミー値。実 API 確定時に削除する。
         val INITIAL_PROFILE = AccountProfile(
-            displayName = "山田 花子",
+            publicId = "yamada_a1b2",
             email = "hanako@example.com",
             accountId = "1293031294904",
         )
