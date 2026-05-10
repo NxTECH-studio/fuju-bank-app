@@ -372,7 +372,7 @@ AuthCore はフラット形式を返します。
 | `ACCOUNT_LOCKED` / `RATE_LIMIT_EXCEEDED` | 実装済み: `AuthErrorMessages.forLogin` がしばらく待つよう案内 |
 | `MFA_REQUIRED` | 実装済み: `AuthRepository.login` が `LoginResult.NeedsMfa(preToken)` を返し、`SessionStore.setMfaPending(preToken)` 経由で `MfaVerifyScreen` に遷移 |
 | `TOTP_CODE_INVALID` / `RECOVERY_CODE_INVALID` / `TOKEN_EXPIRED` | 実装済み: `AuthErrorMessages.forMfa` で個別文言 |
-| `INSUFFICIENT_BALANCE` | 送金フォームでバリデーションメッセージとして表示（送金 UI は MVP 範囲外） |
+| `INSUFFICIENT_BALANCE` | 実装済み: 送金フロー Step 2 で「残高が不足しています」を表示し CTA を非活性化（クライアント先行チェック + サーバ二重チェック） |
 | `AUTHCORE_UNAVAILABLE` | 一時的障害としてリトライ誘導 |
 | `VALIDATION_FAILED` / `NOT_FOUND` | `ApiError.message` をそのまま表示 |
 | `UNKNOWN` | 汎用エラー表示 |
@@ -516,11 +516,11 @@ debug / release ビルドとも本番 API（`*.fujupay.app`）を直接叩くた
 |---|---|
 | Koin bootstrap（Android / iOS） | 実装済み。`FujuBankApp` / `KoinIos.doInitKoin` が起動経路。`sharedModules(cableUrl)` で auth / user / session / signup / account / ledger / realtime / artifact をまとめて load |
 | API クライアント（AuthCore） | 実装済み: `AuthApi`（login / mfaVerify / refresh / logout）/ `AuthCoreUserApi`（getProfile） |
-| API クライアント（bank） | 実装済み: `UserApi`（create / get / transactions）/ `UserMeApi`（upsertMe / getMe）/ `LedgerApi`（transfer + Idempotency-Key）/ `ArtifactApi` |
+| API クライアント（bank） | 実装済み: `UserApi`（create / get / transactions）/ `UserMeApi`（upsertMe / getMe）/ `UserSearchApi`（searchByDisplayName）/ `LedgerApi`（transfer + Idempotency-Key）/ `ArtifactApi` |
 | TokenStorage / Cookie | 実装済み: Android（`EncryptedSharedPreferences`）/ iOS（Keychain）。access_token は `TokenStorage`、refresh_token は HttpOnly cookie + `PersistentCookiesStorage` |
 | ActionCable | `UserChannelClient` 実装済み（指数バックオフ 1s→30s、制御フレーム破棄、`credit` のみ emit）。`shareIn` による共有化は未着手 |
-| UI（Android / iOS 両対応） | 実装済み: ログイン / サインアップ（メール → OTP → 完了） / ホーム（残高 + 取引履歴） / 取引詳細 / 設定（アカウント情報・プライバシー・パスワード変更・通知許可） |
-| UI（未実装） | 送金フォーム / HUD / Artifact 投稿（MVP 範囲外: `project_mvp_scope.md` 参照、受け取り専用 MVP） |
+| UI（Android / iOS 両対応） | 実装済み: ログイン / サインアップ（メール → OTP → 完了） / ホーム（残高 + 取引履歴） / 取引詳細 / 設定（アカウント情報・プライバシー・パスワード変更・通知許可） / 送金フロー（送金先選択 → 金額入力 → 確認 → 実行、フッターに「送金」タブ） |
+| UI（未実装） | HUD / Artifact 投稿（MVP 範囲外: `project_mvp_scope.md` 参照） |
 | baseUrl / cableUrl | BuildKonfig 経由化済み。debug / release とも本番（`*.fujupay.app`）を向く |
 | MFA / リフレッシュトークン | 実装済み: MFA は `AuthRepository.login` → `LoginResult.NeedsMfa` → `MfaVerifyScreen` の経路。リフレッシュは Auth プラグインの `refreshTokens` + `AuthTokenRefresher`（`AUTHCORE_CLIENT_QUALIFIER` 経由のため自己再帰 deadlock しない） |
 | access_token の proactive 期限監視 | 実装済み: `TokenExpiryWatcher.checkNow()` を Android `Lifecycle.Event.ON_RESUME` / iOS `ScenePhase = .active` から呼ぶ。`DEFAULT_REFRESH_THRESHOLD_MS = 60_000` 以内なら refresh を先回り起動。API 失敗時は session を `Unauthenticated` に倒し、`NetworkFailure` 時は no-op |
