@@ -1,5 +1,7 @@
 package studio.nxtech.fujubank.account
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import studio.nxtech.fujubank.session.FlowToken
 import studio.nxtech.fujubank.session.observeFlow
 
@@ -56,3 +58,21 @@ fun observeAccountProfile(
  */
 fun currentAccountProfile(provider: AccountProfileProvider): AccountProfile =
     provider.profile.value
+
+/**
+ * Swift 側から `AccountProfileProvider.ensureLoaded()` を呼ぶための薄いブリッジ。
+ *
+ * suspend 関数を Swift から直接 await できない問題を回避するため、scope.launch で
+ * 起動して完了時にコールバックする。AccountHubView の `.task { }` 内から呼び、
+ * 初回表示時のプロフィール lazy load を発火する用途。
+ */
+fun ensureAccountProfileLoaded(
+    provider: AccountProfileProvider,
+    scope: CoroutineScope,
+    onComplete: () -> Unit,
+) {
+    scope.launch {
+        provider.ensureLoaded()
+        onComplete()
+    }
+}

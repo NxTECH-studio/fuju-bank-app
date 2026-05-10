@@ -11,6 +11,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -55,6 +56,12 @@ fun AccountHubScreen(
 ) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     val isLoggingOut by viewModel.isLoggingOut.collectAsStateWithLifecycle()
+
+    // 画面初回表示時にプロフィールをロード（Provider 側で冪等化されているので
+    // タブ切替で再合成されても API は 1 度しか叩かない）。
+    LaunchedEffect(Unit) {
+        viewModel.ensureProfileLoaded()
+    }
     // 編集中フィールド。MVP では編集 UI 無効化のため常に null だが、将来復活時に
     // 再利用できるよう state とシート分岐自体は保持する。
     var editingField by rememberSaveable { mutableStateOf<AccountInfoField?>(null) }

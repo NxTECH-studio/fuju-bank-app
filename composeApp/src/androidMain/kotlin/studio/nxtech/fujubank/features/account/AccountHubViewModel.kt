@@ -1,6 +1,7 @@
 package studio.nxtech.fujubank.features.account
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +34,18 @@ class AccountHubViewModel(
 
     private val _isLoggingOut = MutableStateFlow(false)
     val isLoggingOut: StateFlow<Boolean> = _isLoggingOut.asStateFlow()
+
+    /**
+     * AccountHub 画面初回表示時に呼び、プロフィールキャッシュをロードする。
+     *
+     * Provider 側で冪等化されているため、複数回呼ばれても API は 1 度しか叩かない
+     * （ログアウト → 再ログイン後の再表示でのみ再 fetch される）。
+     */
+    fun ensureProfileLoaded() {
+        viewModelScope.launch {
+            profileProvider.ensureLoaded()
+        }
+    }
 
     /** 表示名のみ更新。メールアドレスは現在値を維持する。 */
     fun updateDisplayName(displayName: String) {

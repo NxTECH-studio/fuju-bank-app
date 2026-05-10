@@ -1,5 +1,6 @@
 package studio.nxtech.fujubank.di
 
+import io.ktor.client.HttpClient
 import kotlin.time.Clock
 import org.koin.dsl.module
 import studio.nxtech.fujubank.auth.TokenStorage
@@ -8,20 +9,49 @@ import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.remote.api.AuthApi
 import studio.nxtech.fujubank.data.repository.AuthRepository
 import studio.nxtech.fujubank.network.AuthTokenRefresher
+import studio.nxtech.fujubank.network.BearerCacheInvalidator
+import studio.nxtech.fujubank.network.clearBearerCache
 import studio.nxtech.fujubank.session.SessionStore
 import studio.nxtech.fujubank.session.invalidateSession
 
 val authModule = module {
     single<TokenStorage> { get<TokenStorageFactory>().create() }
-    // AuthApi は Auth プラグイン無しの専用 HttpClient を使う。同じクライアントだと
-    // refresh が 401 を返したときに refreshTokens ブロックが再帰起動して deadlock する。
-    single { AuthApi(get(qualifier = AUTHCORE_CLIENT_QUALIFIER), defaultAuthCoreBaseUrl()) }
+    // AuthApi は Auth プラグイン無しの AUTHCORE_CLIENT_QUALIFIER クライアントだけを使う。
+    // Bearer 必須な mfaRegister / mfaEnable には authTokenProvider 経由で TokenStorage から
+    // access_token を読んで手動で Authorization ヘッダを付ける。
+    //
+    // 「Auth プラグイン付きの bank/AuthCore 共通クライアント」を AuthApi にも注入してしまうと、
+    // そのクライアント生成時の `tokenRefresher = AuthTokenRefresher` が AuthRepository → AuthApi
+    // → 同クライアント を辿り、Koin が単一インスタンス構築途中の依存解決で循環死する。
+    single {
+        val tokenStorage: studio.nxtech.fujubank.auth.TokenStorage = get()
+        AuthApi(
+            authCoreClient = get(qualifier = AUTHCORE_CLIENT_QUALIFIER),
+            authCoreBaseUrl = defaultAuthCoreBaseUrl(),
+            authTokenProvider = { tokenStorage.loadAccess() },
+        )
+    }
+    // BearerCacheInvalidator: bank/AuthCore 共通クライアント（default qualifier）の
+    // Auth プラグインに対して Bearer キャッシュを破棄する。
+    //
+    // **HttpClient の解決は invoke 時に遅延** させて、AuthRepository → BearerCacheInvalidator
+    // → HttpClient → AuthTokenRefresher → AuthRepository の Koin 循環依存を回避する。
+    // factory 時点では Koin インスタンスをキャプチャするだけで HttpClient は触らない。
+    // 最初の invalidate() が呼ばれるのは login / logout 完了直後（= HttpClient 構築済み）なので
+    // その時点で初めて get<HttpClient>() が走っても安全。
+    single<BearerCacheInvalidator> {
+        val koin = getKoin()
+        BearerCacheInvalidator {
+            koin.get<HttpClient>().clearBearerCache()
+        }
+    }
     // nowMillis に実時刻を渡さないと AuthRepository.expiresAtFrom() が常に null を返し、
     // proactive な期限監視（TokenExpiryWatcher）が機能しなくなるので必ず注入する。
     single {
         AuthRepository(
             authApi = get(),
             tokenStorage = get(),
+            bearerCacheInvalidator = get(),
             nowMillis = { Clock.System.now().toEpochMilliseconds() },
         )
     }
@@ -32,6 +62,7 @@ val authModule = module {
             authRepository = get(),
             tokenStorage = get(),
             sessionStore = get(),
+            bearerCacheInvalidator = get(),
         )
     }
 }
@@ -57,11 +88,13 @@ internal fun createAuthTokenRefresher(
     authRepository: AuthRepository,
     tokenStorage: TokenStorage,
     sessionStore: SessionStore,
+    // テスト互換のためデフォルト no-op。本番は authModule で実体を注入する。
+    bearerCacheInvalidator: BearerCacheInvalidator = BearerCacheInvalidator { },
 ): AuthTokenRefresher = AuthTokenRefresher {
     when (authRepository.refresh()) {
         is NetworkResult.Success -> tokenStorage.loadAccess()
         is NetworkResult.Failure -> {
-            invalidateSession(tokenStorage, sessionStore)
+            invalidateSession(tokenStorage, sessionStore, bearerCacheInvalidator)
             null
         }
         is NetworkResult.NetworkFailure -> null

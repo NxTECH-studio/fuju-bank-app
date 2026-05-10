@@ -7,10 +7,13 @@ import kotlinx.coroutines.launch
 import studio.nxtech.fujubank.account.AccountProfileProvider
 
 /**
- * `SessionStore.state` を観測し、`Authenticated → Unauthenticated` 遷移時に
- * Koin singleton で保持されているプロセス内キャッシュ（プロフィール等）を破棄する調停役。
+ * `SessionStore.state` を観測し、`Authenticated → Unauthenticated`（ログアウト）遷移時に
+ * Provider 系 singleton のキャッシュを破棄する調停役。
  *
  * 設計上の前提:
+ * - **読み出し（fetch）の起動はここでは行わない**。AccountHub 画面が初回表示時に
+ *   `AccountProfileProvider.ensureLoaded()` を呼ぶ「lazy load」モデルに統一しており、
+ *   ここで Authenticated 遷移時に refresh を起動する責務は持たない。
  * - VM 自体は `RootScaffold` / `RootTabView` の unmount に伴って自然破棄されるため、
  *   ここでは VM 内 state には触れず Provider 系 singleton のみ reset する。
  * - 起動経路は Android `App.kt` の `LaunchedEffect(Unit)` / iOS `iOSApp.init` などから

@@ -58,6 +58,18 @@ final class ObservableAccountHubViewModel: ObservableObject {
         provider.updateProfile(displayName: profile.displayName, email: email)
     }
 
+    /// AccountHub 画面初回表示時に呼び、プロフィールキャッシュをロードする。
+    ///
+    /// Provider 側で冪等化されているため、タブ切替や `.task` 再実行で複数回呼ばれても
+    /// API は 1 度しか叩かない（ログアウト → 再ログイン後の再表示でのみ再 fetch される）。
+    func onAppear() {
+        AccountIosKt.ensureAccountProfileLoaded(
+            provider: provider,
+            scope: KoinIosKt.sessionStore().scope,
+            onComplete: {},
+        )
+    }
+
     /// ログアウト処理（client-bank-16）。
     ///
     /// `AuthFlowIosKt.logoutAndClear` がサーバ呼び出しの結果に関わらず最後に

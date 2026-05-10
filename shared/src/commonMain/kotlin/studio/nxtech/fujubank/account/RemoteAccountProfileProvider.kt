@@ -1,11 +1,12 @@
 package studio.nxtech.fujubank.account
 
-import kotlinx.coroutines.CoroutineScope
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.repository.ProfileRepository
 import studio.nxtech.fujubank.domain.model.UserProfile
@@ -13,43 +14,34 @@ import studio.nxtech.fujubank.domain.model.UserProfile
 /**
  * 実 API（AuthCore + bank `/users/me`）からプロフィールを取得する [AccountProfileProvider]。
  *
- * release ビルド (`USE_DUMMY_PROFILE=false`) で Koin に登録され、生成時に 1 回だけ
- * [ProfileRepository.getMyProfile] を呼んで `_profile` を初期値（空）から実値に置換する。
+ * release ビルド (`USE_DUMMY_PROFILE=false`) で Koin に singleton 登録される。
  *
- * 設計メモ:
- * - 取得失敗時は空の [AccountProfile] のまま据え置く。例外は投げない（D-1）。
- *   → AccountHub 側で空文字を「-」プレースホルダに置換して表示する。
- * - タブ切り替えごとに refetch しない（D-1）。アプリ再起動 / ログイン直後にのみ最新化。
- *   pull-to-refresh などのリアクティブ購読が要るタイミングで別タスクで拡張する。
- * - [updateProfile] は no-op に近い。AuthCore 側に email/displayName 更新 API が
- *   揃ったら通信を伴う実装に差し替える。MVP の方針上、編集 UI 自体も無効化されている。
+ * ## キャッシュ戦略
+ *
+ * - 初期値は EMPTY_PROFILE（空文字）。AccountHub 側で「-」プレースホルダ表示になる。
+ * - AccountHub 表示時に [ensureLoaded] が呼ばれて 1 度だけ fetch する。成功すれば
+ *   `_profile` が更新され、以降のタブ切替などでは API を叩かず StateFlow から即返す。
+ * - ログアウト時に `SessionResetCoordinator` が [reset] を呼ぶと `_profile` を空に戻し、
+ *   `loaded` フラグも下ろす。次回 AccountHub 表示で別ユーザの値を取りに行く。
+ * - **fetch 失敗時はキャッシュを更新しない**（前回値を据え置く）。ただしログアウト直後の
+ *   失敗は EMPTY のまま「-」表示になり、前ユーザの値は決して残らない。
+ *
+ * ## 並行性
+ *
+ * - 同じ AccountHub からの再表示や、別経路からの ensureLoaded 二重呼び出しに備え
+ *   [loadMutex] で fetch 全体を直列化する。
+ * - `loaded` の早期 return は mutex 取得前に判定し、定常状態のオーバーヘッドをほぼゼロに保つ。
  */
 class RemoteAccountProfileProvider(
     private val profileRepository: ProfileRepository,
-    scope: CoroutineScope,
 ) : AccountProfileProvider {
 
     private val _profile = MutableStateFlow(EMPTY_PROFILE)
     override val profile: StateFlow<AccountProfile> = _profile.asStateFlow()
 
-    init {
-        // NOTE: `getMyProfile()` は内部で `runCatchingNetwork` を通り例外を `NetworkResult` に
-        //       畳み込むため、ここで `runCatching` を再度被せると `CancellationException` まで
-        //       握り潰し構造化並行性を壊す（kotlin.runCatching の既知 footgun）。
-        //       sealed の網羅 when で扱い、Failure / NetworkFailure は空のまま据え置く。
-        //       ログ収集 SDK 導入は別タスク。
-        // NOTE: `init { scope.launch }` でコンストラクタから `this` がワーカースレッドに
-        //       見える形になるが、現状参照する `_profile` は val + 初期化済みなので安全。
-        //       副作用フィールドを後から追加する場合はここから参照しないこと
-        //       （必要なら `start()` 明示パターンに切り替える）。
-        scope.launch {
-            when (val result = profileRepository.getMyProfile()) {
-                is NetworkResult.Success -> _profile.value = result.value.toAccountProfile()
-                is NetworkResult.Failure,
-                is NetworkResult.NetworkFailure -> Unit
-            }
-        }
-    }
+    private val loadMutex = Mutex()
+    @Volatile
+    private var loaded: Boolean = false
 
     /**
      * MVP では実 API 側に更新エンドポイントが無いため、ローカルの [_profile] のみ更新する。
@@ -61,19 +53,37 @@ class RemoteAccountProfileProvider(
     }
 
     /**
-     * ログアウト時に呼ばれ、in-memory のプロフィールキャッシュを空に戻す。
+     * ログアウト時に呼ばれ、in-memory のキャッシュを空に戻し、`loaded` フラグも下ろす。
      *
      * `accountModule` 上 `single<AccountProfileProvider>` で登録されており、本クラスは
      * プロセス内で 1 度だけ生成される。再ログインでも同一インスタンスが再利用されるため、
-     * `init` の `getMyProfile()` 呼び出しは初回しか走らず、ここで明示的に空に戻さないと
-     * 前ユーザーの displayName / email が残る。
-     *
-     * 再ログイン後の再 fetch トリガー（新ユーザーのプロフィールを取りに行く責務）は
-     * 本クラスのスコープ外。AccountHub 側が必要に応じて手動 refresh するか、後続タスクで
-     * `Authenticated` 遷移時に再取得を発火する仕組みを別途追加する想定。
+     * ここで明示的に空 + loaded=false に戻さないと、別ユーザでログイン後の AccountHub に
+     * 前ユーザの displayName / email が残る。
      */
     override fun reset() {
         _profile.value = EMPTY_PROFILE
+        loaded = false
+    }
+
+    /**
+     * AccountHub 初回表示時に呼ぶ lazy load。冪等で、既にロード済みなら即 return。
+     *
+     * 失敗時は `loaded` フラグが立たず、次回呼び出しで再試行できる。
+     */
+    override suspend fun ensureLoaded() {
+        if (loaded) return
+        loadMutex.withLock {
+            if (loaded) return
+            when (val result = profileRepository.getMyProfile()) {
+                is NetworkResult.Success -> {
+                    _profile.value = result.value.toAccountProfile()
+                    loaded = true
+                }
+                is NetworkResult.Failure,
+                is NetworkResult.NetworkFailure -> Unit
+                // 失敗時は loaded のまま据え置き。次回 ensureLoaded 呼び出しで再試行。
+            }
+        }
     }
 }
 

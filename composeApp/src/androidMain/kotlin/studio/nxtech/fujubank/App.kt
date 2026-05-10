@@ -29,10 +29,12 @@ import studio.nxtech.fujubank.features.auth.LoginViewModel
 import studio.nxtech.fujubank.features.auth.MfaVerifyScreen
 import studio.nxtech.fujubank.features.auth.MfaVerifyViewModel
 import studio.nxtech.fujubank.features.shell.RootScaffold
-import studio.nxtech.fujubank.features.signup.SignUpCreateScreen
+import studio.nxtech.fujubank.features.signup.MfaCodeScreen
+import studio.nxtech.fujubank.features.signup.MfaQrScreen
+import studio.nxtech.fujubank.features.signup.RecoveryCodesScreen
+import studio.nxtech.fujubank.features.signup.SignUpAccountScreen
 import studio.nxtech.fujubank.features.signup.SignUpFlowViewModel
-import studio.nxtech.fujubank.features.signup.SignUpOtpScreen
-import studio.nxtech.fujubank.features.signup.SignUpSuccessScreen
+import studio.nxtech.fujubank.features.signup.SignUpPhase
 import studio.nxtech.fujubank.features.welcome.WelcomeScreen
 import studio.nxtech.fujubank.session.SessionResetCoordinator
 import studio.nxtech.fujubank.session.SessionState
@@ -51,8 +53,8 @@ import studio.nxtech.fujubank.theme.FujuBankMaterialTypography
  * 起動時は SplashScreen を表示し、`SessionStore.bootstrap()` 完了 + min-duration を
  * 満たした時点で本体 UI に切り替える。本体 UI は SessionStore.state を観測して
  * `Unauthenticated → LoginScreen` / `MfaPending → MfaVerifyScreen` /
- * `Authenticated → 暫定ホームスタブ` を切り替える。ホーム本体は A3 で作るので
- * ここでは残高とサインアウト導線を持たないプレースホルダ。
+ * `MfaSetupRequired → MFA セットアップ画面群` /
+ * `Authenticated → RootScaffold (or Welcome)` を切り替える。
  */
 @Composable
 @Preview
@@ -66,32 +68,21 @@ fun App() {
     val sessionResetCoordinator = remember { koin.get<SessionResetCoordinator>() }
     val tokenExpiryWatcher = remember { koin.get<TokenExpiryWatcher>() }
 
-    // Authenticated → Unauthenticated 遷移時に Provider singleton キャッシュを破棄するための
-    // 観測を 1 回だけ起動する。Coordinator 内で二重起動防止フラグがあるため、Activity 再生成で
-    // 再度呼ばれても副作用は無い。
     LaunchedEffect(Unit) {
         sessionResetCoordinator.start()
     }
 
-    // ON_RESUME 時に access_token の期限を確認し、閾値を切っていれば proactive に refresh
-    // させる。Authenticated 以外や `expiresAt == null` の場合は Watcher 内で no-op になる。
-    // バックグラウンドから戻ってきた瞬間に走るので、ユーザーの最初のアクションで 401→refresh
-    // の二段階通信が走る待ち時間を削減できる。
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         sessionStore.scope.launch {
             tokenExpiryWatcher.checkNow()
         }
     }
 
-    // 画面回転で Activity が再生成されても Splash を再表示しないよう rememberSaveable で保持。
-    // SystemClock.elapsedRealtime() は端末スリープ中も進むため、最低表示時間を厳密に保証する。
     var splashFinished by rememberSaveable { mutableStateOf(false) }
 
     if (!splashFinished) {
         LaunchedEffect(Unit) {
             val startedAt = SystemClock.elapsedRealtime()
-            // bootstrap は 2 回目以降の呼び出しが冪等。アプリ初回起動時に保存済み
-            // トークン or refresh cookie でセッション復元を試みる。
             sessionStore.bootstrap(authRepository, userRepository)
             val elapsed = SystemClock.elapsedRealtime() - startedAt
             val remaining = SplashConfig.MIN_DURATION_MS - elapsed
@@ -106,19 +97,28 @@ fun App() {
     val welcomePending by signupCompletionSignal.pending.collectAsStateWithLifecycle()
     val welcomeAlreadyShown by signupWelcomePreferences.signupCompleted.collectAsStateWithLifecycle()
 
-    // debug ビルド専用の認証スキップフラグ。SessionStore は触らず UI 層だけで強制的に
-    // AuthenticatedPlaceholder を出す。回転で消えると煩わしいので rememberSaveable。
     var bypassAuth by rememberSaveable { mutableStateOf(false) }
 
-    // サインアップフローの現在地。Unauthenticated 中のローカルナビゲーションとして扱う。
-    // ログイン成功時は SessionState.Authenticated 経由でこの画面群は出なくなるため、
-    // 完了画面の「次へ」では None に戻すだけで良い。
     var signupRoute by rememberSaveable { mutableStateOf(SignupRoute.None) }
 
-    // 親 Surface には safeContentPadding を掛けず edge-to-edge にする。各画面側で
-    // 自前の bg を fillMaxSize で塗り、内側コンテンツに systemBarsPadding を入れて
-    // status bar / nav bar を避ける構成。RootScaffold は内部 Scaffold が
-    // WindowInsets を管理するため同じく edge-to-edge で OK。
+    // Authenticated に遷移した時点で signupRoute をリセット。これがないと、ログアウトで
+    // Unauthenticated に戻った瞬間に `signupRoute = .Active` が残っていて、しかも
+    // SignUpFlowViewModel.phase が `.RecoveryCodes` のままなので RecoveryCodesScreen が
+    // 再表示されてしまう。Authenticated 中は signupRoute を見ないので、ここでリセットして
+    // 次回 Unauthenticated に戻った時に LoginScreen が出るようにする。
+    // signupViewModel 自体は LoginScreen の onSignupClick 内で reset() されるため、
+    // ここで触る必要は無い（UnauthenticatedRouter スコープにあって参照できない都合もある）。
+    //
+    // key は `sessionState is SessionState.Authenticated` の Boolean に絞り込む。
+    // sessionState 全体を key にすると Authenticated.userId が変わるたびに無駄に再実行される
+    // （Authenticated → Authenticated（別 userId）の冪等再実行は無害だが避ける）。
+    val isAuthenticated = sessionState is SessionState.Authenticated
+    LaunchedEffect(isAuthenticated) {
+        if (isAuthenticated && signupRoute != SignupRoute.None) {
+            signupRoute = SignupRoute.None
+        }
+    }
+
     val showRoot = bypassAuth ||
         (sessionState is SessionState.Authenticated && !(welcomePending && !welcomeAlreadyShown))
 
@@ -145,11 +145,11 @@ fun App() {
                             authRepository = authRepository,
                             userRepository = userRepository,
                             sessionStore = sessionStore,
+                            signupCompletionSignal = signupCompletionSignal,
                             onBypassAuth = { bypassAuth = true },
                         )
                     }
                     is SessionState.MfaPending -> {
-                        // pre_token が変わるたびに ViewModel を作り直すため key 化する。
                         val viewModel: MfaVerifyViewModel = viewModel(
                             key = state.preToken,
                             factory = viewModelFactory {
@@ -165,8 +165,31 @@ fun App() {
                         )
                         MfaVerifyScreen(viewModel)
                     }
+                    is SessionState.MfaSetupRequired -> {
+                        // 既存ユーザのログインで mfa_enabled = false が判明した経路。
+                        // サインアップ動線と同じ MFA セットアップ画面群を再利用する。
+                        // 入口を AccountInput ではなく MfaQr に固定するため、
+                        // ViewModel 生成直後に startMfaSetup を呼ぶ。
+                        val signupViewModel: SignUpFlowViewModel = viewModel(
+                            factory = viewModelFactory {
+                                initializer {
+                                    SignUpFlowViewModel(
+                                        authRepository = authRepository,
+                                        userRepository = userRepository,
+                                        sessionStore = sessionStore,
+                                        signupCompletionSignal = signupCompletionSignal,
+                                    )
+                                }
+                            },
+                        )
+                        LaunchedEffect(Unit) {
+                            // QR が未取得なら mfa/register を発火。
+                            // 失敗時は formError に文言が入り画面内で再生成可能。
+                            signupViewModel.regenerateMfaQr()
+                        }
+                        MfaSetupRouter(viewModel = signupViewModel)
+                    }
                     is SessionState.Authenticated -> {
-                        // showRoot 分岐から漏れたケース = Welcome 表示中のみ。
                         WelcomeScreen(
                             onFinish = {
                                 signupWelcomePreferences.markCompleted()
@@ -180,7 +203,11 @@ fun App() {
     }
 }
 
-private enum class SignupRoute { None, Create, Otp, Success }
+/**
+ * Unauthenticated 状態における 2 値ナビゲーション。`Active` のときの実画面は
+ * [SignUpFlowViewModel.state.phase] を見て決める（AccountInput / MfaQr / MfaCode / RecoveryCodes）。
+ */
+internal enum class SignupRoute { None, Active }
 
 @Composable
 private fun UnauthenticatedRouter(
@@ -189,9 +216,22 @@ private fun UnauthenticatedRouter(
     authRepository: AuthRepository,
     userRepository: UserRepository,
     sessionStore: SessionStore,
+    signupCompletionSignal: SignupCompletionSignal,
     onBypassAuth: () -> Unit,
 ) {
-    val signupViewModel: SignUpFlowViewModel = viewModel()
+    val signupViewModel: SignUpFlowViewModel = viewModel(
+        factory = viewModelFactory {
+            initializer {
+                SignUpFlowViewModel(
+                    authRepository = authRepository,
+                    userRepository = userRepository,
+                    sessionStore = sessionStore,
+                    signupCompletionSignal = signupCompletionSignal,
+                )
+            }
+        },
+    )
+    val signupState by signupViewModel.state.collectAsStateWithLifecycle()
 
     when (signupRoute) {
         SignupRoute.None -> {
@@ -206,37 +246,44 @@ private fun UnauthenticatedRouter(
                     }
                 },
             )
-            // release ビルドでは null を渡し、debug ビルド限定のスキップ CTA を完全に
-            // 合成対象外にする。BuildConfig.DEBUG はコンパイル時定数のため、release では
-            // 常に null 経路となり LoginScreen 内の if (onDebugSkip != null) がデッドコード化する。
             val onDebugSkip: (() -> Unit)? =
                 if (BuildConfig.DEBUG) onBypassAuth else null
             LoginScreen(
                 viewModel = viewModel,
                 onSignupClick = {
                     signupViewModel.reset()
-                    onSignupRouteChange(SignupRoute.Create)
+                    onSignupRouteChange(SignupRoute.Active)
                 },
                 onDebugSkip = onDebugSkip,
             )
         }
-        SignupRoute.Create -> SignUpCreateScreen(
-            viewModel = signupViewModel,
-            onNext = { onSignupRouteChange(SignupRoute.Otp) },
-            onBack = { onSignupRouteChange(SignupRoute.None) },
-            onLoginRedirect = { onSignupRouteChange(SignupRoute.None) },
-        )
-        SignupRoute.Otp -> SignUpOtpScreen(
-            viewModel = signupViewModel,
-            onConfirm = { onSignupRouteChange(SignupRoute.Success) },
-            onBack = { onSignupRouteChange(SignupRoute.Create) },
-        )
-        SignupRoute.Success -> SignUpSuccessScreen(
-            onFinish = {
-                signupViewModel.reset()
-                onSignupRouteChange(SignupRoute.None)
-            },
-        )
+        SignupRoute.Active -> when (signupState.phase) {
+            SignUpPhase.AccountInput -> SignUpAccountScreen(
+                viewModel = signupViewModel,
+                onBack = { onSignupRouteChange(SignupRoute.None) },
+                onLoginRedirect = { onSignupRouteChange(SignupRoute.None) },
+            )
+            SignUpPhase.MfaQr -> MfaQrScreen(viewModel = signupViewModel)
+            SignUpPhase.MfaCodeInput -> MfaCodeScreen(viewModel = signupViewModel)
+            SignUpPhase.RecoveryCodes -> RecoveryCodesScreen(viewModel = signupViewModel)
+        }
     }
 }
 
+/**
+ * 既存ユーザの再ログイン → MFA 未セットアップが判明した場合の専用ルーター。
+ *
+ * 入口は MfaQr 固定。ViewModel.phase を観測して MfaCode / RecoveryCodes に進む。
+ * AccountInput には戻らない（既にアカウントは存在するため）。
+ */
+@Composable
+private fun MfaSetupRouter(
+    viewModel: SignUpFlowViewModel,
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    when (state.phase) {
+        SignUpPhase.AccountInput, SignUpPhase.MfaQr -> MfaQrScreen(viewModel = viewModel)
+        SignUpPhase.MfaCodeInput -> MfaCodeScreen(viewModel = viewModel)
+        SignUpPhase.RecoveryCodes -> RecoveryCodesScreen(viewModel = viewModel)
+    }
+}

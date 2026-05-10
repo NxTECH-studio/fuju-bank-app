@@ -13,9 +13,10 @@ import kotlin.test.assertNull
 
 class SessionResetCoordinatorTest {
 
-    /** reset() の呼び出し回数を数える fake。profile/updateProfile は本テストでは未使用。 */
+    /** reset() / ensureLoaded() の呼び出し回数を数える fake。 */
     private class FakeAccountProfileProvider : AccountProfileProvider {
         var resetCount: Int = 0
+        var ensureLoadedCount: Int = 0
         private val _profile = MutableStateFlow(
             AccountProfile(displayName = "", email = "", accountId = ""),
         )
@@ -23,6 +24,9 @@ class SessionResetCoordinatorTest {
         override fun updateProfile(displayName: String, email: String) = Unit
         override fun reset() {
             resetCount += 1
+        }
+        override suspend fun ensureLoaded() {
+            ensureLoadedCount += 1
         }
     }
 
@@ -39,6 +43,8 @@ class SessionResetCoordinatorTest {
         testScheduler.runCurrent()
 
         assertEquals(1, provider.resetCount)
+        // Coordinator は ensureLoaded を呼ばない（lazy load 担当は AccountHub 側）。
+        assertEquals(0, provider.ensureLoadedCount)
     }
 
     @Test
@@ -50,6 +56,7 @@ class SessionResetCoordinatorTest {
 
         // 初期値の Unauthenticated emit のみで遷移無し。
         assertEquals(0, provider.resetCount)
+        assertEquals(0, provider.ensureLoadedCount)
     }
 
     @Test

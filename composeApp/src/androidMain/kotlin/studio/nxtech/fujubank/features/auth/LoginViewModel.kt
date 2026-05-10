@@ -7,7 +7,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.koin.mp.KoinPlatform
 import studio.nxtech.fujubank.data.remote.NetworkResult
+import studio.nxtech.fujubank.data.remote.api.AuthCoreUserApi
 import studio.nxtech.fujubank.data.repository.AuthRepository
 import studio.nxtech.fujubank.data.repository.LoginResult
 import studio.nxtech.fujubank.data.repository.UserRepository
@@ -26,13 +28,17 @@ data class LoginUiState(
  *
  * - 入力欄の更新は [onIdentifierChange] / [onPasswordChange] で受ける（純粋）。
  * - [submit] を押すと AuthRepository.login → 成功なら bank `POST /users/me` で provision →
- *   SessionStore に Authenticated を伝搬する。
+ *   AuthCore `/v1/user/profile` で `mfa_enabled` を確認 → SessionStore に Authenticated か
+ *   MfaSetupRequired を設定する。
  * - MFA 必須なら SessionStore.MfaPending に切り替え、MfaVerifyScreen に画面遷移する。
+ * - mfa_enabled = false の既存ユーザは SessionStore.MfaSetupRequired に切り替え、
+ *   サインアップ動線と同じ MFA セットアップ画面群に誘導する（client-bank-21 の resume 経路）。
  */
 class LoginViewModel(
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
     private val sessionStore: SessionStore,
+    private val authCoreUserApi: AuthCoreUserApi = KoinPlatform.getKoin().get(),
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LoginUiState())
@@ -78,8 +84,20 @@ class LoginViewModel(
     private suspend fun provisionAndAuthenticate() {
         when (val provision = userRepository.provisionMe()) {
             is NetworkResult.Success -> {
-                sessionStore.setAuthenticated(provision.value.id)
-                _state.update { LoginUiState() }
+                // mfa_enabled = false なら MFA セットアップを完了させてから Authenticated に倒す。
+                // getProfile が落ちた場合は安全側に倒し、既存挙動の Authenticated に進める
+                // （MFA セットアップ要求は次回ログイン時に再判定すれば良い）。
+                val needsSetup = when (val profile = authCoreUserApi.getProfile()) {
+                    is NetworkResult.Success -> !profile.value.mfaEnabled
+                    is NetworkResult.Failure, is NetworkResult.NetworkFailure -> false
+                }
+                if (needsSetup) {
+                    sessionStore.setMfaSetupRequired()
+                    _state.update { LoginUiState() }
+                } else {
+                    sessionStore.setAuthenticated(provision.value.id)
+                    _state.update { LoginUiState() }
+                }
             }
             is NetworkResult.Failure ->
                 _state.update { it.copy(isSubmitting = false, errorMessage = AuthErrorMessages.forLogin(provision.error)) }

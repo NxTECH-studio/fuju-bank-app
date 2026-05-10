@@ -55,6 +55,10 @@ class SessionStore {
         _state.value = SessionState.MfaPending(preToken)
     }
 
+    fun setMfaSetupRequired() {
+        _state.value = SessionState.MfaSetupRequired
+    }
+
     fun clear() {
         _state.value = SessionState.Unauthenticated
     }
