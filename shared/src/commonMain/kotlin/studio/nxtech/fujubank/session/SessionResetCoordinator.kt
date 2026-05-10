@@ -42,20 +42,34 @@ class SessionResetCoordinator(
      * 観測を開始する。プロセス毎に 1 度だけ呼べば良いが、複数回呼ばれた場合は no-op。
      *
      * 戻り値は内部で起動した [Job]（テスト用途）。プロダクションコードで cancel する想定は無い。
+     *
+     * **初回 emit の扱い**: `previous` を `null` で初期化することで、StateFlow が collect 直後に
+     * 流す現在値が `Authenticated` であった場合（bootstrap が Coordinator.start より先に完了して
+     * いた場合など）にも refresh が確実に走るようにする。`var previous = sessionStore.current` を
+     * 使うと、初期値と初回 emit が同値になり transition が検出されないギャップが生じる。
      */
     fun start(): Job? {
         if (started) return null
         started = true
         return scope.launch {
-            var previous: SessionState = sessionStore.current
+            var previous: SessionState? = null
             sessionStore.state.collect { next ->
-                if (previous is SessionState.Authenticated && next is SessionState.Unauthenticated) {
-                    accountProfileProvider.reset()
-                }
-                if (previous !is SessionState.Authenticated && next is SessionState.Authenticated) {
-                    // ログイン / サインアップ完了 / bootstrap 復元のいずれでも 1 度だけ refresh。
+                val prev = previous
+                when {
+                    // 初回 emit: 既に Authenticated なら refresh を 1 度だけ走らせる。
+                    prev == null && next is SessionState.Authenticated -> {
+                        accountProfileProvider.refresh()
+                    }
+                    // ログアウト遷移: キャッシュ破棄。
+                    prev is SessionState.Authenticated && next is SessionState.Unauthenticated -> {
+                        accountProfileProvider.reset()
+                    }
+                    // ログイン / サインアップ完了 / 再認証など: refresh で再取得。
                     // refresh 内で失敗しても前回値を据え置く設計のため例外は伝播しない。
-                    accountProfileProvider.refresh()
+                    prev != null && prev !is SessionState.Authenticated &&
+                        next is SessionState.Authenticated -> {
+                        accountProfileProvider.refresh()
+                    }
                 }
                 previous = next
             }

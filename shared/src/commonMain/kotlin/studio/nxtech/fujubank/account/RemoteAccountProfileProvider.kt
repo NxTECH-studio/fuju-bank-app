@@ -57,11 +57,21 @@ class RemoteAccountProfileProvider(
     /**
      * AuthCore + bank プロフィールを取得し直して [_profile] を更新する。
      *
-     * 失敗時は `_profile` を変更しない（前回成功した値があれば維持される）。
+     * **キャッシュを先に空にしてから fetch する**ことで、前ユーザのデータが残るリスクを排除する。
+     * これは [reset] による `Authenticated → Unauthenticated` 遷移時のクリアに加えての二重防御:
+     *
+     * - 別アカウントへのログイン直後など、`reset` の呼び出しと `refresh` の呼び出しの順序が
+     *   万一逆転しても、`refresh` 自身が EMPTY 化するため前ユーザの値は確実に消える。
+     * - fetch が失敗しても `_profile` は EMPTY のまま（前回値も残らない）。
+     *   AccountHub 側で「-」プレースホルダ表示になる。前ユーザの値を「現ユーザの値」として
+     *   見せてしまう事故より、空表示で再試行を促す方が遥かに安全。
+     *
      * `runCatchingNetwork` 経由なので [kotlinx.coroutines.CancellationException] は
      * Repository 内部で適切に再 throw される。
      */
     override suspend fun refresh() {
+        // 先にキャッシュを空にしてから fetch する（前ユーザのデータ漏出防止の二重防御）。
+        _profile.value = EMPTY_PROFILE
         when (val result = profileRepository.getMyProfile()) {
             is NetworkResult.Success -> _profile.value = result.value.toAccountProfile()
             is NetworkResult.Failure,

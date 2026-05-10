@@ -60,6 +60,21 @@ class SessionResetCoordinatorTest {
     }
 
     @Test
+    fun initialAuthenticatedTriggersRefresh() = runTest {
+        // bootstrap が Coordinator.start より先に完了し、collect 開始時点で既に Authenticated に
+        // なっているケースを再現する。`previous = sessionStore.current` で初期化していた旧実装は
+        // この経路で refresh を呼び損ね、AccountHub に空キャッシュが見えるバグがあった。
+        val store = SessionStore()
+        store.setAuthenticated("u1")
+        val provider = FakeAccountProfileProvider()
+        SessionResetCoordinator(store, provider, scope = backgroundScope).start()
+        testScheduler.runCurrent()
+
+        assertEquals(1, provider.refreshCount)
+        assertEquals(0, provider.resetCount)
+    }
+
+    @Test
     fun mfaPendingToAuthenticatedTriggersRefresh() = runTest {
         val store = SessionStore()
         val provider = FakeAccountProfileProvider()
