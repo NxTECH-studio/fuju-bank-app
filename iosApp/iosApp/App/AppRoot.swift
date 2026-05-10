@@ -3,26 +3,22 @@ import Shared
 
 /// アプリ全体のルートビュー。SessionState を観測してログイン / MFA / ホームを切替える。
 ///
-/// - Unauthenticated: LoginView を表示。
+/// - Unauthenticated: LoginView を表示。サインアップ動線は signupRoute で分岐。
 /// - MfaPending: MfaVerifyView を表示（pre_token 経由で AuthRepository.verifyMfa を叩く）。
-/// - Authenticated: ホーム本体は A3 で実装するためプレースホルダを表示。
-/// サインアップフローのローカルナビゲーション位置。
-/// SessionState は変えずに UI 層だけでサインアップ 3 画面を切替える。
+/// - MfaSetupRequired: MFA 未セットアップユーザのための QR/コード/recovery codes 画面群。
+/// - Authenticated: Welcome → ホーム。
+/// サインアップフローのローカルナビゲーション位置（2 値）。
+/// `Active` のときの実画面は SignUpFlowState.phase で決まる。
 private enum SignupRoute {
-    case none, create, otp, success
+    case none, active
 }
 
 struct AppRoot: View {
     @StateObject private var session = SessionViewModel()
     @StateObject private var welcomeGate = WelcomeGateViewModel()
     @StateObject private var signupFlow = SignUpFlowState()
-    // debug ビルド専用の認証スキップフラグ。SessionStore は触らず View 層だけで強制的に
-    // AuthenticatedPlaceholderView を出す。プロセス kill で消える設計（永続化しない）。
     @State private var bypassAuth = false
     @State private var signupRoute: SignupRoute = .none
-    // ScenePhase が `.active` に遷移した瞬間に access_token の期限を on-demand check する。
-    // 閾値内なら proactive に refresh、Authenticated 以外や `expiresAt == null` の場合は
-    // shared 側 Watcher で no-op になる。
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -34,9 +30,11 @@ struct AppRoot: View {
                 case let mfa as SessionState.MfaPending:
                     MfaVerifyView(viewModel: MfaVerifyViewModel(preToken: mfa.preToken))
                         .id(mfa.preToken)
+                case is SessionState.MfaSetupRequired:
+                    // 既存ユーザ resume: SignUpFlowState を再利用して MFA セットアップ画面群に誘導。
+                    // 入口は MfaQr 固定。`SignUpFlowState` を新規生成して Phase は `.mfaQr` に強制する。
+                    MfaSetupResumeView()
                 case is SessionState.Authenticated:
-                    // サインアップ画面発の Authenticated 遷移 (pending) かつ未表示の場合のみ Welcome を挟む。
-                    // bootstrap 復元による Authenticated は pending = false なので素通り。
                     if welcomeGate.shouldShowWelcome {
                         WelcomeView(onFinish: { welcomeGate.markShown() })
                     } else {
@@ -50,14 +48,9 @@ struct AppRoot: View {
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
             Task {
-                // suspend な checkNow() はバックグラウンドでも安全。失敗時の clear は
-                // shared 側 Watcher 内で行うため、ここでは結果を握り潰すだけで良い。
                 try? await KoinIosKt.tokenExpiryWatcher().checkNow()
             }
         }
-        // bootstrap の起動は SplashGate に移管したのでここでは行わない。
-        // SplashGate が bootstrapped == true を確認してから AppRoot を出すため、
-        // 表示時点で SessionStore.state は復元済みになっている。
     }
 
     @ViewBuilder
@@ -65,34 +58,36 @@ struct AppRoot: View {
         switch signupRoute {
         case .none:
             loginView
-        case .create:
-            SignUpCreateView(
-                onNext: { signupRoute = .otp },
-                onBack: { signupRoute = .none },
-                onLoginRedirect: { signupRoute = .none },
-            )
-            .environmentObject(signupFlow)
-        case .otp:
-            SignUpOtpView(
-                onConfirm: { signupRoute = .success },
-                onBack: { signupRoute = .create },
-            )
-            .environmentObject(signupFlow)
-        case .success:
-            SignUpSuccessView(onFinish: {
-                signupFlow.reset()
-                signupRoute = .none
-            })
+        case .active:
+            switch signupFlow.phase {
+            case .accountInput:
+                SignUpAccountView(
+                    onBack: { signupRoute = .none },
+                    onLoginRedirect: { signupRoute = .none },
+                )
+                .environmentObject(signupFlow)
+            case .mfaQr:
+                MfaQrView()
+                    .environmentObject(signupFlow)
+            case .mfaCodeInput:
+                MfaCodeView()
+                    .environmentObject(signupFlow)
+            case .recoveryCodes:
+                RecoveryCodesView(onComplete: {
+                    // confirmRecoveryCodes が SessionStore.setAuthenticated を呼んでくれる。
+                    // SwiftUI 側はサインアップ動線をリセットして LoginView 経路を畳む。
+                    signupFlow.reset()
+                    signupRoute = .none
+                })
+                .environmentObject(signupFlow)
+            }
         }
     }
 
     private var loginView: some View {
-        // release ビルドでは onDebugSkip パラメータを渡さず、`#if DEBUG` ブロック内のシンボルが
-        // 一切残らない設計にする。LoginView 側の onDebugSkip もデフォルト nil なので、
-        // release では debug 用 CTA は完全に消える。
         let signupTap: () -> Void = {
             signupFlow.reset()
-            signupRoute = .create
+            signupRoute = .active
         }
         #if DEBUG
         return LoginView(
@@ -106,3 +101,35 @@ struct AppRoot: View {
     }
 }
 
+/// 既存ユーザの再ログイン → MFA 未セットアップが判明した場合の resume 画面。
+///
+/// SignUpFlowState を画面ローカルに作り、`startMfaSetup` で QR を取得してから
+/// `phase` 駆動で MfaQr → MfaCode → RecoveryCodes に進む。
+private struct MfaSetupResumeView: View {
+    @StateObject private var flow = SignUpFlowState()
+
+    var body: some View {
+        Group {
+            switch flow.phase {
+            case .accountInput, .mfaQr:
+                MfaQrView()
+                    .environmentObject(flow)
+            case .mfaCodeInput:
+                MfaCodeView()
+                    .environmentObject(flow)
+            case .recoveryCodes:
+                RecoveryCodesView(onComplete: {
+                    // confirmRecoveryCodes 内で setAuthenticated まで進む。
+                    flow.reset()
+                })
+                .environmentObject(flow)
+            }
+        }
+        .onAppear {
+            // 既に QR があれば再取得しない（再描画でリセットされないように）。
+            if flow.mfaSetup == nil {
+                flow.startMfaSetup()
+            }
+        }
+    }
+}
