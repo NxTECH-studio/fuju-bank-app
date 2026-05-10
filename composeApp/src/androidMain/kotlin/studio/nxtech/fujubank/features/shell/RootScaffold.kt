@@ -15,10 +15,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -43,6 +46,7 @@ import studio.nxtech.fujubank.account.NotificationSettingsPreferences
 import studio.nxtech.fujubank.account.PrivacyContent
 import studio.nxtech.fujubank.account.PrivacyPreferences
 import studio.nxtech.fujubank.data.repository.AuthRepository
+import studio.nxtech.fujubank.data.repository.LedgerRepository
 import studio.nxtech.fujubank.data.repository.ProfileRepository
 import studio.nxtech.fujubank.data.repository.UserRepository
 import studio.nxtech.fujubank.domain.model.Transaction
@@ -57,7 +61,9 @@ import studio.nxtech.fujubank.features.account.PrivacySettingsScreen
 import studio.nxtech.fujubank.features.account.PrivacySettingsViewModel
 import studio.nxtech.fujubank.features.home.HomeScreen
 import studio.nxtech.fujubank.features.home.HomeViewModel
-import studio.nxtech.fujubank.features.placeholder.ComingSoonScreen
+import studio.nxtech.fujubank.features.send.SendAmountScreen
+import studio.nxtech.fujubank.features.send.SendFlowViewModel
+import studio.nxtech.fujubank.features.send.SendRecipientScreen
 import studio.nxtech.fujubank.features.transactions.TransactionDetailScreen
 import studio.nxtech.fujubank.features.transactions.TransactionDetailViewModel
 import studio.nxtech.fujubank.features.transactions.TransactionListScreen
@@ -83,6 +89,21 @@ fun RootScaffold() {
     // 取引詳細に遷移する際の対象。プロセス再生成時には失われ、自動で履歴へ戻す挙動になる。
     var selectedTransaction by remember { mutableStateOf<Transaction?>(null) }
 
+    // 送金完了時に Home 側 ViewModel を再生成して残高 / 取引履歴を自動 refresh するためのキー。
+    // 同じ Composition / ViewModelStore のままだと HomeViewModel.init が再走しないため、
+    // 送金成功時に salt をインクリメントして HomeViewModel を破棄 → 新規生成させる。
+    var homeKeySalt by rememberSaveable { mutableIntStateOf(0) }
+    // 送金完了時に Home 側で出す Snackbar 用メッセージ（1 回限定）。
+    var pendingHomeSnackbar by remember { mutableStateOf<String?>(null) }
+    val homeSnackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(pendingHomeSnackbar, destination) {
+        val message = pendingHomeSnackbar
+        if (message != null && destination == RootDestination.Home) {
+            homeSnackbarHostState.showSnackbar(message)
+            pendingHomeSnackbar = null
+        }
+    }
+
     val context = LocalContext.current
     val showToast: (String) -> Unit = { message ->
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
@@ -90,8 +111,11 @@ fun RootScaffold() {
 
     // フッター（ボトムナビ）はメインタブとサブ画面 (履歴/詳細) で表示する。
     // 法的文書 (プライバシーポリシー / 利用規約) は本文が長く、フッターに被って読めなくなるため非表示。
+    // 送金フロー（Step1/Step2）は誤タップ防止と画面集中を優先してフッターを非表示にする。
     val showBottomBar = when (destination) {
         RootDestination.Send,
+        RootDestination.SendRecipient,
+        RootDestination.SendAmount,
         RootDestination.PrivacyPolicy,
         RootDestination.TermsOfService,
         RootDestination.PasswordChange -> false
@@ -100,6 +124,7 @@ fun RootScaffold() {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = FujuBankColors.Background,
+        snackbarHost = { SnackbarHost(hostState = homeSnackbarHostState) },
         bottomBar = {
             if (showBottomBar) {
                 BottomNav(
@@ -107,6 +132,10 @@ fun RootScaffold() {
                     onSelectHome = {
                         selectedTransaction = null
                         destination = RootDestination.Home
+                    },
+                    onSelectSend = {
+                        selectedTransaction = null
+                        destination = RootDestination.SendRecipient
                     },
                     onSelectAccount = {
                         selectedTransaction = null
@@ -123,7 +152,9 @@ fun RootScaffold() {
         ) {
             when (destination) {
                 RootDestination.Home -> {
+                    // 送金完了から戻ったタイミングで HomeViewModel を作り直し、init で残高 / 取引履歴を再取得する。
                     val viewModel: HomeViewModel = viewModel(
+                        key = "Home/$homeKeySalt",
                         factory = viewModelFactory {
                             initializer {
                                 HomeViewModel(
@@ -137,7 +168,7 @@ fun RootScaffold() {
                     HomeScreen(
                         viewModel = viewModel,
                         onTransactionHistory = { destination = RootDestination.TransactionHistory },
-                        onSendReceive = { destination = RootDestination.Send },
+                        onSendReceive = { destination = RootDestination.SendRecipient },
                         onShowToast = showToast,
                     )
                 }
@@ -263,26 +294,70 @@ fun RootScaffold() {
                         )
                     }
                 }
-                RootDestination.Send -> ComingSoonScreen(
-                    title = "送る・もらう",
-                    onBack = { destination = RootDestination.Home },
-                )
+                RootDestination.Send -> {
+                    // 旧プレースホルダ destination。フッタータブの初期遷移先として SendRecipient へ即移譲。
+                    LaunchedEffect(Unit) { destination = RootDestination.SendRecipient }
+                }
+                RootDestination.SendRecipient -> {
+                    val viewModel: SendFlowViewModel = sendFlowViewModel()
+                    SendRecipientScreen(
+                        viewModel = viewModel,
+                        onBack = { destination = RootDestination.Home },
+                        onProceedToAmount = { destination = RootDestination.SendAmount },
+                    )
+                }
+                RootDestination.SendAmount -> {
+                    val viewModel: SendFlowViewModel = sendFlowViewModel()
+                    SendAmountScreen(
+                        viewModel = viewModel,
+                        onBack = { destination = RootDestination.SendRecipient },
+                        onComplete = { _, _ ->
+                            // 送金完了 → ホーム遷移時に Snackbar 表示 + HomeViewModel 再生成で残高再 fetch。
+                            pendingHomeSnackbar = "送金しました"
+                            homeKeySalt += 1
+                            destination = RootDestination.Home
+                        },
+                    )
+                }
             }
         }
     }
 }
 
+/**
+ * 送金フローの 2 画面（[SendRecipientScreen] / [SendAmountScreen]）で **同一 VM** を共有する。
+ * `key = "SendFlow"` を固定にすることで Step 1 → Step 2 → Step 1 と切替えても state を保持する。
+ */
+@Composable
+private fun sendFlowViewModel(): SendFlowViewModel = viewModel(
+    key = "SendFlow",
+    factory = viewModelFactory {
+        initializer {
+            SendFlowViewModel(
+                userRepository = KoinPlatform.getKoin().get<UserRepository>(),
+                ledgerRepository = KoinPlatform.getKoin().get<LedgerRepository>(),
+                profileRepository = KoinPlatform.getKoin().get<ProfileRepository>(),
+                sessionStore = KoinPlatform.getKoin().get<SessionStore>(),
+            )
+        }
+    },
+)
+
 @Composable
 private fun BottomNav(
     selected: RootDestination,
     onSelectHome: () -> Unit,
+    onSelectSend: () -> Unit,
     onSelectAccount: () -> Unit,
 ) {
     // ホーム家族に属する画面（履歴・詳細）でもホームタブを selected 表示にする
     val homeFamily = selected == RootDestination.Home ||
         selected == RootDestination.TransactionHistory ||
-        selected == RootDestination.TransactionDetail ||
-        selected == RootDestination.Send
+        selected == RootDestination.TransactionDetail
+    // 送金家族（フッターは送金フロー中は非表示なので selected 判定はタブから入った直後のみ意味を持つ）
+    val sendFamily = selected == RootDestination.Send ||
+        selected == RootDestination.SendRecipient ||
+        selected == RootDestination.SendAmount
     // アカウント家族に属する画面（通知設定・準備中サブ画面）でもアカウントタブを selected 表示にする
     val accountFamily = selected == RootDestination.Account ||
         selected == RootDestination.NotificationSettings ||
@@ -290,24 +365,19 @@ private fun BottomNav(
         selected == RootDestination.PrivacyPolicy ||
         selected == RootDestination.TermsOfService ||
         selected == RootDestination.PasswordChange
-    // Figma `709:8658` 等の bottomBar: 84dp、白背景、上端に 1dp ボーダー、pt-8 px-48、
-    // 2 タブが均等の weight=1 で並び、それぞれ内側 64dp の余白で中央へ寄せる
+    // Figma `709:8658` 等の bottomBar: 84dp、白背景、上端に 1dp ボーダー、pt-8 px-48。
+    // client-bank-22 で 3 タブに拡張。中央に「送金」タブを差し込み、3 列均等 weight=1 で並べる。
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(84.dp)
             .background(FujuBankColors.Surface)
             .border(width = 1.dp, color = FujuBankColors.BottomBarBorder)
-            .padding(top = 8.dp, start = 48.dp, end = 48.dp),
+            .padding(top = 8.dp, start = 24.dp, end = 24.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .padding(end = 64.dp),
-            contentAlignment = Alignment.CenterEnd,
-        ) {
+        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
             BottomTab(
                 iconRes = R.drawable.ic_home,
                 label = "ホーム",
@@ -315,12 +385,15 @@ private fun BottomNav(
                 onClick = onSelectHome,
             )
         }
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 64.dp),
-            contentAlignment = Alignment.CenterStart,
-        ) {
+        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            BottomTab(
+                iconRes = R.drawable.ic_send,
+                label = "送金",
+                selected = sendFamily,
+                onClick = onSelectSend,
+            )
+        }
+        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
             BottomTab(
                 iconRes = R.drawable.ic_account_circle,
                 label = "アカウント",
@@ -371,6 +444,8 @@ private val RootDestinationSaver = androidx.compose.runtime.saveable.Saver<RootD
             RootDestination.TransactionHistory -> "transactionHistory"
             RootDestination.TransactionDetail -> "transactionDetail"
             RootDestination.Send -> "send"
+            RootDestination.SendRecipient -> "sendRecipient"
+            RootDestination.SendAmount -> "sendAmount"
             RootDestination.NotificationSettings -> "notificationSettings"
             RootDestination.PrivacySettings -> "privacySettings"
             RootDestination.PrivacyPolicy -> "privacyPolicy"
@@ -385,7 +460,11 @@ private val RootDestinationSaver = androidx.compose.runtime.saveable.Saver<RootD
             "transactionHistory" -> RootDestination.TransactionHistory
             // 詳細はプロセス再生成時に対象 Transaction を保持しないため、復元時は履歴に降格させる
             "transactionDetail" -> RootDestination.TransactionHistory
-            "send" -> RootDestination.Send
+            "send" -> RootDestination.SendRecipient
+            "sendRecipient" -> RootDestination.SendRecipient
+            // SendAmount は recipient state を ViewModel で持っており、プロセス再生成で
+            // recipient が失われるため、復元時は Step 1 (SendRecipient) に降格させる。
+            "sendAmount" -> RootDestination.SendRecipient
             "notificationSettings" -> RootDestination.NotificationSettings
             "privacySettings" -> RootDestination.PrivacySettings
             "privacyPolicy" -> RootDestination.PrivacyPolicy

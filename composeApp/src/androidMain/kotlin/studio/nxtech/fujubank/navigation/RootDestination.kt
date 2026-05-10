@@ -15,6 +15,14 @@ sealed interface RootDestination {
     data object Account : RootDestination
     data object TransactionHistory : RootDestination
     data object TransactionDetail : RootDestination
+
+    /** 送金フロー Step 1: 送金先選択（表示名検索 + bottom sheet 確認モーダル）。 */
+    data object SendRecipient : RootDestination
+
+    /** 送金フロー Step 2: 金額入力（プレビュー + 確認 AlertDialog）。 */
+    data object SendAmount : RootDestination
+
+    /** 旧プレースホルダ画面の名残。フッタータブから入った直後の初期画面として SendRecipient を出す。 */
     data object Send : RootDestination
 
     /** 通知設定（Figma `718:7332`）。Account タブ配下のサブ画面。 */
