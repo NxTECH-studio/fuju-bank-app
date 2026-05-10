@@ -155,7 +155,7 @@ struct SendAmountView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(Color(red: 0xFF / 255, green: 0xEA / 255, blue: 0xF6 / 255))
+        .background(FujuBankPalette.lightPink)
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -177,7 +177,7 @@ struct SendAmountView: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 48)
-            .background(viewModel.canShowConfirm ? FujuBankPalette.brandPink : Color(red: 0xE6 / 255, green: 0xE6 / 255, blue: 0xE6 / 255))
+            .background(viewModel.canShowConfirm ? FujuBankPalette.brandPink : FujuBankPalette.disabledButtonBg)
             .clipShape(RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(.plain)

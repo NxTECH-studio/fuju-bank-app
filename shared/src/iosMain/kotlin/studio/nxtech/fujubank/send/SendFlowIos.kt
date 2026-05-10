@@ -4,6 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import studio.nxtech.fujubank.data.remote.ApiErrorCode
@@ -41,7 +42,20 @@ sealed class TransferOutcome {
     data class NetworkFailure(val message: String) : TransferOutcome()
 }
 
-private val sendScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+/**
+ * 呼び出しごとに独立した短命スコープを作って launch する。
+ *
+ * 返り値の [Job] を Swift 側がキャンセルすると `invokeOnCompletion` で親スコープも畳まれ、
+ * グローバルなリソース保持が発生しない。
+ */
+private inline fun launchPerCall(
+    crossinline block: suspend CoroutineScope.() -> Unit,
+): Job {
+    val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    val job = scope.launch { block() }
+    job.invokeOnCompletion { scope.cancel() }
+    return job
+}
 
 /**
  * Swift 側 `SendRecipientView` から表示名検索を kick するためのファサード。
@@ -51,7 +65,7 @@ fun searchRecipients(
     userRepository: UserRepository,
     query: String,
     onResult: (UserSearchOutcome) -> Unit,
-): Job = sendScope.launch {
+): Job = launchPerCall {
     val outcome = when (val result = userRepository.searchByDisplayName(query)) {
         is NetworkResult.Success -> UserSearchOutcome.Loaded(results = result.value)
         is NetworkResult.Failure -> UserSearchOutcome.Failure(
@@ -80,7 +94,7 @@ fun executeTransfer(
     amount: Long,
     retryKey: String?,
     onResult: (TransferOutcome) -> Unit,
-): Job = sendScope.launch {
+): Job = launchPerCall {
     val outcome = when (val result = ledgerRepository.transfer(
         from = fromUserId,
         to = toUserId,

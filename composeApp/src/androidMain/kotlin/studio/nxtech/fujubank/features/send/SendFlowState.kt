@@ -1,5 +1,6 @@
 package studio.nxtech.fujubank.features.send
 
+import androidx.compose.runtime.Immutable
 import studio.nxtech.fujubank.domain.model.UserSearchResult
 
 /**
@@ -14,6 +15,7 @@ import studio.nxtech.fujubank.domain.model.UserSearchResult
  * - [recipient] は Step 1 で確定した宛先。Step 2 へ遷移したあとは null にしない。
  * - [submission] は実際に `LedgerRepository.transfer` を呼んだあとの結果。
  */
+@Immutable
 data class SendFlowState(
     val step: Step = Step.Recipient,
     val query: String = "",
@@ -32,6 +34,7 @@ data class SendFlowState(
 ) {
     enum class Step { Recipient, Amount }
 
+    @Immutable
     sealed class SearchState {
         /** 入力 2 文字未満 / 検索未開始。 */
         data object Idle : SearchState()
@@ -44,6 +47,7 @@ data class SendFlowState(
         data class Error(val message: String) : SearchState()
     }
 
+    @Immutable
     sealed class Submission {
         data object Idle : Submission()
         data object Submitting : Submission()

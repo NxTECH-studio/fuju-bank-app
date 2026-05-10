@@ -24,6 +24,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -75,6 +76,11 @@ fun SendAmountScreen(
     val isOverBalance = state.amount > state.balance
     val canSubmit = state.amount > 0L && !isOverBalance &&
         state.submission !is SendFlowState.Submission.Submitting
+
+    // 数字パッドに渡す callback は viewModel が同じ間は同一インスタンスを使い回し、
+    // 子 Composable の不要な再コンポーズを抑える。
+    val onDigitClick = remember(viewModel) { { digit: Int -> viewModel.onDigitAppend(digit) } }
+    val onDeleteClick = remember(viewModel) { { viewModel.onDigitDelete() } }
 
     Column(
         modifier = modifier
@@ -128,8 +134,8 @@ fun SendAmountScreen(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = FujuBankColors.BrandPink,
                     contentColor = FujuBankColors.Surface,
-                    disabledContainerColor = Color(0xFFE6E6E6),
-                    disabledContentColor = Color(0xFFC3C3CA),
+                    disabledContainerColor = FujuBankColors.DisabledButtonBg,
+                    disabledContentColor = FujuBankColors.DisabledButtonText,
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -162,8 +168,8 @@ fun SendAmountScreen(
                 }
             }
             NumericKeypad(
-                onDigit = viewModel::onDigitAppend,
-                onDelete = viewModel::onDigitDelete,
+                onDigit = onDigitClick,
+                onDelete = onDeleteClick,
                 enabled = state.submission !is SendFlowState.Submission.Submitting,
             )
             Spacer(modifier = Modifier.size(8.dp))
@@ -344,7 +350,7 @@ private fun BalancePreviewCard(balanceAfter: Long) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFFFFEAF6))
+            .background(FujuBankColors.LightPink)
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Row(
@@ -386,17 +392,11 @@ private fun NumericKeypad(
     onDelete: () -> Unit,
     enabled: Boolean,
 ) {
-    val rows = listOf(
-        listOf(KeyButton.Digit(1), KeyButton.Digit(2), KeyButton.Digit(3)),
-        listOf(KeyButton.Digit(4), KeyButton.Digit(5), KeyButton.Digit(6)),
-        listOf(KeyButton.Digit(7), KeyButton.Digit(8), KeyButton.Digit(9)),
-        listOf(KeyButton.Empty, KeyButton.Digit(0), KeyButton.Delete),
-    )
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        rows.forEach { row ->
+        KEYPAD_ROWS.forEach { row ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -454,3 +454,11 @@ private sealed class KeyButton {
     data object Delete : KeyButton()
     data object Empty : KeyButton()
 }
+
+/** 数字パッドの行/列レイアウト。リコンポーズ毎の再生成を避けるためトップレベル定数で保持する。 */
+private val KEYPAD_ROWS: List<List<KeyButton>> = listOf(
+    listOf(KeyButton.Digit(1), KeyButton.Digit(2), KeyButton.Digit(3)),
+    listOf(KeyButton.Digit(4), KeyButton.Digit(5), KeyButton.Digit(6)),
+    listOf(KeyButton.Digit(7), KeyButton.Digit(8), KeyButton.Digit(9)),
+    listOf(KeyButton.Empty, KeyButton.Digit(0), KeyButton.Delete),
+)

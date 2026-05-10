@@ -51,4 +51,13 @@ object FujuBankColors {
 
     /** フォーム入力エラーの注意テキスト色。Material のエラーレッドに準拠。 */
     val Error: Color = Color(0xFFD32F2F)
+
+    /** 送金プレビューカード等の薄ピンク背景。Figma `437-22416` チャージ画面準拠 (`#FFEAF6`)。 */
+    val LightPink: Color = Color(0xFFFFEAF6)
+
+    /** 非活性 CTA の背景色 (`#E6E6E6`)。 */
+    val DisabledButtonBg: Color = Color(0xFFE6E6E6)
+
+    /** 非活性 CTA のテキスト色 (`#C3C3CA`)。 */
+    val DisabledButtonText: Color = Color(0xFFC3C3CA)
 }

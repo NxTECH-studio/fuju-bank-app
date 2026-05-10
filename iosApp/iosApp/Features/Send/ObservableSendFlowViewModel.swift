@@ -109,7 +109,13 @@ final class ObservableSendFlowViewModel: ObservableObject {
             return
         }
         searchTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: Self.searchDebounceMs * 1_000_000)
+            // try? だと sleep がキャンセルされても続行してしまうため、
+            // do-catch で確実に早期 return させる。
+            do {
+                try await Task.sleep(nanoseconds: Self.searchDebounceMs * 1_000_000)
+            } catch {
+                return
+            }
             guard let self else { return }
             if Task.isCancelled { return }
             await MainActor.run { self.runSearch(query: snapshot) }
