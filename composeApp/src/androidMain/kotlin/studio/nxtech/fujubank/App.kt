@@ -108,8 +108,13 @@ fun App() {
     // 次回 Unauthenticated に戻った時に LoginScreen が出るようにする。
     // signupViewModel 自体は LoginScreen の onSignupClick 内で reset() されるため、
     // ここで触る必要は無い（UnauthenticatedRouter スコープにあって参照できない都合もある）。
-    LaunchedEffect(sessionState) {
-        if (sessionState is SessionState.Authenticated && signupRoute != SignupRoute.None) {
+    //
+    // key は `sessionState is SessionState.Authenticated` の Boolean に絞り込む。
+    // sessionState 全体を key にすると Authenticated.userId が変わるたびに無駄に再実行される
+    // （Authenticated → Authenticated（別 userId）の冪等再実行は無害だが避ける）。
+    val isAuthenticated = sessionState is SessionState.Authenticated
+    LaunchedEffect(isAuthenticated) {
+        if (isAuthenticated && signupRoute != SignupRoute.None) {
             signupRoute = SignupRoute.None
         }
     }

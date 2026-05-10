@@ -231,7 +231,7 @@ private suspend fun provisionAfterAuth(
  *   日本語化済み。UI は入力欄インライン表示などに使う。
  */
 sealed class RegisterOutcome {
-    data class Started(val email: String, val publicId: String) : RegisterOutcome()
+    object Started : RegisterOutcome()
     object LoginAfterRegisterFailed : RegisterOutcome()
     data class Failure(val message: String, val error: ApiError) : RegisterOutcome()
     data class NetworkFailure(val message: String) : RegisterOutcome()
@@ -281,10 +281,7 @@ fun registerAndAutoLogin(
                             // provisionMe は失敗しても致命傷ではないが、後段の mfa/register が
                             // bank user 行を要求するため、ここで成功させておく。
                             when (userRepository.provisionMe()) {
-                                is NetworkResult.Success -> RegisterOutcome.Started(
-                                    email = register.value.email,
-                                    publicId = register.value.publicId,
-                                )
+                                is NetworkResult.Success -> RegisterOutcome.Started
                                 is NetworkResult.Failure, is NetworkResult.NetworkFailure ->
                                     RegisterOutcome.LoginAfterRegisterFailed
                             }

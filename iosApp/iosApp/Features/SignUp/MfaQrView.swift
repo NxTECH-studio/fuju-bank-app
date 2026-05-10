@@ -7,6 +7,9 @@ import UIKit
 /// 戻るボタン非表示 + システムバック抑止（NavigationStack を使わない構成）。
 struct MfaQrView: View {
     @EnvironmentObject var flow: SignUpFlowState
+    /// base64 → UIImage デコード結果を保持。base64 文字列が変わったときだけ再計算する
+    /// （body 評価ごとに UIImage(data:) を呼ぶと毎フレーム PNG decode が走るため）。
+    @State private var decodedQr: UIImage?
 
     var body: some View {
         ZStack {
@@ -58,6 +61,10 @@ struct MfaQrView: View {
                 .padding(.bottom, 16)
             }
         }
+        .onAppear { decodedQr = decodeQr(flow.mfaSetup?.qrPngBase64) }
+        .onChange(of: flow.mfaSetup?.qrPngBase64) { _, new in
+            decodedQr = decodeQr(new)
+        }
     }
 
     @ViewBuilder
@@ -66,7 +73,7 @@ struct MfaQrView: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(SignUpTokens.card)
                 .frame(width: 220, height: 220)
-            if let image = qrImage {
+            if let image = decodedQr {
                 Image(uiImage: image)
                     .resizable()
                     .interpolation(.none)
@@ -80,11 +87,16 @@ struct MfaQrView: View {
         }
     }
 
-    private var qrImage: UIImage? {
-        guard let base64 = flow.mfaSetup?.qrPngBase64,
-              let data = Data(base64Encoded: base64) else { return nil }
+    /// base64 PNG → UIImage の純粋関数。サイズ過大入力に対する DoS 防御として
+    /// 1MB 超のペイロードは即 nil を返す（256px PNG 想定では 50KB 程度のはず）。
+    private func decodeQr(_ base64: String?) -> UIImage? {
+        guard let base64,
+              let data = Data(base64Encoded: base64),
+              data.count <= MfaQrView.maxQrPngBytes else { return nil }
         return UIImage(data: data)
     }
+
+    private static let maxQrPngBytes = 1_048_576
 }
 
 #Preview {

@@ -1,6 +1,5 @@
 package studio.nxtech.fujubank.features.signup
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,8 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import studio.nxtech.fujubank.theme.NotoSansJP
-
-private const val LOG_TAG = "SignUpAccountScreen"
 
 /**
  * Screen 1: アカウント作成（client-bank-21 で旧 SignUpCreateScreen を置換）。
@@ -200,8 +197,7 @@ private fun SignUpAccountContent(
             )
         }
     }
-    // OAuth 連携は MVP 範囲外。ログだけ残しつつ UI は出さない（旧 GoogleSignInButton を撤去）。
-    if (false) Log.d(LOG_TAG, "OAuth not in MVP")
+    // OAuth (GoogleSignIn) 連携は MVP 範囲外のため UI 自体を撤去している。
 }
 
 internal val ErrorRed = Color(0xFFD32F2F)

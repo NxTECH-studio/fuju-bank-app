@@ -26,7 +26,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
@@ -205,9 +204,6 @@ fun RecoveryCodesScreen(
         }
     }
 }
-
-@Suppress("unused") // Preview 用に色定数を export しているわけではないが、テーマ拡張を呼ばないため明示。
-private val Unused = Color.Transparent
 
 @Preview(showBackground = true, widthDp = 393, heightDp = 852)
 @Composable

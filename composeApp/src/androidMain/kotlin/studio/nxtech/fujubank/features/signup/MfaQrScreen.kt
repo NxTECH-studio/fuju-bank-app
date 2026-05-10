@@ -146,9 +146,9 @@ fun MfaQrScreen(
                     ),
                 )
 
-                if (state.formError != null) {
+                state.formError?.let { error ->
                     Text(
-                        text = state.formError!!,
+                        text = error,
                         style = TextStyle(
                             fontFamily = NotoSansJP,
                             fontSize = 13.sp,
@@ -183,11 +183,18 @@ fun MfaQrScreen(
  *
  * Android API 26 以降は `java.util.Base64` を使えるが、minSdk と一致させるため
  * `android.util.Base64` を採用。失敗時は null を返し UI 側でローディング表示にする。
+ *
+ * **DoS 防御**: 1MB を超える base64 ペイロードはデコード前に弾く（256px PNG 想定では
+ * 50KB 程度）。サーバが想定外の巨大画像を返した場合に `BitmapFactory.decodeByteArray`
+ * が OOM で落ちるのを防ぐ。
  */
 private fun decodeQrPng(base64: String): ImageBitmap? = runCatching {
     val bytes = Base64.decode(base64, Base64.DEFAULT)
+    if (bytes.size > MAX_QR_PNG_BYTES) return@runCatching null
     BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
 }.getOrNull()
+
+private const val MAX_QR_PNG_BYTES = 1_048_576
 
 @Preview(showBackground = true, widthDp = 393, heightDp = 852)
 @Composable

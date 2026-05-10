@@ -12,6 +12,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
+import studio.nxtech.fujubank.data.remote.ApiError
+import studio.nxtech.fujubank.data.remote.ApiErrorCode
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.remote.dto.LoginRequest
 import studio.nxtech.fujubank.data.remote.dto.MfaEnableRequest
@@ -109,37 +111,49 @@ class AuthApi(
      * `POST /v1/auth/mfa/register` を叩いて TOTP secret + QR + recoveryCodes を取得する。
      *
      * Bearer access_token 必須。[authTokenProvider] から手動で Authorization を付ける。
+     * access_token が無い状態で叩くとサーバが 401 を返す前にクライアント側で
+     * `UNAUTHENTICATED` エラーとして即座に弾く（無効な Bearer-less リクエストの送信防止）。
      * **非べき等**: 呼び出すたびに新しい secret / QR / recoveryCodes を返し、旧 secret は
      * サーバ側で失効する。クライアントは「再生成」ボタンなど明示的トリガでのみ再呼び出しすること。
      */
-    suspend fun mfaRegister(): NetworkResult<MfaRegisterResponse> = runCatchingNetwork {
-        val accessToken = authTokenProvider()
-        authCoreClient.post("$authCoreBaseUrl/v1/auth/mfa/register") {
-            contentType(ContentType.Application.Json)
-            if (accessToken != null) {
+    suspend fun mfaRegister(): NetworkResult<MfaRegisterResponse> {
+        val accessToken = authTokenProvider() ?: return missingAccessToken()
+        return runCatchingNetwork {
+            authCoreClient.post("$authCoreBaseUrl/v1/auth/mfa/register") {
+                contentType(ContentType.Application.Json)
                 headers { append(HttpHeaders.Authorization, "Bearer $accessToken") }
-            }
-        }.body()
+            }.body()
+        }
     }
 
     /**
      * `POST /v1/auth/mfa/enable` を叩いて MFA を有効化する。
      *
      * Bearer access_token 必須。[authTokenProvider] から手動で Authorization を付ける。
+     * access_token が無い状態で叩くとサーバが 401 を返す前にクライアント側で
+     * `UNAUTHENTICATED` エラーとして即座に弾く。
      * 成功すると AuthCore 側で `mfa_enabled = true` がコミットされ、以降のログインで MFA
      * 入力が要求されるようになる。失敗時は `TOTP_CODE_INVALID`。
      */
-    suspend fun mfaEnable(code: String): NetworkResult<Unit> = runCatchingNetwork {
-        val accessToken = authTokenProvider()
-        authCoreClient.post("$authCoreBaseUrl/v1/auth/mfa/enable") {
-            contentType(ContentType.Application.Json)
-            if (accessToken != null) {
+    suspend fun mfaEnable(code: String): NetworkResult<Unit> {
+        val accessToken = authTokenProvider() ?: return missingAccessToken()
+        return runCatchingNetwork {
+            authCoreClient.post("$authCoreBaseUrl/v1/auth/mfa/enable") {
+                contentType(ContentType.Application.Json)
                 headers { append(HttpHeaders.Authorization, "Bearer $accessToken") }
+                setBody(MfaEnableRequest(code = code))
             }
-            setBody(MfaEnableRequest(code = code))
+            Unit
         }
-        Unit
     }
+
+    private fun <T> missingAccessToken(): NetworkResult<T> = NetworkResult.Failure(
+        ApiError(
+            code = ApiErrorCode.UNAUTHENTICATED,
+            message = "access_token is required for this endpoint",
+            httpStatus = 401,
+        ),
+    )
 
     private fun parseLoginResponse(element: JsonElement): LoginRawResponse {
         val obj: JsonObject = element.jsonObject

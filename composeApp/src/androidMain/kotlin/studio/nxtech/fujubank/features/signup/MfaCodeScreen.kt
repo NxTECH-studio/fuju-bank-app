@@ -117,9 +117,9 @@ fun MfaCodeScreen(
                     .padding(horizontal = 24.dp),
             )
             Spacer(Modifier.weight(1f))
-            if (state.mfaCodeError != null) {
+            state.mfaCodeError?.let { error ->
                 Text(
-                    text = state.mfaCodeError!!,
+                    text = error,
                     style = TextStyle(
                         fontFamily = NotoSansJP,
                         fontSize = 13.sp,
