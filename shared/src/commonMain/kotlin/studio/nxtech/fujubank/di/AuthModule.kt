@@ -13,9 +13,19 @@ import studio.nxtech.fujubank.session.invalidateSession
 
 val authModule = module {
     single<TokenStorage> { get<TokenStorageFactory>().create() }
-    // AuthApi は Auth プラグイン無しの専用 HttpClient を使う。同じクライアントだと
-    // refresh が 401 を返したときに refreshTokens ブロックが再帰起動して deadlock する。
-    single { AuthApi(get(qualifier = AUTHCORE_CLIENT_QUALIFIER), defaultAuthCoreBaseUrl()) }
+    // AuthApi は 2 つの HttpClient を受け取る。
+    // - authCoreClient (AUTHCORE_CLIENT_QUALIFIER): Auth プラグイン無し。
+    //   login / refresh / logout / mfaVerify / register に使う。Auth 付きで叩くと
+    //   refresh が 401 を返したときに refreshTokens ブロックが自己再帰して deadlock する。
+    // - bearerClient (default): Auth プラグイン付き。mfaRegister / mfaEnable に使う。
+    //   既に access_token を発行済みの状態で叩くため、Authorization ヘッダを自動付与させる。
+    single {
+        AuthApi(
+            authCoreClient = get(qualifier = AUTHCORE_CLIENT_QUALIFIER),
+            bearerClient = get(),
+            authCoreBaseUrl = defaultAuthCoreBaseUrl(),
+        )
+    }
     // nowMillis に実時刻を渡さないと AuthRepository.expiresAtFrom() が常に null を返し、
     // proactive な期限監視（TokenExpiryWatcher）が機能しなくなるので必ず注入する。
     single {

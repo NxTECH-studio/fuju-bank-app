@@ -6,6 +6,8 @@ import studio.nxtech.fujubank.auth.TokenStorage
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.remote.api.AuthApi
 import studio.nxtech.fujubank.data.remote.api.LoginRawResponse
+import studio.nxtech.fujubank.data.remote.dto.RegisterRequest
+import studio.nxtech.fujubank.data.remote.dto.RegisterResponse
 import studio.nxtech.fujubank.data.remote.map
 
 /**
@@ -105,9 +107,53 @@ class AuthRepository(
 
     suspend fun isAuthenticated(): Boolean = tokenStorage.loadAccess() != null
 
+    /**
+     * `POST /v1/auth/register` を叩いて新規アカウントを作成する。
+     *
+     * 認証ヘッダ不要。トークンは発行されないため、呼び出し側は続けて [login] を叩いて
+     * access_token を取得する必要がある（自動 login は本リポジトリの責務外）。
+     */
+    suspend fun register(
+        email: String,
+        password: String,
+        publicId: String,
+    ): NetworkResult<RegisterResponse> = authApi.register(
+        RegisterRequest(email = email, password = password, publicId = publicId),
+    )
+
+    /**
+     * `POST /v1/auth/mfa/register` を叩いて TOTP secret + QR + recoveryCodes を取得する。
+     *
+     * **非べき等**: 呼び出すたびに新しい secret / QR / recoveryCodes を返し、旧 secret は
+     * サーバ側で失効する。クライアントは「再生成」ボタンなど明示的トリガでのみ再呼び出しすること。
+     */
+    suspend fun setupMfa(): NetworkResult<MfaSetupBundle> = when (val result = authApi.mfaRegister()) {
+        is NetworkResult.Success -> NetworkResult.Success(
+            MfaSetupBundle(
+                secret = result.value.secret,
+                qrPngBase64 = result.value.qrCodeDataUrl.removePrefix(QR_DATA_URL_PREFIX),
+                recoveryCodes = result.value.recoveryCodes,
+            ),
+        )
+        is NetworkResult.Failure -> result
+        is NetworkResult.NetworkFailure -> result
+    }
+
+    /**
+     * `POST /v1/auth/mfa/enable` を叩いて MFA を有効化する。
+     *
+     * 成功すると AuthCore 側で `mfa_enabled = true` がコミットされ、以降のログインで MFA
+     * 入力が要求されるようになる。
+     */
+    suspend fun enableMfa(code: String): NetworkResult<Unit> = authApi.mfaEnable(code = code)
+
     private fun expiresAtFrom(expiresInSec: Long): Long? {
         val now = nowMillis()
         if (now <= 0L) return null
         return now + expiresInSec * 1_000L
+    }
+
+    private companion object {
+        const val QR_DATA_URL_PREFIX = "data:image/png;base64,"
     }
 }

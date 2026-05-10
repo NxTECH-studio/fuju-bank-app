@@ -2,8 +2,11 @@ package studio.nxtech.fujubank.session
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import org.koin.mp.KoinPlatform
 import studio.nxtech.fujubank.data.remote.ApiError
+import studio.nxtech.fujubank.data.remote.ApiErrorCode
 import studio.nxtech.fujubank.data.remote.NetworkResult
+import studio.nxtech.fujubank.data.remote.api.AuthCoreUserApi
 import studio.nxtech.fujubank.data.repository.AuthRepository
 import studio.nxtech.fujubank.data.repository.LoginResult
 import studio.nxtech.fujubank.data.repository.UserRepository
@@ -190,7 +193,18 @@ private suspend fun provisionAfterAuth(
     sessionStore: SessionStore,
 ): AuthFlowOutcome = when (val provision = userRepository.provisionMe()) {
     is NetworkResult.Success -> {
-        sessionStore.setAuthenticated(provision.value.id)
+        // mfa_enabled = false の既存ユーザは MFA セットアップ画面群に誘導する
+        // （client-bank-21 の resume 経路）。getProfile 失敗は安全側に倒し、Authenticated に進める。
+        val authCoreUserApi: AuthCoreUserApi = KoinPlatform.getKoin().get()
+        val needsSetup = when (val profile = authCoreUserApi.getProfile()) {
+            is NetworkResult.Success -> !profile.value.mfaEnabled
+            is NetworkResult.Failure, is NetworkResult.NetworkFailure -> false
+        }
+        if (needsSetup) {
+            sessionStore.setMfaSetupRequired()
+        } else {
+            sessionStore.setAuthenticated(provision.value.id)
+        }
         AuthFlowOutcome.Authenticated
     }
     is NetworkResult.Failure -> AuthFlowOutcome.Failure(
@@ -198,6 +212,179 @@ private suspend fun provisionAfterAuth(
         error = provision.error,
     )
     is NetworkResult.NetworkFailure -> AuthFlowOutcome.NetworkFailure(
+        message = AuthErrorMessages.forNetworkFailure(),
+    )
+}
+
+// --- Signup + MFA setup フロー（client-bank-21）-----------------------------
+
+/**
+ * 新規アカウント作成 → 自動 login → provisionMe までの結果を Swift に伝える型。
+ *
+ * - [Started]: register + 裏で login + provisionMe が成功し、access_token も取得済み。
+ *   呼び出し側は続けて [startMfaSetup] を呼んで QR を取得する。SessionStore は **触らない**
+ *   （Authenticated に倒すと AppRoot がホームに飛んでしまうため）。
+ * - [LoginAfterRegisterFailed]: register は成功したが裏での login が失敗。アカウント自体は
+ *   できているので、UI 側はログイン画面に戻して再ログインを促す。次回 login 時に
+ *   `mfa_enabled = false` のため [SessionState.MfaSetupRequired] 経路で MFA セットアップに進む。
+ * - [Failure] / [NetworkFailure]: register 自体の失敗。message は AuthErrorMessages 経由で
+ *   日本語化済み。UI は入力欄インライン表示などに使う。
+ */
+sealed class RegisterOutcome {
+    data class Started(val email: String, val publicId: String) : RegisterOutcome()
+    object LoginAfterRegisterFailed : RegisterOutcome()
+    data class Failure(val message: String, val error: ApiError) : RegisterOutcome()
+    data class NetworkFailure(val message: String) : RegisterOutcome()
+}
+
+/** [startMfaSetup] の結果。Ready なら base64 QR を SwiftUI / Compose で描画する。 */
+sealed class MfaSetupOutcome {
+    data class Ready(
+        val secret: String,
+        val qrPngBase64: String,
+        val recoveryCodes: List<String>,
+    ) : MfaSetupOutcome()
+
+    data class Failure(val message: String, val error: ApiError) : MfaSetupOutcome()
+    data class NetworkFailure(val message: String) : MfaSetupOutcome()
+}
+
+/** [enableMfaAndProvision] の結果。Enabled で provisionMe まで完了し、ホーム遷移可能になる。 */
+sealed class MfaEnableOutcome {
+    data class Enabled(val userId: String) : MfaEnableOutcome()
+    data class Failure(val message: String, val error: ApiError) : MfaEnableOutcome()
+    data class NetworkFailure(val message: String) : MfaEnableOutcome()
+}
+
+/**
+ * Swift 側から呼ぶ「アカウント作成 → 自動 login → provisionMe」のファサード。
+ *
+ * register 成功 → login 成功 → provisionMe 成功までを直列で実行し、SessionStore は **触らない**。
+ * これにより AppRoot は引き続き Unauthenticated/サインアップ動線を維持し、続く MFA セットアップ
+ * 画面群にローカルナビゲーションで進める。Authenticated への伝搬は [enableMfaAndProvision] で行う。
+ */
+fun registerAndAutoLogin(
+    authRepository: AuthRepository,
+    userRepository: UserRepository,
+    sessionStore: SessionStore,
+    email: String,
+    password: String,
+    publicId: String,
+    onResult: (RegisterOutcome) -> Unit,
+) {
+    sessionStore.scope.launch {
+        val outcome = when (val register = authRepository.register(email, password, publicId)) {
+            is NetworkResult.Success -> {
+                when (val login = authRepository.login(email, password)) {
+                    is NetworkResult.Success -> when (val value = login.value) {
+                        is LoginResult.Authenticated -> {
+                            // provisionMe は失敗しても致命傷ではないが、後段の mfa/register が
+                            // bank user 行を要求するため、ここで成功させておく。
+                            when (userRepository.provisionMe()) {
+                                is NetworkResult.Success -> RegisterOutcome.Started(
+                                    email = register.value.email,
+                                    publicId = register.value.publicId,
+                                )
+                                is NetworkResult.Failure, is NetworkResult.NetworkFailure ->
+                                    RegisterOutcome.LoginAfterRegisterFailed
+                            }
+                        }
+                        // register 直後なので mfa_enabled = false。NeedsMfa は通常返らない想定だが、
+                        // 万一返ってきたら login 失敗扱いにしてユーザに再ログインを促す。
+                        is LoginResult.NeedsMfa -> RegisterOutcome.LoginAfterRegisterFailed
+                    }
+                    is NetworkResult.Failure, is NetworkResult.NetworkFailure ->
+                        RegisterOutcome.LoginAfterRegisterFailed
+                }
+            }
+            is NetworkResult.Failure -> RegisterOutcome.Failure(
+                message = AuthErrorMessages.forRegister(register.error),
+                error = register.error,
+            )
+            is NetworkResult.NetworkFailure -> RegisterOutcome.NetworkFailure(
+                message = AuthErrorMessages.forNetworkFailure(),
+            )
+        }
+        onResult(outcome)
+    }
+}
+
+/**
+ * Swift 側から呼ぶ「MFA セットアップ開始（QR 取得）」のファサード。
+ *
+ * 非べき等のため、UI 側で「再生成」ボタン以外で再呼び出ししないこと。
+ */
+fun startMfaSetup(
+    authRepository: AuthRepository,
+    sessionStore: SessionStore,
+    onResult: (MfaSetupOutcome) -> Unit,
+) {
+    sessionStore.scope.launch {
+        val outcome = when (val setup = authRepository.setupMfa()) {
+            is NetworkResult.Success -> MfaSetupOutcome.Ready(
+                secret = setup.value.secret,
+                qrPngBase64 = setup.value.qrPngBase64,
+                recoveryCodes = setup.value.recoveryCodes,
+            )
+            is NetworkResult.Failure -> MfaSetupOutcome.Failure(
+                message = AuthErrorMessages.forMfaSetup(setup.error),
+                error = setup.error,
+            )
+            is NetworkResult.NetworkFailure -> MfaSetupOutcome.NetworkFailure(
+                message = AuthErrorMessages.forNetworkFailure(),
+            )
+        }
+        onResult(outcome)
+    }
+}
+
+/**
+ * Swift 側から呼ぶ「TOTP コード送信 → 有効化 → provisionMe」のファサード。
+ *
+ * 成功時は userId を返すが SessionStore は **触らない**。recovery codes 表示画面まで進ませた後、
+ * ユーザが「保存しました」CTA をタップしたタイミングで Swift 側が `setAuthenticated(userId)` を
+ * 呼ぶ契約。これにより MFA セットアップ完了 → ホーム遷移のタイミングを UI 側で制御できる。
+ *
+ * 既に `mfa_enabled = true` の場合（戻る等の異常系）は Enabled 扱いに倒す。
+ */
+fun enableMfaAndProvision(
+    authRepository: AuthRepository,
+    userRepository: UserRepository,
+    sessionStore: SessionStore,
+    code: String,
+    onResult: (MfaEnableOutcome) -> Unit,
+) {
+    sessionStore.scope.launch {
+        val outcome = when (val enable = authRepository.enableMfa(code)) {
+            is NetworkResult.Success -> provisionToMfaEnableOutcome(userRepository)
+            is NetworkResult.Failure -> {
+                if (enable.error.code == ApiErrorCode.MFA_ALREADY_ENABLED) {
+                    // 既に有効化されているなら provisionMe → Enabled に倒す（再入時の救済）。
+                    provisionToMfaEnableOutcome(userRepository)
+                } else {
+                    MfaEnableOutcome.Failure(
+                        message = AuthErrorMessages.forMfaEnable(enable.error),
+                        error = enable.error,
+                    )
+                }
+            }
+            is NetworkResult.NetworkFailure -> MfaEnableOutcome.NetworkFailure(
+                message = AuthErrorMessages.forNetworkFailure(),
+            )
+        }
+        onResult(outcome)
+    }
+}
+
+private suspend fun provisionToMfaEnableOutcome(
+    userRepository: UserRepository,
+): MfaEnableOutcome = when (val provision = userRepository.provisionMe()) {
+    is NetworkResult.Success -> MfaEnableOutcome.Enabled(userId = provision.value.id)
+    is NetworkResult.Failure -> MfaEnableOutcome.Failure(
+        message = AuthErrorMessages.forMfaEnable(provision.error),
+        error = provision.error,
+    )
+    is NetworkResult.NetworkFailure -> MfaEnableOutcome.NetworkFailure(
         message = AuthErrorMessages.forNetworkFailure(),
     )
 }
