@@ -13,10 +13,10 @@ import kotlin.test.assertNull
 
 class SessionResetCoordinatorTest {
 
-    /** reset() / refresh() の呼び出し回数を数える fake。 */
+    /** reset() / ensureLoaded() の呼び出し回数を数える fake。 */
     private class FakeAccountProfileProvider : AccountProfileProvider {
         var resetCount: Int = 0
-        var refreshCount: Int = 0
+        var ensureLoadedCount: Int = 0
         private val _profile = MutableStateFlow(
             AccountProfile(displayName = "", email = "", accountId = ""),
         )
@@ -25,8 +25,8 @@ class SessionResetCoordinatorTest {
         override fun reset() {
             resetCount += 1
         }
-        override suspend fun refresh() {
-            refreshCount += 1
+        override suspend fun ensureLoaded() {
+            ensureLoadedCount += 1
         }
     }
 
@@ -43,68 +43,8 @@ class SessionResetCoordinatorTest {
         testScheduler.runCurrent()
 
         assertEquals(1, provider.resetCount)
-    }
-
-    @Test
-    fun unauthenticatedToAuthenticatedTriggersRefreshExactlyOnce() = runTest {
-        val store = SessionStore()
-        val provider = FakeAccountProfileProvider()
-        SessionResetCoordinator(store, provider, scope = backgroundScope).start()
-        testScheduler.runCurrent()
-
-        store.setAuthenticated("u1")
-        testScheduler.runCurrent()
-
-        assertEquals(1, provider.refreshCount)
-        assertEquals(0, provider.resetCount)
-    }
-
-    @Test
-    fun initialAuthenticatedTriggersRefresh() = runTest {
-        // bootstrap が Coordinator.start より先に完了し、collect 開始時点で既に Authenticated に
-        // なっているケースを再現する。`previous = sessionStore.current` で初期化していた旧実装は
-        // この経路で refresh を呼び損ね、AccountHub に空キャッシュが見えるバグがあった。
-        val store = SessionStore()
-        store.setAuthenticated("u1")
-        val provider = FakeAccountProfileProvider()
-        SessionResetCoordinator(store, provider, scope = backgroundScope).start()
-        testScheduler.runCurrent()
-
-        assertEquals(1, provider.refreshCount)
-        assertEquals(0, provider.resetCount)
-    }
-
-    @Test
-    fun mfaPendingToAuthenticatedTriggersRefresh() = runTest {
-        val store = SessionStore()
-        val provider = FakeAccountProfileProvider()
-        SessionResetCoordinator(store, provider, scope = backgroundScope).start()
-        testScheduler.runCurrent()
-
-        store.setMfaPending("pt_1")
-        testScheduler.runCurrent()
-        store.setAuthenticated("u1")
-        testScheduler.runCurrent()
-
-        assertEquals(1, provider.refreshCount)
-    }
-
-    @Test
-    fun loginCycleTriggersRefreshThenReset() = runTest {
-        val store = SessionStore()
-        val provider = FakeAccountProfileProvider()
-        SessionResetCoordinator(store, provider, scope = backgroundScope).start()
-        testScheduler.runCurrent()
-
-        repeat(3) {
-            store.setAuthenticated("u$it")
-            testScheduler.runCurrent()
-            store.clear()
-            testScheduler.runCurrent()
-        }
-
-        assertEquals(3, provider.refreshCount)
-        assertEquals(3, provider.resetCount)
+        // Coordinator は ensureLoaded を呼ばない（lazy load 担当は AccountHub 側）。
+        assertEquals(0, provider.ensureLoadedCount)
     }
 
     @Test
@@ -116,6 +56,7 @@ class SessionResetCoordinatorTest {
 
         // 初期値の Unauthenticated emit のみで遷移無し。
         assertEquals(0, provider.resetCount)
+        assertEquals(0, provider.ensureLoadedCount)
     }
 
     @Test

@@ -1,9 +1,12 @@
 package studio.nxtech.fujubank.account
 
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.repository.ProfileRepository
 import studio.nxtech.fujubank.domain.model.UserProfile
@@ -11,21 +14,23 @@ import studio.nxtech.fujubank.domain.model.UserProfile
 /**
  * 実 API（AuthCore + bank `/users/me`）からプロフィールを取得する [AccountProfileProvider]。
  *
- * release ビルド (`USE_DUMMY_PROFILE=false`) で Koin に登録され、`SessionResetCoordinator`
- * が `* → Authenticated` 遷移を観測したタイミングで [refresh] を呼ぶ。これにより:
+ * release ビルド (`USE_DUMMY_PROFILE=false`) で Koin に singleton 登録される。
  *
- * - 起動時: bootstrap で SessionStore が Authenticated に遷移 → refresh
- * - ログイン: provisionAndAuthenticate → setAuthenticated → refresh
- * - サインアップ: confirmRecoveryCodes → setAuthenticated → refresh
- * - ログアウト: setAuthenticated→Unauthenticated 遷移で [reset] により空キャッシュに戻る
+ * ## キャッシュ戦略
  *
- * 設計メモ:
- * - 取得失敗時は **前回値を据え置く**（NetworkFailure / Failure ともに `_profile` を変更しない）。
- *   AccountHub 側で空文字を「-」プレースホルダに置換して表示する。
- * - 通常の AccountHub 画面入場では refresh しない（StateFlow が直前のキャッシュを返すだけ）。
- *   pull-to-refresh 等が要るタイミングで別タスクで拡張する。
- * - [updateProfile] は no-op に近い。AuthCore に email/displayName 更新 API が揃ったら
- *   通信を伴う実装に差し替える（MVP の方針上、編集 UI 自体も無効化されている）。
+ * - 初期値は EMPTY_PROFILE（空文字）。AccountHub 側で「-」プレースホルダ表示になる。
+ * - AccountHub 表示時に [ensureLoaded] が呼ばれて 1 度だけ fetch する。成功すれば
+ *   `_profile` が更新され、以降のタブ切替などでは API を叩かず StateFlow から即返す。
+ * - ログアウト時に `SessionResetCoordinator` が [reset] を呼ぶと `_profile` を空に戻し、
+ *   `loaded` フラグも下ろす。次回 AccountHub 表示で別ユーザの値を取りに行く。
+ * - **fetch 失敗時はキャッシュを更新しない**（前回値を据え置く）。ただしログアウト直後の
+ *   失敗は EMPTY のまま「-」表示になり、前ユーザの値は決して残らない。
+ *
+ * ## 並行性
+ *
+ * - 同じ AccountHub からの再表示や、別経路からの ensureLoaded 二重呼び出しに備え
+ *   [loadMutex] で fetch 全体を直列化する。
+ * - `loaded` の早期 return は mutex 取得前に判定し、定常状態のオーバーヘッドをほぼゼロに保つ。
  */
 class RemoteAccountProfileProvider(
     private val profileRepository: ProfileRepository,
@@ -33,6 +38,10 @@ class RemoteAccountProfileProvider(
 
     private val _profile = MutableStateFlow(EMPTY_PROFILE)
     override val profile: StateFlow<AccountProfile> = _profile.asStateFlow()
+
+    private val loadMutex = Mutex()
+    @Volatile
+    private var loaded: Boolean = false
 
     /**
      * MVP では実 API 側に更新エンドポイントが無いため、ローカルの [_profile] のみ更新する。
@@ -44,38 +53,36 @@ class RemoteAccountProfileProvider(
     }
 
     /**
-     * ログアウト時に呼ばれ、in-memory のプロフィールキャッシュを空に戻す。
+     * ログアウト時に呼ばれ、in-memory のキャッシュを空に戻し、`loaded` フラグも下ろす。
      *
      * `accountModule` 上 `single<AccountProfileProvider>` で登録されており、本クラスは
      * プロセス内で 1 度だけ生成される。再ログインでも同一インスタンスが再利用されるため、
-     * ここで明示的に空に戻さないと前ユーザーの displayName / email が残る。
+     * ここで明示的に空 + loaded=false に戻さないと、別ユーザでログイン後の AccountHub に
+     * 前ユーザの displayName / email が残る。
      */
     override fun reset() {
         _profile.value = EMPTY_PROFILE
+        loaded = false
     }
 
     /**
-     * AuthCore + bank プロフィールを取得し直して [_profile] を更新する。
+     * AccountHub 初回表示時に呼ぶ lazy load。冪等で、既にロード済みなら即 return。
      *
-     * **キャッシュを先に空にしてから fetch する**ことで、前ユーザのデータが残るリスクを排除する。
-     * これは [reset] による `Authenticated → Unauthenticated` 遷移時のクリアに加えての二重防御:
-     *
-     * - 別アカウントへのログイン直後など、`reset` の呼び出しと `refresh` の呼び出しの順序が
-     *   万一逆転しても、`refresh` 自身が EMPTY 化するため前ユーザの値は確実に消える。
-     * - fetch が失敗しても `_profile` は EMPTY のまま（前回値も残らない）。
-     *   AccountHub 側で「-」プレースホルダ表示になる。前ユーザの値を「現ユーザの値」として
-     *   見せてしまう事故より、空表示で再試行を促す方が遥かに安全。
-     *
-     * `runCatchingNetwork` 経由なので [kotlinx.coroutines.CancellationException] は
-     * Repository 内部で適切に再 throw される。
+     * 失敗時は `loaded` フラグが立たず、次回呼び出しで再試行できる。
      */
-    override suspend fun refresh() {
-        // 先にキャッシュを空にしてから fetch する（前ユーザのデータ漏出防止の二重防御）。
-        _profile.value = EMPTY_PROFILE
-        when (val result = profileRepository.getMyProfile()) {
-            is NetworkResult.Success -> _profile.value = result.value.toAccountProfile()
-            is NetworkResult.Failure,
-            is NetworkResult.NetworkFailure -> Unit
+    override suspend fun ensureLoaded() {
+        if (loaded) return
+        loadMutex.withLock {
+            if (loaded) return
+            when (val result = profileRepository.getMyProfile()) {
+                is NetworkResult.Success -> {
+                    _profile.value = result.value.toAccountProfile()
+                    loaded = true
+                }
+                is NetworkResult.Failure,
+                is NetworkResult.NetworkFailure -> Unit
+                // 失敗時は loaded のまま据え置き。次回 ensureLoaded 呼び出しで再試行。
+            }
         }
     }
 }

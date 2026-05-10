@@ -72,6 +72,11 @@ struct AccountHubView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(FujuBankPalette.background.ignoresSafeArea())
+        .task {
+            // 画面初回表示時にプロフィールを lazy load。Provider 側で冪等化されているため、
+            // タブ再表示等で `.task` が複数回走っても API は 1 度しか叩かない。
+            viewModel.onAppear()
+        }
         .confirmationDialog(
             "ログアウトしますか？",
             isPresented: $showLogoutConfirm,

@@ -24,22 +24,25 @@ interface AccountProfileProvider {
      * プロセス内に保持しているプロフィールキャッシュを破棄する。
      *
      * 実装は「次に [profile] を購読した側が前ユーザーの値を見ない」状態にすることが契約。
-     * 詳細は実装ごと（dummy は初期ダミー値、remote は空プロフィール）に異なる。
+     * remote 実装ではキャッシュを EMPTY に戻し、`ensureLoaded()` の済みフラグも下ろす
+     * （次回 AccountHub 表示で新ユーザの値を再 fetch する）。
      */
     fun reset()
 
     /**
-     * `Authenticated` 遷移時に [studio.nxtech.fujubank.session.SessionResetCoordinator] から
-     * 呼ばれ、プロフィール（AuthCore + bank）を再取得して in-memory キャッシュを更新する。
+     * AccountHub 画面の初回表示時に呼ぶ「lazy load」エンドポイント。
      *
-     * 取得失敗時はキャッシュを変更しない（前回値を維持）。サインアップ完了直後・ログイン直後・
-     * アプリ再起動時の bootstrap 復元など、Authenticated に遷移するすべての経路で 1 回だけ
-     * 呼ばれる。AccountHub 画面入場のたびに refetch せずに済むよう、結果は [profile] の
-     * StateFlow に保持されたまま使い回される（キャッシュ）。
+     * 振る舞い:
+     * - **冪等**: 既に成功裏にロード済みなら即 return（API は叩かない）。
+     * - **失敗時は再試行可**: fetch が失敗した場合は loaded フラグが立たず、
+     *   次回呼び出しで再 fetch を試みる。
+     * - **reset() で無効化**: ログアウト時に [reset] が loaded フラグも下ろすため、
+     *   次回 ensureLoaded で別ユーザのデータを必ず取り直す。
      *
-     * suspend にしているのは、Coordinator 側で逐次直列に呼べるようにするため。
+     * 同じプロセス内で複数の AccountHub 表示パスから同時に呼ばれても二重 fetch しないよう
+     * 内部 mutex で直列化することが実装契約。
      */
-    suspend fun refresh()
+    suspend fun ensureLoaded()
 }
 
 /**
@@ -64,8 +67,8 @@ class DummyAccountProfileProvider : AccountProfileProvider {
         _profile.value = INITIAL_PROFILE
     }
 
-    /** ダミー実装は実 API を叩かないため refresh は no-op。 */
-    override suspend fun refresh() {
+    /** ダミー実装は API を叩かないため ensureLoaded は no-op（常に initial が入っている）。 */
+    override suspend fun ensureLoaded() {
         // no-op
     }
 
