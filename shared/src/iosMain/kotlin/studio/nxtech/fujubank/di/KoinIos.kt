@@ -7,6 +7,7 @@ import studio.nxtech.fujubank.account.NotificationSettingsPreferences
 import studio.nxtech.fujubank.account.PrivacyPreferences
 import studio.nxtech.fujubank.data.remote.api.UserApi
 import studio.nxtech.fujubank.data.repository.AuthRepository
+import studio.nxtech.fujubank.data.repository.LedgerRepository
 import studio.nxtech.fujubank.data.repository.ProfileRepository
 import studio.nxtech.fujubank.data.repository.UserRepository
 import studio.nxtech.fujubank.session.SessionResetCoordinator
@@ -34,6 +35,8 @@ fun userApi(): UserApi = KoinPlatform.getKoin().get()
 fun authRepository(): AuthRepository = KoinPlatform.getKoin().get()
 
 fun userRepository(): UserRepository = KoinPlatform.getKoin().get()
+
+fun ledgerRepository(): LedgerRepository = KoinPlatform.getKoin().get()
 
 fun sessionStore(): SessionStore = KoinPlatform.getKoin().get()
 

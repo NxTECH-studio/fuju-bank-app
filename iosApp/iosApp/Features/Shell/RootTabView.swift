@@ -21,24 +21,41 @@ struct RootTabView: View {
     /// アカウントタブ配下の `NavigationStack` のパス。タブを切り替えても保持し、戻ってきたとき
     /// に元の階層を復元する（Android の手動スタックと挙動を揃える狙い）。
     @State private var accountPath: [AccountDestination] = []
+    /// 送金フローで Step 1 → Step 2 を跨いで同一 VM を共有するため、`RootTabView` に
+    /// `@StateObject` で保持する。送金完了後は `recreateSendFlowKey` をインクリメントして
+    /// 新しい VM に差し替える（state 残留を防ぐため）。
+    @StateObject private var sendFlowViewModel = ObservableSendFlowViewModel()
+    @State private var sendFlowKey: Int = 0
+    /// 送金完了後に Home 側で再 fetch を強制するためのキー。HomeView を `.id(...)` で再生成する。
+    @State private var homeRefreshKey: Int = 0
 
     enum Destination: Equatable {
-        case home, account, transactionHistory, transactionDetail
+        case home, account, transactionHistory, transactionDetail, sendRecipient, sendAmount
 
         /// ホーム家族（Home / 履歴 / 詳細）はホームタブを selected 表示にする。
         var isHomeFamily: Bool {
             switch self {
             case .home, .transactionHistory, .transactionDetail: return true
-            case .account: return false
+            case .account, .sendRecipient, .sendAmount: return false
+            }
+        }
+
+        /// 送金家族（Step 1 / Step 2）。フッターは送金フロー中は非表示なので selected
+        /// 判定はタブから入った直後だけ意味を持つが、Equatable 整合のため定義しておく。
+        var isSendFamily: Bool {
+            switch self {
+            case .sendRecipient, .sendAmount: return true
+            default: return false
             }
         }
     }
 
-    /// 法的文書 / パスワード変更画面ではボトムナビを隠す。法的文書は本文が長くフッターに
+    /// 法的文書 / パスワード変更 / 送金フロー中はボトムナビを隠す。法的文書は本文が長くフッターに
     /// 被って読めなくなるため、パスワード変更はキーボード操作中の入力欄が押し下がらない
-    /// よう画面全体を縦に使うため（Android 側 `RootScaffold` で `bottomBarVisible = false`
-    /// にしているのと同方針）。
+    /// よう画面全体を縦に使うため、送金フローは誤タップ防止と画面集中のため
+    /// （Android 側 `RootScaffold` で `bottomBarVisible = false` にしているのと同方針）。
     private var isBottomBarHidden: Bool {
+        if destination.isSendFamily { return true }
         guard destination == .account else { return false }
         switch accountPath.last {
         case .privacyPolicy, .termsOfService, .passwordChange: return true
@@ -78,9 +95,31 @@ struct RootTabView: View {
         case .home:
             HomeView(
                 onTransactionHistory: { destination = .transactionHistory },
-                onSendReceive: { /* 銀行版では未配線。旧シグネチャ互換 */ },
+                onSendReceive: { destination = .sendRecipient },
                 onShowToast: { message in toast.send(message) },
             )
+            // 送金完了後の自動 refresh のため、`homeRefreshKey` の変化で View を作り直す。
+            .id(homeRefreshKey)
+        case .sendRecipient:
+            SendRecipientView(
+                viewModel: sendFlowViewModel,
+                onBack: { destination = .home },
+                onProceedToAmount: { destination = .sendAmount },
+            )
+            .id(sendFlowKey)
+        case .sendAmount:
+            SendAmountView(
+                viewModel: sendFlowViewModel,
+                onBack: { destination = .sendRecipient },
+                onComplete: { _, _ in
+                    toast.send("送金しました")
+                    homeRefreshKey += 1
+                    sendFlowKey += 1
+                    sendFlowViewModel.resetToRecipient()
+                    destination = .home
+                },
+            )
+            .id(sendFlowKey)
         case .account:
             // アカウントタブは NavigationStack をルートにし、ハブ → 子画面（通知設定 / 準備中）の
             // 遷移を `navigationDestination(for:)` に集約する。`accountPath` を `RootTabView` 側で
@@ -143,9 +182,7 @@ struct RootTabView: View {
 
     private var bottomBar: some View {
         // バー全体 84pt: 上 50pt 可視タブ領域 + 下 34pt ホームインジケータ領域。
-        // Figma `709:8658` の `pt-8 px-48`、上端 1pt ボーダー、白背景に揃える。
-        // 2 タブが均等 weight=1 で並び、それぞれ内側 64pt の余白で中央へ寄せる
-        // （Android `RootScaffold.kt` の BottomNav と同一構造）。
+        // client-bank-22 で 3 タブ化（ホーム / 送金 / アカウント）。
         ZStack(alignment: .top) {
             FujuBankPalette.surface
                 .overlay(
@@ -156,28 +193,26 @@ struct RootTabView: View {
                 )
 
             HStack(spacing: 0) {
-                HStack {
-                    Spacer()
-                    tabItem(image: "BankHomeIcon", label: "ホーム", selected: destination.isHomeFamily) {
-                        selectedTransaction = nil
-                        destination = .home
-                    }
+                tabItem(image: "BankHomeIcon", label: "ホーム", selected: destination.isHomeFamily) {
+                    selectedTransaction = nil
+                    destination = .home
                 }
-                .padding(.trailing, 64)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+                .frame(maxWidth: .infinity)
 
-                HStack {
-                    tabItem(image: "BankAccountIcon", label: "アカウント", selected: destination == .account) {
-                        selectedTransaction = nil
-                        destination = .account
-                    }
-                    Spacer()
+                tabItem(image: "BankSendIcon", label: "送金", selected: destination.isSendFamily) {
+                    selectedTransaction = nil
+                    destination = .sendRecipient
                 }
-                .padding(.leading, 64)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity)
+
+                tabItem(image: "BankAccountIcon", label: "アカウント", selected: destination == .account) {
+                    selectedTransaction = nil
+                    destination = .account
+                }
+                .frame(maxWidth: .infinity)
             }
             .padding(.top, 8)
-            .padding(.horizontal, 48)
+            .padding(.horizontal, 24)
             .frame(height: 50, alignment: .top)
             .frame(maxWidth: .infinity)
         }
