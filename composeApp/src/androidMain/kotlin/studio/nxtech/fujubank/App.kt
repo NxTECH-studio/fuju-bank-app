@@ -101,6 +101,19 @@ fun App() {
 
     var signupRoute by rememberSaveable { mutableStateOf(SignupRoute.None) }
 
+    // Authenticated に遷移した時点で signupRoute をリセット。これがないと、ログアウトで
+    // Unauthenticated に戻った瞬間に `signupRoute = .Active` が残っていて、しかも
+    // SignUpFlowViewModel.phase が `.RecoveryCodes` のままなので RecoveryCodesScreen が
+    // 再表示されてしまう。Authenticated 中は signupRoute を見ないので、ここでリセットして
+    // 次回 Unauthenticated に戻った時に LoginScreen が出るようにする。
+    // signupViewModel 自体は LoginScreen の onSignupClick 内で reset() されるため、
+    // ここで触る必要は無い（UnauthenticatedRouter スコープにあって参照できない都合もある）。
+    LaunchedEffect(sessionState) {
+        if (sessionState is SessionState.Authenticated && signupRoute != SignupRoute.None) {
+            signupRoute = SignupRoute.None
+        }
+    }
+
     val showRoot = bypassAuth ||
         (sessionState is SessionState.Authenticated && !(welcomePending && !welcomeAlreadyShown))
 

@@ -27,6 +27,19 @@ interface AccountProfileProvider {
      * 詳細は実装ごと（dummy は初期ダミー値、remote は空プロフィール）に異なる。
      */
     fun reset()
+
+    /**
+     * `Authenticated` 遷移時に [studio.nxtech.fujubank.session.SessionResetCoordinator] から
+     * 呼ばれ、プロフィール（AuthCore + bank）を再取得して in-memory キャッシュを更新する。
+     *
+     * 取得失敗時はキャッシュを変更しない（前回値を維持）。サインアップ完了直後・ログイン直後・
+     * アプリ再起動時の bootstrap 復元など、Authenticated に遷移するすべての経路で 1 回だけ
+     * 呼ばれる。AccountHub 画面入場のたびに refetch せずに済むよう、結果は [profile] の
+     * StateFlow に保持されたまま使い回される（キャッシュ）。
+     *
+     * suspend にしているのは、Coordinator 側で逐次直列に呼べるようにするため。
+     */
+    suspend fun refresh()
 }
 
 /**
@@ -49,6 +62,11 @@ class DummyAccountProfileProvider : AccountProfileProvider {
 
     override fun reset() {
         _profile.value = INITIAL_PROFILE
+    }
+
+    /** ダミー実装は実 API を叩かないため refresh は no-op。 */
+    override suspend fun refresh() {
+        // no-op
     }
 
     private companion object {

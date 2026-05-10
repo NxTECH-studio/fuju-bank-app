@@ -1,11 +1,9 @@
 package studio.nxtech.fujubank.account
 
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.repository.ProfileRepository
 import studio.nxtech.fujubank.domain.model.UserProfile
@@ -13,43 +11,28 @@ import studio.nxtech.fujubank.domain.model.UserProfile
 /**
  * 実 API（AuthCore + bank `/users/me`）からプロフィールを取得する [AccountProfileProvider]。
  *
- * release ビルド (`USE_DUMMY_PROFILE=false`) で Koin に登録され、生成時に 1 回だけ
- * [ProfileRepository.getMyProfile] を呼んで `_profile` を初期値（空）から実値に置換する。
+ * release ビルド (`USE_DUMMY_PROFILE=false`) で Koin に登録され、`SessionResetCoordinator`
+ * が `* → Authenticated` 遷移を観測したタイミングで [refresh] を呼ぶ。これにより:
+ *
+ * - 起動時: bootstrap で SessionStore が Authenticated に遷移 → refresh
+ * - ログイン: provisionAndAuthenticate → setAuthenticated → refresh
+ * - サインアップ: confirmRecoveryCodes → setAuthenticated → refresh
+ * - ログアウト: setAuthenticated→Unauthenticated 遷移で [reset] により空キャッシュに戻る
  *
  * 設計メモ:
- * - 取得失敗時は空の [AccountProfile] のまま据え置く。例外は投げない（D-1）。
- *   → AccountHub 側で空文字を「-」プレースホルダに置換して表示する。
- * - タブ切り替えごとに refetch しない（D-1）。アプリ再起動 / ログイン直後にのみ最新化。
- *   pull-to-refresh などのリアクティブ購読が要るタイミングで別タスクで拡張する。
- * - [updateProfile] は no-op に近い。AuthCore 側に email/displayName 更新 API が
- *   揃ったら通信を伴う実装に差し替える。MVP の方針上、編集 UI 自体も無効化されている。
+ * - 取得失敗時は **前回値を据え置く**（NetworkFailure / Failure ともに `_profile` を変更しない）。
+ *   AccountHub 側で空文字を「-」プレースホルダに置換して表示する。
+ * - 通常の AccountHub 画面入場では refresh しない（StateFlow が直前のキャッシュを返すだけ）。
+ *   pull-to-refresh 等が要るタイミングで別タスクで拡張する。
+ * - [updateProfile] は no-op に近い。AuthCore に email/displayName 更新 API が揃ったら
+ *   通信を伴う実装に差し替える（MVP の方針上、編集 UI 自体も無効化されている）。
  */
 class RemoteAccountProfileProvider(
     private val profileRepository: ProfileRepository,
-    scope: CoroutineScope,
 ) : AccountProfileProvider {
 
     private val _profile = MutableStateFlow(EMPTY_PROFILE)
     override val profile: StateFlow<AccountProfile> = _profile.asStateFlow()
-
-    init {
-        // NOTE: `getMyProfile()` は内部で `runCatchingNetwork` を通り例外を `NetworkResult` に
-        //       畳み込むため、ここで `runCatching` を再度被せると `CancellationException` まで
-        //       握り潰し構造化並行性を壊す（kotlin.runCatching の既知 footgun）。
-        //       sealed の網羅 when で扱い、Failure / NetworkFailure は空のまま据え置く。
-        //       ログ収集 SDK 導入は別タスク。
-        // NOTE: `init { scope.launch }` でコンストラクタから `this` がワーカースレッドに
-        //       見える形になるが、現状参照する `_profile` は val + 初期化済みなので安全。
-        //       副作用フィールドを後から追加する場合はここから参照しないこと
-        //       （必要なら `start()` 明示パターンに切り替える）。
-        scope.launch {
-            when (val result = profileRepository.getMyProfile()) {
-                is NetworkResult.Success -> _profile.value = result.value.toAccountProfile()
-                is NetworkResult.Failure,
-                is NetworkResult.NetworkFailure -> Unit
-            }
-        }
-    }
 
     /**
      * MVP では実 API 側に更新エンドポイントが無いため、ローカルの [_profile] のみ更新する。
@@ -65,15 +48,25 @@ class RemoteAccountProfileProvider(
      *
      * `accountModule` 上 `single<AccountProfileProvider>` で登録されており、本クラスは
      * プロセス内で 1 度だけ生成される。再ログインでも同一インスタンスが再利用されるため、
-     * `init` の `getMyProfile()` 呼び出しは初回しか走らず、ここで明示的に空に戻さないと
-     * 前ユーザーの displayName / email が残る。
-     *
-     * 再ログイン後の再 fetch トリガー（新ユーザーのプロフィールを取りに行く責務）は
-     * 本クラスのスコープ外。AccountHub 側が必要に応じて手動 refresh するか、後続タスクで
-     * `Authenticated` 遷移時に再取得を発火する仕組みを別途追加する想定。
+     * ここで明示的に空に戻さないと前ユーザーの displayName / email が残る。
      */
     override fun reset() {
         _profile.value = EMPTY_PROFILE
+    }
+
+    /**
+     * AuthCore + bank プロフィールを取得し直して [_profile] を更新する。
+     *
+     * 失敗時は `_profile` を変更しない（前回成功した値があれば維持される）。
+     * `runCatchingNetwork` 経由なので [kotlinx.coroutines.CancellationException] は
+     * Repository 内部で適切に再 throw される。
+     */
+    override suspend fun refresh() {
+        when (val result = profileRepository.getMyProfile()) {
+            is NetworkResult.Success -> _profile.value = result.value.toAccountProfile()
+            is NetworkResult.Failure,
+            is NetworkResult.NetworkFailure -> Unit
+        }
     }
 }
 

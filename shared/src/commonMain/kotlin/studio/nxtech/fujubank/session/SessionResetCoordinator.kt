@@ -7,12 +7,18 @@ import kotlinx.coroutines.launch
 import studio.nxtech.fujubank.account.AccountProfileProvider
 
 /**
- * `SessionStore.state` を観測し、`Authenticated → Unauthenticated` 遷移時に
- * Koin singleton で保持されているプロセス内キャッシュ（プロフィール等）を破棄する調停役。
+ * `SessionStore.state` を観測して、認証状態の遷移エッジに応じて Provider 系 singleton の
+ * キャッシュを更新する調停役。
+ *
+ * - `Authenticated → Unauthenticated`（ログアウト）: [AccountProfileProvider.reset] で
+ *   in-memory キャッシュを破棄。次に同じ Provider を購読した側に前ユーザの値を見せない。
+ * - `* → Authenticated`（ログイン / サインアップ完了 / bootstrap 復元）:
+ *   [AccountProfileProvider.refresh] で AuthCore + bank プロフィールを再取得し、
+ *   AccountHub 画面が開いた時に最新値を返せるようにする。失敗時は前回値を据え置く。
  *
  * 設計上の前提:
  * - VM 自体は `RootScaffold` / `RootTabView` の unmount に伴って自然破棄されるため、
- *   ここでは VM 内 state には触れず Provider 系 singleton のみ reset する。
+ *   ここでは VM 内 state には触れず Provider 系 singleton のみ更新する。
  * - 起動経路は Android `App.kt` の `LaunchedEffect(Unit)` / iOS `iOSApp.init` などから
  *   1 度だけ [start] を呼ぶ前提だが、二重呼び出しに備えて [started] フラグで idempotent にする。
  *   呼び出し元はいずれも Main スレッドだが、将来 background 起点が増えても二重 collect が
@@ -20,8 +26,9 @@ import studio.nxtech.fujubank.account.AccountProfileProvider
  * - StateFlow の collect は `SessionStore.scope` 上で起動する。アプリプロセスが生きている間
  *   有効な scope なので Coordinator 自身が scope を所有する必要は無い（[scope] 引数で
  *   テストから差し替えられるようにはしてある）。
- * - 「アプリ起動直後の `Unauthenticated` を logout と誤認しない」ために
- *   直前の状態を保持し、`Authenticated → Unauthenticated` の遷移エッジでのみ reset を発火する。
+ * - 「アプリ起動直後の `Unauthenticated` を logout と誤認しない」「初期 emit を refresh に
+ *   流用しない」ため、直前の状態を保持し、状態が **変化したエッジ** でのみハンドラを発火する。
+ *   ただし bootstrap 復元の `Unauthenticated → Authenticated` は変化エッジなので refresh が走る。
  */
 class SessionResetCoordinator(
     private val sessionStore: SessionStore,
@@ -44,6 +51,11 @@ class SessionResetCoordinator(
             sessionStore.state.collect { next ->
                 if (previous is SessionState.Authenticated && next is SessionState.Unauthenticated) {
                     accountProfileProvider.reset()
+                }
+                if (previous !is SessionState.Authenticated && next is SessionState.Authenticated) {
+                    // ログイン / サインアップ完了 / bootstrap 復元のいずれでも 1 度だけ refresh。
+                    // refresh 内で失敗しても前回値を据え置く設計のため例外は伝播しない。
+                    accountProfileProvider.refresh()
                 }
                 previous = next
             }

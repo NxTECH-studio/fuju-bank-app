@@ -1,7 +1,6 @@
 package studio.nxtech.fujubank.di
 
 import com.russhwolf.settings.Settings
-import kotlinx.coroutines.CoroutineScope
 import org.koin.dsl.module
 import studio.nxtech.fujubank.BuildKonfig
 import studio.nxtech.fujubank.account.AccountProfileProvider
@@ -17,9 +16,7 @@ import studio.nxtech.fujubank.account.RemoteAccountProfileProvider
  * - [AccountProfileProvider]:
  *   - debug (`USE_DUMMY_PROFILE=true`): [DummyAccountProfileProvider]（オフライン UI 確認用）
  *   - release (`USE_DUMMY_PROFILE=false`): [RemoteAccountProfileProvider]（実 API 取得）
- *   `RemoteAccountProfileProvider` は生成時に 1 回 fetch する設計のため、
- *   プロセス共有 [CoroutineScope]（[APP_SCOPE_QUALIFIER]、`realtimeModule` で登録）を
- *   注入する。
+ *   refresh は `SessionResetCoordinator` が `* → Authenticated` 遷移を観測して呼ぶ。
  */
 val accountModule = module {
     // signupModule で `single<Settings> { Settings() }` 済みなので get() で同一インスタンスを取る
@@ -29,10 +26,7 @@ val accountModule = module {
         if (BuildKonfig.USE_DUMMY_PROFILE) {
             DummyAccountProfileProvider()
         } else {
-            RemoteAccountProfileProvider(
-                profileRepository = get(),
-                scope = get<CoroutineScope>(APP_SCOPE_QUALIFIER),
-            )
+            RemoteAccountProfileProvider(profileRepository = get())
         }
     }
 }

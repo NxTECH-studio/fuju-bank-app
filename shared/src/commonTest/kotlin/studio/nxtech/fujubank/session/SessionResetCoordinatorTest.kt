@@ -13,9 +13,10 @@ import kotlin.test.assertNull
 
 class SessionResetCoordinatorTest {
 
-    /** reset() の呼び出し回数を数える fake。profile/updateProfile は本テストでは未使用。 */
+    /** reset() / refresh() の呼び出し回数を数える fake。 */
     private class FakeAccountProfileProvider : AccountProfileProvider {
         var resetCount: Int = 0
+        var refreshCount: Int = 0
         private val _profile = MutableStateFlow(
             AccountProfile(displayName = "", email = "", accountId = ""),
         )
@@ -23,6 +24,9 @@ class SessionResetCoordinatorTest {
         override fun updateProfile(displayName: String, email: String) = Unit
         override fun reset() {
             resetCount += 1
+        }
+        override suspend fun refresh() {
+            refreshCount += 1
         }
     }
 
@@ -39,6 +43,53 @@ class SessionResetCoordinatorTest {
         testScheduler.runCurrent()
 
         assertEquals(1, provider.resetCount)
+    }
+
+    @Test
+    fun unauthenticatedToAuthenticatedTriggersRefreshExactlyOnce() = runTest {
+        val store = SessionStore()
+        val provider = FakeAccountProfileProvider()
+        SessionResetCoordinator(store, provider, scope = backgroundScope).start()
+        testScheduler.runCurrent()
+
+        store.setAuthenticated("u1")
+        testScheduler.runCurrent()
+
+        assertEquals(1, provider.refreshCount)
+        assertEquals(0, provider.resetCount)
+    }
+
+    @Test
+    fun mfaPendingToAuthenticatedTriggersRefresh() = runTest {
+        val store = SessionStore()
+        val provider = FakeAccountProfileProvider()
+        SessionResetCoordinator(store, provider, scope = backgroundScope).start()
+        testScheduler.runCurrent()
+
+        store.setMfaPending("pt_1")
+        testScheduler.runCurrent()
+        store.setAuthenticated("u1")
+        testScheduler.runCurrent()
+
+        assertEquals(1, provider.refreshCount)
+    }
+
+    @Test
+    fun loginCycleTriggersRefreshThenReset() = runTest {
+        val store = SessionStore()
+        val provider = FakeAccountProfileProvider()
+        SessionResetCoordinator(store, provider, scope = backgroundScope).start()
+        testScheduler.runCurrent()
+
+        repeat(3) {
+            store.setAuthenticated("u$it")
+            testScheduler.runCurrent()
+            store.clear()
+            testScheduler.runCurrent()
+        }
+
+        assertEquals(3, provider.refreshCount)
+        assertEquals(3, provider.resetCount)
     }
 
     @Test

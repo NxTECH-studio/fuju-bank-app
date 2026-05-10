@@ -51,6 +51,21 @@ struct AppRoot: View {
                 try? await KoinIosKt.tokenExpiryWatcher().checkNow()
             }
         }
+        // Authenticated に遷移したタイミングでサインアップ動線をリセット。これをやらないと、
+        // ログアウトで Unauthenticated に戻った瞬間に signupRoute = .active かつ
+        // signupFlow.phase = .recoveryCodes が残っていて RecoveryCodesView が再表示される。
+        .onChange(of: session.state) { _, newState in
+            if newState is SessionState.Authenticated {
+                if signupRoute != .none {
+                    signupRoute = .none
+                }
+                // signupFlow は @StateObject なので AppRoot のライフタイム中保持される。
+                // 次回サインアップを開始する時に LoginView の signupTap で改めて reset() されるが、
+                // ここでも明示的に reset しておくことで Authenticated 中の再描画で古い phase を
+                // 触らないことを保証する。
+                signupFlow.reset()
+            }
+        }
     }
 
     @ViewBuilder
