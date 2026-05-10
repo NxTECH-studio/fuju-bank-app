@@ -13,17 +13,19 @@ import studio.nxtech.fujubank.session.invalidateSession
 
 val authModule = module {
     single<TokenStorage> { get<TokenStorageFactory>().create() }
-    // AuthApi は 2 つの HttpClient を受け取る。
-    // - authCoreClient (AUTHCORE_CLIENT_QUALIFIER): Auth プラグイン無し。
-    //   login / refresh / logout / mfaVerify / register に使う。Auth 付きで叩くと
-    //   refresh が 401 を返したときに refreshTokens ブロックが自己再帰して deadlock する。
-    // - bearerClient (default): Auth プラグイン付き。mfaRegister / mfaEnable に使う。
-    //   既に access_token を発行済みの状態で叩くため、Authorization ヘッダを自動付与させる。
+    // AuthApi は Auth プラグイン無しの AUTHCORE_CLIENT_QUALIFIER クライアントだけを使う。
+    // Bearer 必須な mfaRegister / mfaEnable には authTokenProvider 経由で TokenStorage から
+    // access_token を読んで手動で Authorization ヘッダを付ける。
+    //
+    // 「Auth プラグイン付きの bank/AuthCore 共通クライアント」を AuthApi にも注入してしまうと、
+    // そのクライアント生成時の `tokenRefresher = AuthTokenRefresher` が AuthRepository → AuthApi
+    // → 同クライアント を辿り、Koin が単一インスタンス構築途中の依存解決で循環死する。
     single {
+        val tokenStorage: studio.nxtech.fujubank.auth.TokenStorage = get()
         AuthApi(
             authCoreClient = get(qualifier = AUTHCORE_CLIENT_QUALIFIER),
-            bearerClient = get(),
             authCoreBaseUrl = defaultAuthCoreBaseUrl(),
+            authTokenProvider = { tokenStorage.loadAccess() },
         )
     }
     // nowMillis に実時刻を渡さないと AuthRepository.expiresAtFrom() が常に null を返し、

@@ -28,27 +28,27 @@ import studio.nxtech.fujubank.data.remote.runCatchingNetwork
  *
  * - login は MFA 必須ユーザのとき `pre_token` 付きの別形態で 200 を返すため、
  *   呼び出し側で sealed branch を判別できるよう [LoginRawResponse] 経由で返す。
- * - refresh / logout / mfaVerify / register は cookie 認証または認証不要なので
- *   `Auth` プラグイン無しの専用クライアント [authCoreClient] (= AUTHCORE_CLIENT_QUALIFIER)
- *   を使う。これを Auth 付きクライアントで叩くと refresh が 401 を返したときに
- *   `refreshTokens` ブロックが自己再帰起動して deadlock する。
- * - mfaRegister / mfaEnable は **既に access_token を発行済みのユーザ** が叩くため、
- *   `Auth` プラグイン付きの bank/AuthCore 共通クライアント [bearerClient] を使い、
- *   Authorization ヘッダを自動付与させる。逆を選ぶと 401→refresh ループに入る。
+ * - login / refresh / logout / mfaVerify / register / mfaRegister / mfaEnable いずれも
+ *   `Auth` プラグイン無しの専用クライアント（AUTHCORE_CLIENT_QUALIFIER）で叩く。
+ *   理由: bank/AuthCore 共通の Auth プラグイン付きクライアントを使うと、refresh 401 時に
+ *   `refreshTokens` ブロックが自己再帰起動し、AuthApi 自身が同じクライアント生成途中の
+ *   依存に組み込まれて Koin が循環依存で死ぬ。
+ * - mfaRegister / mfaEnable は Bearer 必須なので [authTokenProvider] から access_token を
+ *   読んで Authorization ヘッダを **手動** で付ける（自動 refresh は走らないが、register
+ *   直後 / login 直後の数秒以内に呼ぶ前提のため access_token は十分新しい）。
  */
 class AuthApi(
     private val authCoreClient: HttpClient,
-    private val bearerClient: HttpClient,
     private val authCoreBaseUrl: String,
+    private val authTokenProvider: suspend () -> String? = { null },
 ) {
     /**
-     * 単一の HttpClient で両ロールを兼ねるテスト向けコンビニエンスコンストラクタ。
-     *
-     * 本番では [AuthModule] が AUTHCORE_CLIENT_QUALIFIER 付きクライアントと
-     * 通常クライアントを別々に渡すこと（refresh 自己再帰防止のため）。
+     * 既存テスト向けのコンビニエンスコンストラクタ。`client` 引数名で呼んでいる
+     * テストとの互換維持のため残す。authTokenProvider は null 固定（mfaRegister /
+     * mfaEnable を叩かないテストパスでだけ使うこと）。
      */
     constructor(client: HttpClient, authCoreBaseUrl: String) :
-        this(authCoreClient = client, bearerClient = client, authCoreBaseUrl = authCoreBaseUrl)
+        this(authCoreClient = client, authCoreBaseUrl = authCoreBaseUrl, authTokenProvider = { null })
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -94,7 +94,7 @@ class AuthApi(
     /**
      * `POST /v1/auth/register` を叩いて新規アカウントを作成する。
      *
-     * 認証ヘッダ不要。トークンは発行されないため、続けて `login()` を呼んで access_token を
+     * 認証ヘッダ不要。トークンは発行されないため、続けて [login] を呼んで access_token を
      * 取得する必要がある。
      */
     suspend fun register(request: RegisterRequest): NetworkResult<RegisterResponse> =
@@ -108,24 +108,34 @@ class AuthApi(
     /**
      * `POST /v1/auth/mfa/register` を叩いて TOTP secret + QR + recoveryCodes を取得する。
      *
-     * Bearer access_token 必須。サーバ側は呼び出すたびに新しい secret を生成し旧 secret を
-     * 失効させる（非べき等）。クライアントは戻るボタンで再入する UX を作らないこと。
+     * Bearer access_token 必須。[authTokenProvider] から手動で Authorization を付ける。
+     * **非べき等**: 呼び出すたびに新しい secret / QR / recoveryCodes を返し、旧 secret は
+     * サーバ側で失効する。クライアントは「再生成」ボタンなど明示的トリガでのみ再呼び出しすること。
      */
     suspend fun mfaRegister(): NetworkResult<MfaRegisterResponse> = runCatchingNetwork {
-        bearerClient.post("$authCoreBaseUrl/v1/auth/mfa/register") {
+        val accessToken = authTokenProvider()
+        authCoreClient.post("$authCoreBaseUrl/v1/auth/mfa/register") {
             contentType(ContentType.Application.Json)
+            if (accessToken != null) {
+                headers { append(HttpHeaders.Authorization, "Bearer $accessToken") }
+            }
         }.body()
     }
 
     /**
      * `POST /v1/auth/mfa/enable` を叩いて MFA を有効化する。
      *
-     * Bearer access_token 必須。`mfa/register` で取得した secret に対する 6 桁 TOTP が
-     * 一致すると `mfa_enabled = true` がコミットされる。失敗時は `TOTP_CODE_INVALID`。
+     * Bearer access_token 必須。[authTokenProvider] から手動で Authorization を付ける。
+     * 成功すると AuthCore 側で `mfa_enabled = true` がコミットされ、以降のログインで MFA
+     * 入力が要求されるようになる。失敗時は `TOTP_CODE_INVALID`。
      */
     suspend fun mfaEnable(code: String): NetworkResult<Unit> = runCatchingNetwork {
-        bearerClient.post("$authCoreBaseUrl/v1/auth/mfa/enable") {
+        val accessToken = authTokenProvider()
+        authCoreClient.post("$authCoreBaseUrl/v1/auth/mfa/enable") {
             contentType(ContentType.Application.Json)
+            if (accessToken != null) {
+                headers { append(HttpHeaders.Authorization, "Bearer $accessToken") }
+            }
             setBody(MfaEnableRequest(code = code))
         }
         Unit
