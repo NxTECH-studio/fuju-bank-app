@@ -47,8 +47,8 @@ class SessionStore {
     val current: SessionState
         get() = _state.value
 
-    fun setAuthenticated(userId: String) {
-        _state.value = SessionState.Authenticated(userId)
+    fun setAuthenticated(userId: String, bankUserId: String) {
+        _state.value = SessionState.Authenticated(userId = userId, bankUserId = bankUserId)
     }
 
     fun setMfaPending(preToken: String) {
@@ -99,7 +99,10 @@ class SessionStore {
                     // 認証済みとして扱えない（送金経路でハマるため Unauthenticated に倒す）。
                     val subject = me.value.subject
                     if (subject != null) {
-                        _state.value = SessionState.Authenticated(subject)
+                        _state.value = SessionState.Authenticated(
+                            userId = subject,
+                            bankUserId = me.value.id,
+                        )
                     } else {
                         _state.value = SessionState.Unauthenticated
                     }

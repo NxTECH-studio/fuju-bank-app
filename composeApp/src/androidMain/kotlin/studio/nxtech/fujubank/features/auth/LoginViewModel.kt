@@ -108,7 +108,10 @@ class LoginViewModel(
                     sessionStore.setMfaSetupRequired()
                     _state.update { LoginUiState() }
                 } else {
-                    sessionStore.setAuthenticated(subject)
+                    sessionStore.setAuthenticated(
+                        userId = subject,
+                        bankUserId = provision.value.id,
+                    )
                     _state.update { LoginUiState() }
                 }
             }

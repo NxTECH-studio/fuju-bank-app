@@ -45,8 +45,11 @@ data class SignUpFlowState(
     val mfaCodeError: String? = null,
     // recovery codes 画面の「保存しました」チェック。
     val recoverySaved: Boolean = false,
-    // 完了済みのユーザー ID（recovery codes 画面で setAuthenticated に使う）。
+    // 完了済みのユーザー識別子（recovery codes 画面で setAuthenticated に使う）。
+    // - [pendingUserId]: AuthCore ULID (= external_user_id)。SessionStore.userId 源泉。
+    // - [pendingBankUserId]: bank PK 文字列。SessionStore.bankUserId 源泉（取引履歴 API 等）。
     val pendingUserId: String? = null,
+    val pendingBankUserId: String? = null,
 )
 
 /**
@@ -290,6 +293,7 @@ class SignUpFlowViewModel(
                         isSubmitting = false,
                         phase = SignUpPhase.RecoveryCodes,
                         pendingUserId = subject,
+                        pendingBankUserId = provision.value.id,
                         recoverySaved = false,
                     )
                 }
@@ -312,9 +316,10 @@ class SignUpFlowViewModel(
      */
     fun confirmRecoveryCodes(): Boolean {
         val userId = _state.value.pendingUserId ?: return false
+        val bankUserId = _state.value.pendingBankUserId ?: return false
         if (!_state.value.recoverySaved) return false
         signupCompletionSignal.arm()
-        sessionStore.setAuthenticated(userId)
+        sessionStore.setAuthenticated(userId = userId, bankUserId = bankUserId)
         return true
     }
 

@@ -84,7 +84,7 @@ class AuthTokenRefresherTest {
             )
         }
         val storage = FakeTokenStorage(initialAccess = "at_old")
-        val sessionStore = SessionStore().apply { setAuthenticated("usr_1") }
+        val sessionStore = SessionStore().apply { setAuthenticated(userId = "usr_1", bankUserId = "1") }
         val refresher = createAuthTokenRefresher(
             authRepository = authRepository(engine, storage),
             tokenStorage = storage,
@@ -112,7 +112,7 @@ class AuthTokenRefresherTest {
             )
         }
         val storage = FakeTokenStorage(initialAccess = "at_old")
-        val sessionStore = SessionStore().apply { setAuthenticated("usr_1") }
+        val sessionStore = SessionStore().apply { setAuthenticated(userId = "usr_1", bankUserId = "1") }
         val refresher = createAuthTokenRefresher(
             authRepository = authRepository(engine, storage),
             tokenStorage = storage,
@@ -135,7 +135,7 @@ class AuthTokenRefresherTest {
             throw RuntimeException("offline")
         }
         val storage = FakeTokenStorage(initialAccess = "at_old")
-        val sessionStore = SessionStore().apply { setAuthenticated("usr_1") }
+        val sessionStore = SessionStore().apply { setAuthenticated(userId = "usr_1", bankUserId = "1") }
         val refresher = createAuthTokenRefresher(
             authRepository = authRepository(engine, storage),
             tokenStorage = storage,
@@ -165,7 +165,7 @@ class AuthTokenRefresherTest {
             )
         }
         val storage = FakeTokenStorage(initialAccess = "at_old")
-        val sessionStore = SessionStore().apply { setAuthenticated("usr_1") }
+        val sessionStore = SessionStore().apply { setAuthenticated(userId = "usr_1", bankUserId = "1") }
         val refresher = createAuthTokenRefresher(
             authRepository = authRepository(engine, storage),
             tokenStorage = storage,
@@ -193,7 +193,7 @@ class AuthTokenRefresherTest {
             )
         }
         // clear() が呼ばれた瞬間の sessionStore.current を記録する FakeTokenStorage。
-        val sessionStore = SessionStore().apply { setAuthenticated("usr_1") }
+        val sessionStore = SessionStore().apply { setAuthenticated(userId = "usr_1", bankUserId = "1") }
         val sessionStateAtClear = mutableListOf<SessionState>()
         val storage = object : TokenStorage {
             var access: String? = "at_old"
@@ -221,7 +221,7 @@ class AuthTokenRefresherTest {
 
         assertEquals(1, storage.clearCalls)
         assertEquals(
-            listOf<SessionState>(SessionState.Authenticated("usr_1")),
+            listOf<SessionState>(SessionState.Authenticated(userId = "usr_1", bankUserId = "1")),
             sessionStateAtClear,
             "tokenStorage.clear() は sessionStore.clear() より先に呼ばれるべき",
         )

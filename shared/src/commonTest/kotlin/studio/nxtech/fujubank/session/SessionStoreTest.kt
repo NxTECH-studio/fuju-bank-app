@@ -76,10 +76,11 @@ class SessionStoreTest {
         assertEquals("pt_123", mfa.preToken)
 
         // SessionStore.userId は AuthCore の ULID (= bank の external_user_id) を源泉とするため、
-        // テストでも ULID 体裁 (Crockford Base32 26 文字) で渡す。
-        store.setAuthenticated("01HZX1A2B3C4D5E6F7G8H9JKM1")
+        // テストでも ULID 体裁 (Crockford Base32 26 文字) で渡す。bankUserId は bank PK の文字列。
+        store.setAuthenticated(userId = "01HZX1A2B3C4D5E6F7G8H9JKM1", bankUserId = "42")
         val auth = assertIs<SessionState.Authenticated>(store.current)
         assertEquals("01HZX1A2B3C4D5E6F7G8H9JKM1", auth.userId)
+        assertEquals("42", auth.bankUserId)
 
         store.clear()
         assertEquals(SessionState.Unauthenticated, store.current)
@@ -126,6 +127,7 @@ class SessionStoreTest {
 
         val auth = assertIs<SessionState.Authenticated>(store.current)
         assertEquals("01HZX1A2B3C4D5E6F7G8H9JKM1", auth.userId)
+        assertEquals("42", auth.bankUserId)
     }
 
     @Test
@@ -179,6 +181,7 @@ class SessionStoreTest {
 
         val auth = assertIs<SessionState.Authenticated>(store.current)
         assertEquals("01HZX1A2B3C4D5E6F7G8H9JKM2", auth.userId)
+        assertEquals("43", auth.bankUserId)
         assertEquals("at_refreshed", storage.access)
     }
 
@@ -247,17 +250,18 @@ class SessionStoreTest {
     @Test
     fun state_can_loop_between_authenticated_and_unauthenticated() {
         // 一度ログイン → ログアウト → 再ログインのループが通ること。
-        // userId は ULID 体裁。
+        // userId は ULID 体裁、bankUserId は bank PK 文字列。
         val store = SessionStore()
-        store.setAuthenticated("01HZX1A2B3C4D5E6F7G8H9JKM1")
+        store.setAuthenticated(userId = "01HZX1A2B3C4D5E6F7G8H9JKM1", bankUserId = "1")
         assertIs<SessionState.Authenticated>(store.current)
 
         store.clear()
         assertEquals(SessionState.Unauthenticated, store.current)
 
-        store.setAuthenticated("01HZX1A2B3C4D5E6F7G8H9JKM2")
+        store.setAuthenticated(userId = "01HZX1A2B3C4D5E6F7G8H9JKM2", bankUserId = "2")
         val auth2 = assertIs<SessionState.Authenticated>(store.current)
         assertEquals("01HZX1A2B3C4D5E6F7G8H9JKM2", auth2.userId)
+        assertEquals("2", auth2.bankUserId)
     }
 
     @Test
@@ -298,14 +302,14 @@ class SessionStoreTest {
         }
 
         store.setMfaPending("pt")
-        store.setAuthenticated("01HZX1A2B3C4D5E6F7G8H9JKM1")
+        store.setAuthenticated(userId = "01HZX1A2B3C4D5E6F7G8H9JKM1", bankUserId = "1")
         store.clear()
 
         assertEquals(
             listOf(
                 SessionState.Unauthenticated,
                 SessionState.MfaPending("pt"),
-                SessionState.Authenticated("01HZX1A2B3C4D5E6F7G8H9JKM1"),
+                SessionState.Authenticated(userId = "01HZX1A2B3C4D5E6F7G8H9JKM1", bankUserId = "1"),
                 SessionState.Unauthenticated,
             ),
             emitted,

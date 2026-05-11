@@ -436,7 +436,7 @@ class UserRepositoryTest {
             )
         }
         val sessionStore = SessionStore().apply {
-            setAuthenticated(userId = "01HZY8X2B7K3J4M5N6P7Q8R9ST")
+            setAuthenticated(userId = "01HZY8X2B7K3J4M5N6P7Q8R9ST", bankUserId = "7")
         }
         val repository = UserRepository(
             userApi = UserApi(httpClient(engine)),

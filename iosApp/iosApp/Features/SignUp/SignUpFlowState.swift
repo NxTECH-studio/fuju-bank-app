@@ -33,7 +33,11 @@ final class SignUpFlowState: ObservableObject {
     @Published var mfaSetup: MfaSetupBundleUi? = nil
     @Published var mfaCodeError: String? = nil
     @Published var recoverySaved: Bool = false
+    // 完了済みのユーザー識別子（recovery codes 画面で setAuthenticated に使う）。
+    // - pendingUserId: AuthCore ULID (= external_user_id)。SessionStore.userId 源泉。
+    // - pendingBankUserId: bank PK 文字列。SessionStore.bankUserId 源泉（取引履歴 API 等）。
     @Published private(set) var pendingUserId: String? = nil
+    @Published private(set) var pendingBankUserId: String? = nil
 
     static let totpLength = 6
     static let publicIdMin = 4
@@ -53,6 +57,7 @@ final class SignUpFlowState: ObservableObject {
         mfaCodeError = nil
         recoverySaved = false
         pendingUserId = nil
+        pendingBankUserId = nil
     }
 
     func updatePublicId(_ value: String) {
@@ -212,6 +217,7 @@ final class SignUpFlowState: ObservableObject {
         case let enabled as MfaEnableOutcome.Enabled:
             isSubmitting = false
             pendingUserId = enabled.userId
+            pendingBankUserId = enabled.bankUserId
             recoverySaved = false
             phase = .recoveryCodes
         case let failure as MfaEnableOutcome.Failure:
@@ -231,9 +237,11 @@ final class SignUpFlowState: ObservableObject {
     /// 成功時 true を返す。SwiftUI 側はこれを使って一度だけリセットすれば良い。
     @discardableResult
     func confirmRecoveryCodes() -> Bool {
-        guard let userId = pendingUserId, recoverySaved else { return false }
+        guard let userId = pendingUserId,
+              let bankUserId = pendingBankUserId,
+              recoverySaved else { return false }
         KoinIosKt.signupCompletionSignal().arm()
-        KoinIosKt.sessionStore().setAuthenticated(userId: userId)
+        KoinIosKt.sessionStore().setAuthenticated(userId: userId, bankUserId: bankUserId)
         return true
     }
 

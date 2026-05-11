@@ -48,14 +48,16 @@ class TransactionListViewModel(
             }
         }
         loadJob = viewModelScope.launch {
-            val sessionUserId = (sessionStore.current as? SessionState.Authenticated)?.userId
+            // `/users/:id/transactions` は bank 内部 PK (`:id`) で叩く契約のため、SessionStore の
+            // `bankUserId` を渡す（`userId` は AuthCore ULID なので bank PK エンドポイントには使えない）。
+            val sessionBankUserId = (sessionStore.current as? SessionState.Authenticated)?.bankUserId
             // ダミーモードでは Repository が userId を無視してフェイクデータを返すため、
             // セッション未確立でも UI 確認のために空文字でフォールスルーさせる。
-            if (sessionUserId == null && !userRepository.useDummyData) {
+            if (sessionBankUserId == null && !userRepository.useDummyData) {
                 _state.value = TransactionListUiState.Error(message = "セッションが切れました")
                 return@launch
             }
-            val userId = sessionUserId ?: ""
+            val userId = sessionBankUserId ?: ""
             when (val result = userRepository.transactions(userId)) {
                 is NetworkResult.Success -> _state.value = TransactionListUiState.Loaded(
                     items = result.value.sortedByDescending { it.occurredAt },

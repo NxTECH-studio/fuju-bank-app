@@ -90,7 +90,10 @@ fun verifyMfaWithoutAuthenticating(
                     // setAuthenticated に渡せる ULID が無いため、Failure に倒して再ログインを促す。
                     val subject = provision.value.subject
                     if (subject != null) {
-                        MfaVerifyOutcome.Verified(subject)
+                        MfaVerifyOutcome.Verified(
+                            userId = subject,
+                            bankUserId = provision.value.id,
+                        )
                     } else {
                         MfaVerifyOutcome.Failure(
                             message = "セッション情報を取得できませんでした。もう一度ログインしてください",
@@ -124,7 +127,13 @@ fun verifyMfaWithoutAuthenticating(
 
 /** [verifyMfaWithoutAuthenticating] の結果。Authenticated 遷移は呼び出し側が後で行う。 */
 sealed class MfaVerifyOutcome {
-    data class Verified(val userId: String) : MfaVerifyOutcome()
+    /**
+     * MFA 検証成功。Swift 側はオンボーディング完了時に
+     * `sessionStore.setAuthenticated(userId, bankUserId)` の 2 引数を渡す契約。
+     * - [userId]: AuthCore ULID (= external_user_id)。`/ledger/transfer` 等に渡す。
+     * - [bankUserId]: bank PK 文字列。`/users/:id/transactions` 等の bank 内部経路に渡す。
+     */
+    data class Verified(val userId: String, val bankUserId: String) : MfaVerifyOutcome()
     data class Failure(val message: String, val error: ApiError) : MfaVerifyOutcome()
     data class NetworkFailure(val message: String) : MfaVerifyOutcome()
 }
@@ -234,7 +243,10 @@ private suspend fun provisionAfterAuth(
             if (needsSetup) {
                 sessionStore.setMfaSetupRequired()
             } else {
-                sessionStore.setAuthenticated(subject)
+                sessionStore.setAuthenticated(
+                    userId = subject,
+                    bankUserId = provision.value.id,
+                )
             }
             AuthFlowOutcome.Authenticated
         }
@@ -283,7 +295,13 @@ sealed class MfaSetupOutcome {
 
 /** [enableMfaAndProvision] の結果。Enabled で provisionMe まで完了し、ホーム遷移可能になる。 */
 sealed class MfaEnableOutcome {
-    data class Enabled(val userId: String) : MfaEnableOutcome()
+    /**
+     * MFA 有効化 + provisionMe 完了。Swift 側はリカバリーコード保存後に
+     * `sessionStore.setAuthenticated(userId, bankUserId)` の 2 引数を渡す契約。
+     * - [userId]: AuthCore ULID (= external_user_id)。`/ledger/transfer` 等に渡す。
+     * - [bankUserId]: bank PK 文字列。`/users/:id/transactions` 等の bank 内部経路に渡す。
+     */
+    data class Enabled(val userId: String, val bankUserId: String) : MfaEnableOutcome()
     data class Failure(val message: String, val error: ApiError) : MfaEnableOutcome()
     data class NetworkFailure(val message: String) : MfaEnableOutcome()
 }
@@ -409,11 +427,15 @@ private suspend fun provisionToMfaEnableOutcome(
     userRepository: UserRepository,
 ): MfaEnableOutcome = when (val provision = userRepository.provisionMe()) {
     is NetworkResult.Success -> {
-        // Swift 側はこの userId を後で `setAuthenticated(userId)` に渡す契約。SessionStore.userId
-        // は ULID を源泉とする方針なので、subject (AuthCore sub) を返す。null の場合は Failure。
+        // Swift 側はこの userId / bankUserId を後で `setAuthenticated(userId, bankUserId)` に渡す
+        // 契約。SessionStore は ULID と bank PK の両方を併存させるため、subject (AuthCore sub) と
+        // 内部 id (bank PK) の双方を返す。subject が null の場合は Failure に倒す。
         val subject = provision.value.subject
         if (subject != null) {
-            MfaEnableOutcome.Enabled(userId = subject)
+            MfaEnableOutcome.Enabled(
+                userId = subject,
+                bankUserId = provision.value.id,
+            )
         } else {
             MfaEnableOutcome.Failure(
                 message = "セッション情報を取得できませんでした。もう一度ログインしてください",
