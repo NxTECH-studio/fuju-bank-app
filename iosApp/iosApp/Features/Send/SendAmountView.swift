@@ -140,7 +140,8 @@ struct SendAmountView: View {
 
     /// 任意メモ入力欄 + `n/80` カウンタ。Android 側 `MemoField` と対称。
     ///
-    /// - 80 文字上限のクライアントガードは ViewModel の `memo` didSet で末尾を切り詰める。
+    /// - 80 文字上限のクライアントガードは `submit()` 内で `prefix(80)` により安全側に丸める
+    ///   （IME 干渉を避けるため入力時の即時切り詰めは行わない / 詳細は ViewModel `memo` 参照）。
     /// - `axis: .vertical` + `lineLimit(1...3)` でメモらしい複数行入力を許容する。
     /// - 残量が 10 文字以下になったらカウンタを警告色 (red) に切り替える。
     private var memoField: some View {

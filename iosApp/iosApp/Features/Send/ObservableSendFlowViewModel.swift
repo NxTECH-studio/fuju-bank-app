@@ -54,18 +54,15 @@ final class ObservableSendFlowViewModel: ObservableObject {
     @Published private(set) var balance: Int64 = 0
     @Published var amount: Int64 = 0
     /// 送金時に付与する任意メモ。Android `SendFlowState.memo` と対称。
-    /// 80 文字を超える代入は didSet で末尾を切り捨てる（クライアントガード）。
+    ///
+    /// 入力時の即時切り詰め（didSet で `prefix(80)`）は、SwiftUI Binding 経由で View 側に値が
+    /// 逆流する際に IME の marked text（変換中の未確定文字）と衝突し、日本語/中国語等の IME
+    /// 入力が成立しなくなる（変換確定できない / 入力した文字が消える）ため行わない。
+    /// 80 文字超過は `submit()` 内で `prefix(80)` により安全側で丸め、表示上のカウンタが
+    /// 80 を超えた時点で warning 色に切り替わる UI で過入力をユーザーに気付かせる。
     /// `String.count` は Grapheme Cluster ベースのため Kotlin `String.length` (UTF-16 code unit)
     /// と非対称だが、80 文字程度の短文かつどちらも目視で違和感のない範囲のため UX 上は許容する。
-    @Published var memo: String = "" {
-        didSet {
-            if memo.count > Self.memoMaxLength {
-                // 再代入で再帰呼び出しが起こるが、prefix によって 1 度の再代入で 80 文字以下に
-                // 収まるため didSet は計 2 回までで停止する。
-                memo = String(memo.prefix(Self.memoMaxLength))
-            }
-        }
-    }
+    @Published var memo: String = ""
     @Published var showAmountConfirm: Bool = false
     @Published private(set) var submission: Submission = .idle
     @Published private(set) var error: String?
@@ -268,9 +265,12 @@ final class ObservableSendFlowViewModel: ObservableObject {
             if case let .mfaRequired(key) = submission { return key }
             return nil
         }()
+        // 80 文字超過は submit 時にここで安全側に丸める（IME 干渉を避けるため didSet で
+        // 切り詰めない方針。詳細は memo プロパティの doc コメント参照）。
         // 空文字 / 空白のみの memo は nil に正規化してサーバへ送る（Android 側と同じ挙動）。
-        let trimmedMemo = memo.trimmingCharacters(in: .whitespacesAndNewlines)
-        let memoForRequest: String? = trimmedMemo.isEmpty ? nil : memo
+        let truncatedMemo = String(memo.prefix(Self.memoMaxLength))
+        let trimmedMemo = truncatedMemo.trimmingCharacters(in: .whitespacesAndNewlines)
+        let memoForRequest: String? = trimmedMemo.isEmpty ? nil : truncatedMemo
         showAmountConfirm = false
         submission = .submitting
         error = nil
