@@ -1,5 +1,6 @@
 package studio.nxtech.fujubank.data.repository
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import studio.nxtech.fujubank.auth.TokenStorage
@@ -27,12 +28,31 @@ import studio.nxtech.fujubank.network.BearerCacheInvalidator
  * [bearerCacheInvalidator] を呼ぶ。Ktor `Auth { bearer }` プラグインは loadTokens の結果を
  * メモリキャッシュしており、明示的に invalidate しないと別ユーザでログインした後も
  * 前ユーザの Bearer を送り続ける（/v1/user/profile が前ユーザのデータを返す事象の原因）。
+ *
+ * **セッションスコープキャッシュの破棄**: login / verifyMfa の成功は「新しいユーザの
+ * session が開始する」境界そのもの。bearer キャッシュ無効化と同じタイミングで
+ * [onAuthBoundary] を呼び、`AccountProfileProvider.loaded` や `RealtimeRepository.cache`
+ * など Koin singleton が保持している前ユーザ由来の in-memory state を破棄する。
+ * `refresh()` は **同一ユーザ** の access token 巻き直しなので呼ばない（不要にキャッシュを
+ * 落とすと AccountHub が無駄に再 fetch する）。logout 経路は `SessionResetCoordinator` が
+ * `Authenticated → Unauthenticated` 遷移を観測して同等の reset を行う。
+ *
+ * [onAuthBoundary] 内の例外は `CancellationException` のみ再 throw し、それ以外は握る。
+ * 既に `saveAccess` / bearer 無効化は完了しており、ここで失敗を伝播させると **新ユーザの
+ * access が保存されたまま `LoginResult` が返らない** という不整合（UI は失敗扱い、内部は
+ * 新ユーザ済み）を生む。fail-closed の方針上、キャッシュ破棄失敗より session 確立を優先する
+ * （bearer 無効化済みなので前ユーザの bearer は使われない。最悪、前ユーザの cached profile が
+ * 残るが、明示的な再ログインで再度 [onAuthBoundary] が走り回復可能）。
  */
 class AuthRepository(
     private val authApi: AuthApi,
     private val tokenStorage: TokenStorage,
     // テスト互換のためデフォルト no-op。本番は authModule で実体を注入する。
     private val bearerCacheInvalidator: BearerCacheInvalidator = BearerCacheInvalidator { },
+    // login / verifyMfa 成功時に呼ばれるセッション境界フック。bearer キャッシュ無効化と
+    // 同期で in-memory provider をクリアするため、UI が新ユーザ state を見るより前に
+    // 前ユーザのキャッシュが落ちていることを保証する（observer 経由だと race する）。
+    private val onAuthBoundary: suspend () -> Unit = {},
     private val nowMillis: () -> Long = { 0L },
 ) {
     /**
@@ -57,6 +77,7 @@ class AuthRepository(
                             expiresAt = expiresAtFrom(raw.response.expiresIn),
                         )
                         bearerCacheInvalidator.invalidate()
+                        runAuthBoundaryQuietly()
                         LoginResult.Authenticated(
                             accessToken = raw.response.accessToken,
                             expiresIn = raw.response.expiresIn,
@@ -86,6 +107,7 @@ class AuthRepository(
                         expiresAt = expiresAtFrom(result.value.expiresIn),
                     )
                     bearerCacheInvalidator.invalidate()
+                    runAuthBoundaryQuietly()
                     NetworkResult.Success(Unit)
                 }
                 is NetworkResult.Failure -> result
@@ -158,6 +180,21 @@ class AuthRepository(
      * 入力が要求されるようになる。
      */
     suspend fun enableMfa(code: String): NetworkResult<Unit> = authApi.mfaEnable(code = code)
+
+    // onAuthBoundary を「キャッシュ破棄失敗で login が失敗扱いにならない」よう保護する。
+    // saveAccess + bearer 無効化は既に成功しており、ここでの失敗を伝播させると新ユーザの
+    // access が保存されたまま LoginResult が返らない不整合になる。CancellationException
+    // のみ協調キャンセル維持のために再 throw し、その他は握る。
+    private suspend fun runAuthBoundaryQuietly() {
+        try {
+            onAuthBoundary()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            // キャッシュ破棄に失敗しても session は確立させる。bearer は無効化済みなので
+            // 前ユーザの bearer は使われない。最悪は前ユーザの cached profile が残るのみ。
+        }
+    }
 
     private fun expiresAtFrom(expiresInSec: Long): Long? {
         val now = nowMillis()

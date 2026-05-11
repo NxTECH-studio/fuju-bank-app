@@ -19,6 +19,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -36,6 +38,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -69,6 +75,7 @@ import studio.nxtech.fujubank.features.transactions.TransactionDetailViewModel
 import studio.nxtech.fujubank.features.transactions.TransactionListScreen
 import studio.nxtech.fujubank.features.transactions.TransactionListViewModel
 import studio.nxtech.fujubank.navigation.RootDestination
+import studio.nxtech.fujubank.session.SessionState
 import studio.nxtech.fujubank.session.SessionStore
 import studio.nxtech.fujubank.theme.FujuBankColors
 import studio.nxtech.fujubank.theme.NotoSansJP
@@ -82,6 +89,38 @@ import studio.nxtech.fujubank.theme.NotoSansJP
  */
 @Composable
 fun RootScaffold() {
+    // 内部の各 ViewModel（Home / TransactionList / Send / AccountHub など）は **ユーザー固有**
+    // のデータを `_state` に保持している。デフォルトの `LocalViewModelStoreOwner`（= Activity）
+    // を使うと、別ユーザでログインし直しても Activity が生存している限り前ユーザの VM インスタンス
+    // がそのまま再利用され、`viewModel(...)` の冪等性により init { load() } も再実行されないため
+    // 残高や取引履歴が前ユーザの値のまま表示される（client-bank-23 で報告された残留事象）。
+    //
+    // ここで bankUserId を key にした専用 [ViewModelStoreOwner] を `CompositionLocalProvider`
+    // で差し込み、ユーザ切替時に古い VM 群をまとめて破棄して新規生成させる。`remember(bankUserId)`
+    // で owner を回し、`DisposableEffect` の onDispose で旧 store を clear することでリークも防ぐ。
+    //
+    // `RootScaffold` は AppRoot 側で `Authenticated` の時だけ composition に入る前提なので、
+    // bankUserId が空文字になるのは観測上の最初の 1 フレームの瞬間（state の collect 前）だけ。
+    // 空文字 owner が一瞬使われても、直後の recomposition で正しい owner に差し替わる。
+    val sessionStore = remember { KoinPlatform.getKoin().get<SessionStore>() }
+    val sessionState by sessionStore.state.collectAsStateWithLifecycle()
+    val bankUserId = (sessionState as? SessionState.Authenticated)?.bankUserId.orEmpty()
+    val userScopedOwner = remember(bankUserId) {
+        object : ViewModelStoreOwner {
+            override val viewModelStore: ViewModelStore = ViewModelStore()
+        }
+    }
+    DisposableEffect(userScopedOwner) {
+        onDispose { userScopedOwner.viewModelStore.clear() }
+    }
+
+    CompositionLocalProvider(LocalViewModelStoreOwner provides userScopedOwner) {
+        RootScaffoldContent()
+    }
+}
+
+@Composable
+private fun RootScaffoldContent() {
     var destination: RootDestination by rememberSaveable(
         stateSaver = RootDestinationSaver,
     ) { mutableStateOf(RootDestination.Home) }

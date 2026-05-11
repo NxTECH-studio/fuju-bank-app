@@ -696,6 +696,231 @@ class AuthRepositoryTest {
         assertEquals(10_000L + 120L * 1_000L, storage.expiresAt)
     }
 
+    // ---------- 追加: onAuthBoundary（セッション境界フック） ----------
+
+    @Test
+    fun login_token_success_invokes_onAuthBoundary_once() = runTest {
+        // login Token 成功時に、新ユーザの session が始まる境界として
+        // onAuthBoundary が 1 度だけ呼ばれることを確認。
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """{"access_token":"at","token_type":"Bearer","expires_in":900}""",
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val storage = FakeTokenStorage()
+        var boundaryCalls = 0
+        val repo = AuthRepository(
+            authApi = AuthApi(
+                client = httpClient(engine),
+                authCoreBaseUrl = BASE_URL,
+            ),
+            tokenStorage = storage,
+            onAuthBoundary = { boundaryCalls += 1 },
+        )
+
+        repo.login(identifier = "u", password = "p")
+        assertEquals(1, boundaryCalls)
+    }
+
+    @Test
+    fun login_needs_mfa_does_not_invoke_onAuthBoundary() = runTest {
+        // pre_token フェーズではまだ session が確定していない（access も保存しない）ので
+        // キャッシュ破棄も走らせない。verifyMfa 成功時に初めて発火する契約。
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """{"pre_token":"pt","mfa_required":true,"token_type":"Bearer","expires_in":600}""",
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val storage = FakeTokenStorage()
+        var boundaryCalls = 0
+        val repo = AuthRepository(
+            authApi = AuthApi(
+                client = httpClient(engine),
+                authCoreBaseUrl = BASE_URL,
+            ),
+            tokenStorage = storage,
+            onAuthBoundary = { boundaryCalls += 1 },
+        )
+
+        repo.login(identifier = "u", password = "p")
+        assertEquals(0, boundaryCalls)
+    }
+
+    @Test
+    fun login_failure_does_not_invoke_onAuthBoundary() = runTest {
+        // 認証失敗時に hook を呼ぶと「失敗した別ユーザ」のキャッシュ破棄として
+        // 副作用が発生してしまうため、Failure 経路では呼ばないこと。
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """{"error":"INVALID_CREDENTIALS","message":"x"}""",
+                ),
+                status = HttpStatusCode.Unauthorized,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val storage = FakeTokenStorage()
+        var boundaryCalls = 0
+        val repo = AuthRepository(
+            authApi = AuthApi(
+                client = httpClient(engine),
+                authCoreBaseUrl = BASE_URL,
+            ),
+            tokenStorage = storage,
+            onAuthBoundary = { boundaryCalls += 1 },
+        )
+
+        repo.login(identifier = "u", password = "p")
+        assertEquals(0, boundaryCalls)
+    }
+
+    @Test
+    fun verifyMfa_success_invokes_onAuthBoundary_once() = runTest {
+        // MFA 検証成功も「新ユーザの session が確定する」境界なので発火する。
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """{"access_token":"at_mfa","token_type":"Bearer","expires_in":900}""",
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val storage = FakeTokenStorage()
+        var boundaryCalls = 0
+        val repo = AuthRepository(
+            authApi = AuthApi(
+                client = httpClient(engine),
+                authCoreBaseUrl = BASE_URL,
+            ),
+            tokenStorage = storage,
+            onAuthBoundary = { boundaryCalls += 1 },
+        )
+
+        repo.verifyMfa(preToken = "pt", code = "123456")
+        assertEquals(1, boundaryCalls)
+    }
+
+    @Test
+    fun verifyMfa_failure_does_not_invoke_onAuthBoundary() = runTest {
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """{"error":"TOTP_CODE_INVALID","message":"wrong"}""",
+                ),
+                status = HttpStatusCode.Unauthorized,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val storage = FakeTokenStorage()
+        var boundaryCalls = 0
+        val repo = AuthRepository(
+            authApi = AuthApi(
+                client = httpClient(engine),
+                authCoreBaseUrl = BASE_URL,
+            ),
+            tokenStorage = storage,
+            onAuthBoundary = { boundaryCalls += 1 },
+        )
+
+        repo.verifyMfa(preToken = "pt", code = "000000")
+        assertEquals(0, boundaryCalls)
+    }
+
+    @Test
+    fun refresh_success_does_not_invoke_onAuthBoundary() = runTest {
+        // refresh は **同一ユーザ** の access 巻き直しなので session 境界ではない。
+        // ここで呼んでしまうと AccountHub が無駄に再 fetch する。
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """{"access_token":"at_new","token_type":"Bearer","expires_in":900}""",
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val storage = FakeTokenStorage().apply { access = "at_old" }
+        var boundaryCalls = 0
+        val repo = AuthRepository(
+            authApi = AuthApi(
+                client = httpClient(engine),
+                authCoreBaseUrl = BASE_URL,
+            ),
+            tokenStorage = storage,
+            onAuthBoundary = { boundaryCalls += 1 },
+        )
+
+        repo.refresh()
+        assertEquals(0, boundaryCalls)
+    }
+
+    @Test
+    fun login_token_success_swallows_onAuthBoundary_throwable() = runTest {
+        // onAuthBoundary 内で例外が起きても session 確立は止めない。saveAccess と bearer 無効化が
+        // 済んだ後に LoginResult を返さないと「access は保存済みだが UI は失敗扱い」という
+        // 不整合になるため、CancellationException 以外は握る契約。
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """{"access_token":"at","token_type":"Bearer","expires_in":900}""",
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val storage = FakeTokenStorage()
+        val repo = AuthRepository(
+            authApi = AuthApi(
+                client = httpClient(engine),
+                authCoreBaseUrl = BASE_URL,
+            ),
+            tokenStorage = storage,
+            onAuthBoundary = { error("boom") },
+        )
+
+        val result = repo.login(identifier = "u", password = "p")
+        val success = assertIs<NetworkResult.Success<LoginResult>>(result)
+        assertIs<LoginResult.Authenticated>(success.value)
+        // access は保存され、bearer 無効化も済む。fail-closed の境界を超えた後の失敗は握る。
+        assertEquals("at", storage.access)
+    }
+
+    @Test
+    fun login_token_success_propagates_cancellation_from_onAuthBoundary() = runTest {
+        // 協調キャンセルだけは握り潰さず再 throw する。`runCatchingNetwork` と同じ方針。
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """{"access_token":"at","token_type":"Bearer","expires_in":900}""",
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val storage = FakeTokenStorage()
+        val repo = AuthRepository(
+            authApi = AuthApi(
+                client = httpClient(engine),
+                authCoreBaseUrl = BASE_URL,
+            ),
+            tokenStorage = storage,
+            onAuthBoundary = { throw CancellationException("simulated") },
+        )
+
+        assertFailsWith<CancellationException> {
+            repo.login(identifier = "u", password = "p")
+        }
+    }
+
     // ---------- 追加: login Set-Cookie の取り扱い ----------
 
     @Test

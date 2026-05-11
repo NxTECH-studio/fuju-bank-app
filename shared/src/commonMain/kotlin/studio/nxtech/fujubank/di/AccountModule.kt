@@ -16,7 +16,13 @@ import studio.nxtech.fujubank.account.RemoteAccountProfileProvider
  * - [AccountProfileProvider]:
  *   - debug (`USE_DUMMY_PROFILE=true`): [DummyAccountProfileProvider]（オフライン UI 確認用）
  *   - release (`USE_DUMMY_PROFILE=false`): [RemoteAccountProfileProvider]（実 API 取得）
- *   refresh は `SessionResetCoordinator` が `* → Authenticated` 遷移を観測して呼ぶ。
+ *
+ *   ユーザ境界での `reset()` は二経路で呼ばれる:
+ *   - ログイン境界（login / verifyMfa 成功直後）は `AuthRepository.onAuthBoundary` が
+ *     bearer キャッシュ無効化と同期で呼ぶ。UI が Authenticated を観測する前に loaded が
+ *     落ちているため AccountHub.ensureLoaded() が新ユーザでも必ず再 fetch する。
+ *   - ログアウト境界（`Authenticated → Unauthenticated`）は `SessionResetCoordinator` が
+ *     `SessionStore.state` を観測して呼ぶ。
  */
 val accountModule = module {
     // signupModule で `single<Settings> { Settings() }` 済みなので get() で同一インスタンスを取る

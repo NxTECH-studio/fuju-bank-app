@@ -31,6 +31,22 @@ class RealtimeRepository(
         }
     }
 
+    /**
+     * userId 別 SharedFlow キャッシュエントリを破棄する。別アカウントへのログイン境界で呼び、
+     * 前ユーザの SharedFlow 参照がプロセス内に長く居座らないようにする。
+     *
+     * 厳密には:
+     * - **map から外すだけ** で、既存の collector が掴んでいる SharedFlow 自体は GC されず、
+     *   `shareIn` の upstream coroutine も走り続ける。collector が全員離れて
+     *   `WhileSubscribed(STOP_TIMEOUT_MILLIS)` を満たした時点で自然停止する。
+     * - 次回 [creditEvents] 呼び出しは map から外れているため **新規購読** を作る。
+     * - 同一 userId で再ログインした極端なケースでは、前回の SharedFlow が collector を
+     *   保持している間は新旧の WebSocket が一時並走しうる点に注意（普段は別 userId なので無関係）。
+     */
+    suspend fun clearCache() = cacheMutex.withLock {
+        cache.clear()
+    }
+
     private companion object {
         const val STOP_TIMEOUT_MILLIS = 5_000L
     }

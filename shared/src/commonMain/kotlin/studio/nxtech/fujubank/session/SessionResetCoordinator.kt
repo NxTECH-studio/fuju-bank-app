@@ -29,6 +29,10 @@ import studio.nxtech.fujubank.account.AccountProfileProvider
 class SessionResetCoordinator(
     private val sessionStore: SessionStore,
     private val accountProfileProvider: AccountProfileProvider,
+    // logout 境界で追加で破棄したいキャッシュを差し込む拡張点。本番では Koin が
+    // `RealtimeRepository.clearCache` を注入する。テスト互換のためデフォルトは no-op。
+    // login 境界の `AuthRepository.onAuthBoundary` と対称になる位置付け。
+    private val onLogoutBoundary: suspend () -> Unit = {},
     private val scope: CoroutineScope = sessionStore.scope,
 ) {
     @Volatile
@@ -47,6 +51,10 @@ class SessionResetCoordinator(
             sessionStore.state.collect { next ->
                 if (previous is SessionState.Authenticated && next is SessionState.Unauthenticated) {
                     accountProfileProvider.reset()
+                    // onLogoutBoundary の例外はここでは握らない。collect の継続を破壊するが、
+                    // logout 経路は元々 best-effort（authApi.logout 自体も失敗を許容している）で、
+                    // 重大な失敗があれば SupervisorJob 配下に通知される。
+                    onLogoutBoundary()
                 }
                 previous = next
             }
