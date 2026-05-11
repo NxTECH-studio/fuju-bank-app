@@ -63,12 +63,41 @@ struct TransactionDetailView: View {
             AmountCard(transaction: transaction)
             VStack(spacing: 4) {
                 DetailTransactionRow(transaction: transaction)
+                // memo セクションは memo 有りのときだけ差し込む。memo なしでは完全に非表示。
+                if let memo = transaction.memo,
+                   !memo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    MemoCard(memo: memo)
+                }
                 EmotionMetadataCard()
             }
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 10)
         .frame(maxWidth: .infinity)
+    }
+}
+
+/// 取引詳細画面の memo セクション。送金時に付与された任意メモ本文を表示する。
+///
+/// - memo 無し / 空白のみの取引では呼び出し側でセクションごと描画しない（受け入れ条件 3）。
+/// - 角丸 20 + 薄ピンク背景で、感情データカード（白背景）と差別化する。
+private struct MemoCard: View {
+    let memo: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("メモ")
+                .font(FujuBankTypography.title)
+                .foregroundStyle(FujuBankPalette.textPrimary)
+            Text(memo)
+                .font(.system(size: 14, weight: .regular))
+                .foregroundStyle(FujuBankPalette.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(FujuBankPalette.lightPink)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 }
 

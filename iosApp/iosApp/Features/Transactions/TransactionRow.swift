@@ -21,9 +21,19 @@ struct TransactionRowView: View {
             HStack(alignment: .top, spacing: 12) {
                 ArtifactAvatar()
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(variant.title)
-                        .font(FujuBankTypography.title)
-                        .foregroundStyle(FujuBankPalette.textPrimary)
+                    HStack(spacing: 6) {
+                        Text(variant.title)
+                            .font(FujuBankTypography.title)
+                            .foregroundStyle(FujuBankPalette.textPrimary)
+                        // memo 有り取引にだけ吹き出しアイコンを表示。本文は詳細画面で表示するため
+                        // ここではアイコンのみで存在を示す。tint は subtitle と揃えて目立ちすぎないように。
+                        if let memo = transaction.memo, !memo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Image(systemName: "bubble.left")
+                                .font(.system(size: 12, weight: .regular))
+                                .foregroundStyle(FujuBankPalette.textSecondary)
+                                .accessibilityLabel("メモあり")
+                        }
+                    }
                     Text(TransactionDisplay.rowSubtitle(transaction: transaction))
                         .font(FujuBankTypography.caption)
                         .foregroundStyle(FujuBankPalette.textSecondary)
