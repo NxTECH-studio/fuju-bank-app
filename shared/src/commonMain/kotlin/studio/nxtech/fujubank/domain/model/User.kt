@@ -6,9 +6,9 @@ data class User(
     // bank PK を文字列化したもの。`/users/:id/transactions` などの bank 内部経路で使う。
     val id: String,
     // AuthCore の ULID (= bank の external_user_id)。`/ledger/transfer` の from/to や
-    // `SessionStore.userId` の源泉として使う。`/users/me` のレスポンスが sub を含まない
-    // 旧スキーマだった場合は null になりうる。
-    val subject: String?,
+    // `SessionStore.userId` の源泉として使う。bank-backend 2026-05 以降 `serialize_user` で
+    // 必ず返るため非 null（欠落時は DTO 層の deserialize で NetworkFailure に倒れる）。
+    val subject: String,
     val balanceFuju: Long,
     val createdAt: Instant,
 )

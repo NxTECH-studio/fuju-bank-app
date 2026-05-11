@@ -276,23 +276,12 @@ class SignUpFlowViewModel(
         when (val provision = userRepository.provisionMe()) {
             is NetworkResult.Success -> {
                 // SessionStore.userId は AuthCore の ULID (= bank の external_user_id) を源泉とする。
-                // `/users/me` レスポンスが `sub` を欠落している場合は送金 API などに渡せる識別子が
-                // 取れていないため、recovery codes 画面に進めずエラー表示にする。
-                val subject = provision.value.subject
-                if (subject == null) {
-                    _state.update {
-                        it.copy(
-                            isSubmitting = false,
-                            mfaCodeError = "セッション情報を取得できませんでした。もう一度ログインしてください",
-                        )
-                    }
-                    return
-                }
+                // bank-backend が `sub` を必ず返すため `User.subject` は非 null。
                 _state.update {
                     it.copy(
                         isSubmitting = false,
                         phase = SignUpPhase.RecoveryCodes,
-                        pendingUserId = subject,
+                        pendingUserId = provision.value.subject,
                         pendingBankUserId = provision.value.id,
                         recoverySaved = false,
                     )

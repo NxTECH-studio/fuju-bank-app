@@ -84,27 +84,12 @@ fun verifyMfaWithoutAuthenticating(
     sessionStore.scope.launch {
         val outcome = when (val verify = authRepository.verifyMfa(preToken, code = code, recoveryCode = recoveryCode)) {
             is NetworkResult.Success -> when (val provision = userRepository.provisionMe()) {
-                is NetworkResult.Success -> {
-                    // SessionStore.userId は AuthCore の ULID (= bank の external_user_id) を源泉
-                    // とする契約。`/users/me` レスポンスが `sub` を欠落している場合は Swift 側で
-                    // setAuthenticated に渡せる ULID が無いため、Failure に倒して再ログインを促す。
-                    val subject = provision.value.subject
-                    if (subject != null) {
-                        MfaVerifyOutcome.Verified(
-                            userId = subject,
-                            bankUserId = provision.value.id,
-                        )
-                    } else {
-                        MfaVerifyOutcome.Failure(
-                            message = "セッション情報を取得できませんでした。もう一度ログインしてください",
-                            error = ApiError(
-                                code = ApiErrorCode.UNAUTHENTICATED,
-                                message = "subject (external_user_id) missing from /users/me",
-                                httpStatus = 0,
-                            ),
-                        )
-                    }
-                }
+                is NetworkResult.Success -> MfaVerifyOutcome.Verified(
+                    // SessionStore.userId は AuthCore ULID (= external_user_id) を源泉とする。
+                    // bank-backend が `sub` を必ず返すため `User.subject` は非 null。
+                    userId = provision.value.subject,
+                    bankUserId = provision.value.id,
+                )
                 is NetworkResult.Failure -> MfaVerifyOutcome.Failure(
                     message = AuthErrorMessages.forMfa(provision.error),
                     error = provision.error,
@@ -219,37 +204,24 @@ private suspend fun provisionAfterAuth(
     sessionStore: SessionStore,
 ): AuthFlowOutcome = when (val provision = userRepository.provisionMe()) {
     is NetworkResult.Success -> {
-        // SessionStore.userId は AuthCore の ULID (= bank の external_user_id) を源泉とする。
-        // `/users/me` レスポンスが `sub` を欠落している場合は送金 API などに渡せる識別子が
-        // 無いため、Authenticated に倒さず Failure を返す（呼び出し側に再ログインを促す）。
-        val subject = provision.value.subject
-        if (subject == null) {
-            AuthFlowOutcome.Failure(
-                message = "セッション情報を取得できませんでした。もう一度ログインしてください",
-                error = ApiError(
-                    code = ApiErrorCode.UNAUTHENTICATED,
-                    message = "subject (external_user_id) missing from /users/me",
-                    httpStatus = 0,
-                ),
-            )
-        } else {
-            // mfa_enabled = false の既存ユーザは MFA セットアップ画面群に誘導する
-            // （client-bank-21 の resume 経路）。getProfile 失敗は安全側に倒し、Authenticated に進める。
-            val authCoreUserApi: AuthCoreUserApi = KoinPlatform.getKoin().get()
-            val needsSetup = when (val profile = authCoreUserApi.getProfile()) {
-                is NetworkResult.Success -> !profile.value.mfaEnabled
-                is NetworkResult.Failure, is NetworkResult.NetworkFailure -> false
-            }
-            if (needsSetup) {
-                sessionStore.setMfaSetupRequired()
-            } else {
-                sessionStore.setAuthenticated(
-                    userId = subject,
-                    bankUserId = provision.value.id,
-                )
-            }
-            AuthFlowOutcome.Authenticated
+        // mfa_enabled = false の既存ユーザは MFA セットアップ画面群に誘導する
+        // （client-bank-21 の resume 経路）。getProfile 失敗は安全側に倒し、Authenticated に進める。
+        val authCoreUserApi: AuthCoreUserApi = KoinPlatform.getKoin().get()
+        val needsSetup = when (val profile = authCoreUserApi.getProfile()) {
+            is NetworkResult.Success -> !profile.value.mfaEnabled
+            is NetworkResult.Failure, is NetworkResult.NetworkFailure -> false
         }
+        if (needsSetup) {
+            sessionStore.setMfaSetupRequired()
+        } else {
+            // SessionStore.userId は AuthCore ULID (= external_user_id) を源泉とする。
+            // bank-backend が `sub` を必ず返すため `User.subject` は非 null。
+            sessionStore.setAuthenticated(
+                userId = provision.value.subject,
+                bankUserId = provision.value.id,
+            )
+        }
+        AuthFlowOutcome.Authenticated
     }
     is NetworkResult.Failure -> AuthFlowOutcome.Failure(
         message = AuthErrorMessages.forLogin(provision.error),
@@ -426,27 +398,13 @@ fun enableMfaAndProvision(
 private suspend fun provisionToMfaEnableOutcome(
     userRepository: UserRepository,
 ): MfaEnableOutcome = when (val provision = userRepository.provisionMe()) {
-    is NetworkResult.Success -> {
+    is NetworkResult.Success -> MfaEnableOutcome.Enabled(
         // Swift 側はこの userId / bankUserId を後で `setAuthenticated(userId, bankUserId)` に渡す
         // 契約。SessionStore は ULID と bank PK の両方を併存させるため、subject (AuthCore sub) と
-        // 内部 id (bank PK) の双方を返す。subject が null の場合は Failure に倒す。
-        val subject = provision.value.subject
-        if (subject != null) {
-            MfaEnableOutcome.Enabled(
-                userId = subject,
-                bankUserId = provision.value.id,
-            )
-        } else {
-            MfaEnableOutcome.Failure(
-                message = "セッション情報を取得できませんでした。もう一度ログインしてください",
-                error = ApiError(
-                    code = ApiErrorCode.UNAUTHENTICATED,
-                    message = "subject (external_user_id) missing from /users/me",
-                    httpStatus = 0,
-                ),
-            )
-        }
-    }
+        // 内部 id (bank PK) の双方を返す。bank-backend が `sub` を必ず返すため非 null。
+        userId = provision.value.subject,
+        bankUserId = provision.value.id,
+    )
     is NetworkResult.Failure -> MfaEnableOutcome.Failure(
         message = AuthErrorMessages.forMfaEnable(provision.error),
         error = provision.error,

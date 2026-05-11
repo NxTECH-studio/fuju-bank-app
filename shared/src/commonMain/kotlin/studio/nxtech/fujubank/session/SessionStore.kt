@@ -95,17 +95,13 @@ class SessionStore {
             when (val me = userRepository.getMe()) {
                 is NetworkResult.Success -> {
                     // SessionStore.userId は AuthCore の ULID (= bank の external_user_id) を
-                    // 源泉とする。`/ledger/transfer` の from/to に渡せる識別子を持っていなければ
-                    // 認証済みとして扱えない（送金経路でハマるため Unauthenticated に倒す）。
-                    val subject = me.value.subject
-                    if (subject != null) {
-                        _state.value = SessionState.Authenticated(
-                            userId = subject,
-                            bankUserId = me.value.id,
-                        )
-                    } else {
-                        _state.value = SessionState.Unauthenticated
-                    }
+                    // 源泉とする。bank-backend 2026-05 以降 `serialize_user` で `sub` が必ず
+                    // 返るので、DTO 層で非 null として受けている（欠落時は NetworkFailure に
+                    // 倒れて else 分岐で Unauthenticated になる）。
+                    _state.value = SessionState.Authenticated(
+                        userId = me.value.subject,
+                        bankUserId = me.value.id,
+                    )
                 }
                 is NetworkResult.Failure, is NetworkResult.NetworkFailure -> {
                     _state.value = SessionState.Unauthenticated

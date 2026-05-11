@@ -53,6 +53,7 @@ class UserRepositoryTest {
                     """
                     {
                       "id": 7,
+                      "sub": "01HZY8X2B7K3J4M5N6P7Q8R9ST",
                       "balance_fuju": 0,
                       "created_at": "2026-04-21T12:34:56Z"
                     }
@@ -86,6 +87,7 @@ class UserRepositoryTest {
                     """
                     {
                       "id": 7,
+                      "sub": "01HZY8X2B7K3J4M5N6P7Q8R9ST",
                       "balance_fuju": 1000,
                       "created_at": "2026-04-21T12:34:56Z"
                     }
@@ -286,6 +288,7 @@ class UserRepositoryTest {
                     """
                     {
                       "id": 11,
+                      "sub": "01HZY8X2B7K3J4M5N6P7Q8R9ST",
                       "name": null,
                       "public_key": null,
                       "balance_fuju": 0,
@@ -322,6 +325,7 @@ class UserRepositoryTest {
                     """
                     {
                       "id": 12,
+                      "sub": "01HZY8X2B7K3J4M5N6P7Q8R9ST",
                       "balance_fuju": 5000,
                       "created_at": "2026-04-21T12:34:56Z"
                     }
