@@ -36,6 +36,7 @@ class TransactionDtoTest {
         assertEquals(1_000L, decoded.amount)
         assertEquals("art_01HZY8X2B7", decoded.artifactId)
         assertNull(decoded.counterpartyUserId)
+        assertNull(decoded.memo)
         assertEquals("2026-04-21T12:34:56Z", decoded.occurredAt)
     }
 
@@ -61,6 +62,77 @@ class TransactionDtoTest {
         assertEquals(TransactionDirectionWire.DEBIT, decoded.direction)
         assertEquals("usr_other", decoded.counterpartyUserId)
         assertNull(decoded.artifactId)
+        // memo フィールドが payload に存在しない場合はデフォルト null になる。
+        assertNull(decoded.memo)
+    }
+
+    @Test
+    fun transactionDto_deserializes_transfer_with_memo() {
+        // 送金時に memo を付与した payload。client は memo をそのまま受け取って表示する。
+        val payload = """
+            {
+              "entry_id": 110,
+              "transaction_id": "txn_with_memo",
+              "transaction_kind": "transfer",
+              "direction": "credit",
+              "amount": 1500,
+              "artifact_id": null,
+              "counterparty_user_id": "usr_other",
+              "memo": "ランチ代",
+              "occurred_at": "2026-04-22T12:00:00Z"
+            }
+        """.trimIndent()
+
+        val decoded = json.decodeFromString(TransactionDto.serializer(), payload)
+
+        assertEquals("ランチ代", decoded.memo)
+    }
+
+    @Test
+    fun transactionDto_deserializes_memo_at_max_length() {
+        // 80 文字ぴったりの memo はそのまま保持する（client 側で truncate しない）。
+        val memo80 = "あ".repeat(80)
+        val payload = """
+            {
+              "transaction_id": "txn_memo_80",
+              "transaction_kind": "transfer",
+              "direction": "debit",
+              "amount": 100,
+              "artifact_id": null,
+              "counterparty_user_id": "usr_other",
+              "memo": "$memo80",
+              "occurred_at": "2026-04-22T13:00:00Z"
+            }
+        """.trimIndent()
+
+        val decoded = json.decodeFromString(TransactionDto.serializer(), payload)
+
+        assertEquals(80, decoded.memo?.length)
+        assertEquals(memo80, decoded.memo)
+    }
+
+    @Test
+    fun transactionDto_deserializes_memo_above_max_length_without_truncation() {
+        // サーバが何らかの理由で 80 文字超を返してきても、client 側では truncate せず素通しする。
+        // 表示側 (履歴行 / 詳細) で必要に応じて省略する責務分担。
+        val memo90 = "x".repeat(90)
+        val payload = """
+            {
+              "transaction_id": "txn_memo_90",
+              "transaction_kind": "transfer",
+              "direction": "debit",
+              "amount": 200,
+              "artifact_id": null,
+              "counterparty_user_id": "usr_other",
+              "memo": "$memo90",
+              "occurred_at": "2026-04-22T14:00:00Z"
+            }
+        """.trimIndent()
+
+        val decoded = json.decodeFromString(TransactionDto.serializer(), payload)
+
+        assertEquals(90, decoded.memo?.length)
+        assertEquals(memo90, decoded.memo)
     }
 
     @Test

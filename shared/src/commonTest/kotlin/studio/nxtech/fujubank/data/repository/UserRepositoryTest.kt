@@ -256,6 +256,51 @@ class UserRepositoryTest {
     }
 
     @Test
+    fun transactions_propagates_memo_to_domain() = runTest {
+        // 送金時に付与した memo が DTO → domain Transaction まで素通しされることを保証する。
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """
+                    {
+                      "data": [
+                        {
+                          "entry_id": 203,
+                          "transaction_id": "txn_memo",
+                          "transaction_kind": "transfer",
+                          "direction": "credit",
+                          "amount": 1500,
+                          "artifact_id": null,
+                          "counterparty_user_id": "usr_other",
+                          "memo": "ランチ代",
+                          "metadata": null,
+                          "occurred_at": "2026-04-22T12:00:00Z",
+                          "created_at": "2026-04-22T12:00:01Z"
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
+
+        val result = repository.transactions("usr_me")
+
+        val success = assertIs<NetworkResult.Success<List<Transaction>>>(result)
+        val txn = success.value.single()
+        assertEquals("ランチ代", txn.memo)
+    }
+
+    @Test
     fun transactions_empty_list_maps_to_empty_domain_list() = runTest {
         val engine = MockEngine {
             respond(

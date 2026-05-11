@@ -139,6 +139,7 @@ private fun TransactionDto.toDomain(): Transaction = Transaction(
     counterpartyUserId = counterpartyUserId,
     artifactId = artifactId,
     occurredAt = Instant.parse(occurredAt),
+    memo = memo,
 )
 
 // mint は常に Mint 扱い（現 MVP では burn = mint+debit が発生しない契約）。
@@ -166,6 +167,7 @@ private fun dummyTransactions(): List<Transaction> = listOf(
         counterpartyUserId = "usr_tomato_001",
         artifactId = null,
         occurredAt = Instant.parse("2025-12-13T03:24:00Z"),
+        memo = "ランチ代ありがとう！",
     ),
     Transaction(
         id = "txn_dummy_002",
@@ -175,6 +177,7 @@ private fun dummyTransactions(): List<Transaction> = listOf(
         counterpartyUserId = "usr_nishi_001",
         artifactId = null,
         occurredAt = Instant.parse("2025-12-12T05:42:00Z"),
+        memo = "今月分の家賃",
     ),
     Transaction(
         id = "txn_dummy_003",
@@ -220,6 +223,7 @@ private fun dummyTransactions(): List<Transaction> = listOf(
         counterpartyUserId = "usr_sakura_001",
         artifactId = null,
         occurredAt = Instant.parse("2025-12-07T18:42:00Z"),
+        memo = "コーヒーありがとう、お疲れ様",
     ),
     Transaction(
         id = "txn_dummy_008",
@@ -256,6 +260,7 @@ private fun dummyTransactions(): List<Transaction> = listOf(
         counterpartyUserId = "usr_aoba_001",
         artifactId = null,
         occurredAt = Instant.parse("2025-12-05T11:08:00Z"),
+        memo = "飲み会の立替分",
     ),
     Transaction(
         id = "txn_dummy_012",

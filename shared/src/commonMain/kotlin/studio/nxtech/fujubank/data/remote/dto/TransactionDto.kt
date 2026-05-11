@@ -16,8 +16,9 @@ data class TransactionListResponse(
  * direction / counterparty_user_id は server で確定済みのため、client 側で
  * `myUserId` と `from_user_id`/`to_user_id` を比較するロジックは廃止した。
  *
- * server の追加フィールド (`entry_id` / `memo` / `metadata` / `created_at`) は
+ * server の追加フィールド (`entry_id` / `metadata` / `created_at`) は
  * 現状利用していないため、`Json { ignoreUnknownKeys = true }` 経由で無視する。
+ * `memo` のみ取引履歴 / 詳細表示で使うため field として受け取る。
  */
 @Serializable
 data class TransactionDto(
@@ -39,6 +40,9 @@ data class TransactionDto(
     // ISO8601 文字列。Instant への変換は Repository 層で行う。
     @SerialName("occurred_at")
     val occurredAt: String,
+    // 送金時に付与される任意メモ（最大 80 文字）。mint や memo 未指定 transfer は null。
+    @SerialName("memo")
+    val memo: String? = null,
 )
 
 /**
