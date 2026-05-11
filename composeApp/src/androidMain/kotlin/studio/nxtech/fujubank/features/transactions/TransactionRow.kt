@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -75,15 +76,30 @@ fun TransactionRow(
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                     horizontalAlignment = Alignment.Start,
                 ) {
-                    Text(
-                        text = variant.title,
-                        style = TextStyle(
-                            fontFamily = NotoSansJP,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = FujuBankColors.TextPrimary,
-                        ),
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = variant.title,
+                            style = TextStyle(
+                                fontFamily = NotoSansJP,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = FujuBankColors.TextPrimary,
+                            ),
+                        )
+                        // memo 有り取引にだけ吹き出しアイコンを表示。本文は詳細画面で表示するため
+                        // ここではアイコンのみで存在を示す。tint は subtitle と揃えて目立ちすぎないように。
+                        if (!transaction.memo.isNullOrBlank()) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_chat_bubble),
+                                contentDescription = "メモあり",
+                                tint = FujuBankColors.TextSecondary,
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
+                    }
                     Text(
                         text = transactionRowSubtitle(transaction),
                         style = TextStyle(
