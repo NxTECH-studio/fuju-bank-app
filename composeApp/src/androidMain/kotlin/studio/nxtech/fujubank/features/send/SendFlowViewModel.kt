@@ -77,6 +77,13 @@ class SendFlowViewModel(
             _state.update { it.copy(searchState = SendFlowState.SearchState.NeedsMoreChars) }
             return
         }
+        // サーバ側 public_id 仕様 (`/\A[a-zA-Z0-9]+\z/` 2..32) を満たさないクエリは API を
+        // 発火させない。IME composition と相性が悪いため `onQueryChange` 時点では弾かず、
+        // 検索 trigger 段階（debounce 後）でだけ判定する（妥協案）。
+        if (trimmed.length > SEARCH_MAX_LENGTH || !SEARCH_REGEX.matches(trimmed)) {
+            _state.update { it.copy(searchState = SendFlowState.SearchState.InvalidChars) }
+            return
+        }
         _state.update { it.copy(searchState = SendFlowState.SearchState.Loading) }
         when (val result = userRepository.searchByPublicId(trimmed)) {
             is NetworkResult.Success -> _state.update {
@@ -259,8 +266,20 @@ class SendFlowViewModel(
         else -> "送金に失敗しました"
     }
 
-    private companion object {
+    internal companion object {
         const val SEARCH_DEBOUNCE_MS = 300L
         const val MIN_SEARCH_LENGTH = 2
+
+        /**
+         * サーバ側 public_id 上限 (`bank-backend` の `public_id` バリデーション `2..32`) に合わせる。
+         * これを超えた入力は API を叩く前に弾く。
+         */
+        const val SEARCH_MAX_LENGTH = 32
+
+        /**
+         * サーバ側 public_id 許容文字集合 (`/\A[a-zA-Z0-9]+\z/`) と一致。
+         * これを満たさない入力は API を叩く前に弾き、ユーザーにヒントを表示する。
+         */
+        val SEARCH_REGEX = Regex("^[a-zA-Z0-9]+$")
     }
 }

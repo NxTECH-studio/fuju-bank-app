@@ -42,6 +42,12 @@ data class SendFlowState(
         /** 「2 文字以上で検索してください」のヒントを出す状態。 */
         data object NeedsMoreChars : SearchState()
 
+        /**
+         * 英数字以外を含む / 32 文字超など、サーバ側 public_id 仕様 (`/\A[a-zA-Z0-9]+\z/` 2..32) を
+         * 満たさないクエリ。検索 API は発火させず、UI 側でヒントを出して入力修正を促す。
+         */
+        data object InvalidChars : SearchState()
+
         data object Loading : SearchState()
         data class Ready(val results: List<UserSearchResult>) : SearchState()
         data class Error(val message: String) : SearchState()

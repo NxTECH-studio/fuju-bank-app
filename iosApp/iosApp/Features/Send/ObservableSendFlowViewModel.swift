@@ -16,6 +16,9 @@ final class ObservableSendFlowViewModel: ObservableObject {
     enum SearchState: Equatable {
         case idle
         case needsMoreChars
+        /// 英数字以外を含む / 32 文字超など、サーバ側 public_id 仕様 (`/\A[a-zA-Z0-9]+\z/` 2..32) を
+        /// 満たさないクエリ。検索 API は発火させず、UI 側でヒントを出して入力修正を促す。
+        case invalidChars
         case loading
         case ready(results: [UserSearchResult])
         case error(message: String)
@@ -23,7 +26,8 @@ final class ObservableSendFlowViewModel: ObservableObject {
         // [UserSearchResult] は Kotlin 側 data class。Equatable 適合のため id ベースで比較する。
         static func == (lhs: SearchState, rhs: SearchState) -> Bool {
             switch (lhs, rhs) {
-            case (.idle, .idle), (.needsMoreChars, .needsMoreChars), (.loading, .loading): return true
+            case (.idle, .idle), (.needsMoreChars, .needsMoreChars),
+                 (.invalidChars, .invalidChars), (.loading, .loading): return true
             case let (.ready(a), .ready(b)): return a.map { $0.id } == b.map { $0.id }
             case let (.error(a), .error(b)): return a == b
             default: return false
@@ -65,6 +69,12 @@ final class ObservableSendFlowViewModel: ObservableObject {
 
     private static let searchDebounceMs: UInt64 = 300
     private static let minSearchLength: Int = 2
+    /// サーバ側 public_id 上限 (`bank-backend` の `public_id` バリデーション `2..32`) に合わせる。
+    /// これを超えた入力は API を叩く前に弾く。
+    private static let maxSearchLength: Int = 32
+    /// サーバ側 public_id 許容文字集合 (`/\A[a-zA-Z0-9]+\z/`) と一致。
+    /// これを満たさない入力は API を叩く前に弾き、ユーザーにヒントを表示する。
+    private static let searchRegex = try! NSRegularExpression(pattern: "^[a-zA-Z0-9]+$")
 
     init() {
         self.userRepository = KoinIosKt.userRepository()
@@ -108,6 +118,13 @@ final class ObservableSendFlowViewModel: ObservableObject {
             searchState = .needsMoreChars
             return
         }
+        // サーバ側 public_id 仕様 (`/\A[a-zA-Z0-9]+\z/` 2..32) を満たさないクエリは API を
+        // 発火させない。IME composition と相性が悪いため query setter 経由 (`scheduleSearch` 起動時)
+        // でだけ判定する（妥協案）。
+        if snapshot.count > Self.maxSearchLength || !Self.matchesSearchRegex(snapshot) {
+            searchState = .invalidChars
+            return
+        }
         searchTask = Task { [weak self] in
             // try? だと sleep がキャンセルされても続行してしまうため、
             // do-catch で確実に早期 return させる。
@@ -120,6 +137,11 @@ final class ObservableSendFlowViewModel: ObservableObject {
             if Task.isCancelled { return }
             await MainActor.run { self.runSearch(query: snapshot) }
         }
+    }
+
+    private static func matchesSearchRegex(_ s: String) -> Bool {
+        let range = NSRange(s.startIndex..<s.endIndex, in: s)
+        return searchRegex.firstMatch(in: s, options: [], range: range) != nil
     }
 
     private func runSearch(query: String) {
