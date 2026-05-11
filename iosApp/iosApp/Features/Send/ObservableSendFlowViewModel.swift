@@ -216,17 +216,10 @@ final class ObservableSendFlowViewModel: ObservableObject {
         submission = .idle
     }
 
-    func appendDigit(_ digit: Int) {
-        precondition((0...9).contains(digit), "digit must be 0..9")
-        let next = amount &* 10 &+ Int64(digit)
-        // overflow 検知: &* / &+ は wrap 演算なので除算で逆変換できなければ overflow。
-        if amount != 0 && next / 10 != amount { return }
-        amount = next
-        error = nil
-    }
-
-    func deleteDigit() {
-        amount = amount / 10
+    /// 金額入力。OS 標準の数字キーボード IME 経由で `TextField` から呼ばれる。
+    /// Int64 範囲外は UI 側で `Int64(...)` が nil になり 0 扱いになるため、ここまで届かない前提。
+    func onAmountChange(_ value: Int64) {
+        amount = value
         error = nil
     }
 

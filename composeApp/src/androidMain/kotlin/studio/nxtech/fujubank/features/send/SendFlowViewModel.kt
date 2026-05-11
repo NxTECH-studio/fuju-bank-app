@@ -165,27 +165,13 @@ class SendFlowViewModel(
         _state.update { it.copy(memo = truncated) }
     }
 
+    /**
+     * 金額入力。OS 標準の数字キーボード IME 経由で `OutlinedTextField` から呼ばれる。
+     * 巨大値は内部で打ち切らない（CTA 側で「残高超過」として disable する）。Long 範囲外は
+     * UI 側で `toLongOrNull()` が null になり 0 扱いになるため、ここまで届かない前提。
+     */
     fun onAmountChange(value: Long) {
-        // 巨大値は内部で打ち切らない。CTA 側で「残高超過」として disable する。
         _state.update { it.copy(amount = value, error = null) }
-    }
-
-    /** カスタム数字パッドで 1 桁入力する。先頭 0 を抑制し、Long の範囲を超えないようガードする。 */
-    fun onDigitAppend(digit: Int) {
-        require(digit in 0..9) { "digit must be 0..9" }
-        val current = _state.value.amount
-        // Long.MAX_VALUE = 9223372036854775807。10 倍してから加算が overflow しないかチェック。
-        val multiplied = current * 10
-        val next = multiplied + digit
-        if (multiplied / 10 != current || next < current) {
-            // overflow: 何もしない（最大値で頭打ち）。
-            return
-        }
-        _state.update { it.copy(amount = next, error = null) }
-    }
-
-    fun onDigitDelete() {
-        _state.update { it.copy(amount = it.amount / 10, error = null) }
     }
 
     fun showAmountConfirm() {
