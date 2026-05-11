@@ -19,6 +19,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -110,6 +112,11 @@ fun SendAmountScreen(
             }
             BalancePreviewCard(
                 balanceAfter = (state.balance - state.amount).coerceAtLeast(0L),
+            )
+            MemoField(
+                memo = state.memo,
+                onMemoChange = viewModel::onMemoChange,
+                enabled = state.submission !is SendFlowState.Submission.Submitting,
             )
             state.error?.let { errMsg ->
                 Text(
@@ -365,6 +372,84 @@ private fun BalancePreviewCard(balanceAfter: Long) {
         }
     }
 }
+
+/**
+ * 任意メモ入力欄 + `n/80` カウンタ。
+ *
+ * - 80 文字上限のクライアントガードは ViewModel 側 ([SendFlowViewModel.onMemoChange]) で
+ *   切り捨てるため、TextField 自体は素の入力値を `onMemoChange` に流すだけでよい。
+ * - `singleLine = false` + `maxLines = 3` でメモらしい複数行入力を許容する。OTP 同様の
+ *   「IME Done で自動 submit」は発生しないので、CTA タップが必須。
+ * - 残量が 10 文字以下になったらカウンタを警告色 (Error) に切り替え、上限近接を視認できるようにする。
+ */
+@Composable
+private fun MemoField(
+    memo: String,
+    onMemoChange: (String) -> Unit,
+    enabled: Boolean,
+) {
+    val length = memo.length
+    val remaining = MEMO_MAX_LENGTH - length
+    val counterColor = if (remaining <= MEMO_REMAINING_WARN_THRESHOLD) {
+        FujuBankColors.Error
+    } else {
+        FujuBankColors.TextSecondary
+    }
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.End,
+    ) {
+        OutlinedTextField(
+            value = memo,
+            onValueChange = onMemoChange,
+            enabled = enabled,
+            singleLine = false,
+            maxLines = 3,
+            shape = RoundedCornerShape(16.dp),
+            placeholder = {
+                Text(
+                    text = "メモ（任意・80文字まで）",
+                    style = TextStyle(
+                        fontFamily = NotoSansJP,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = FujuBankColors.TextTertiary,
+                    ),
+                )
+            },
+            textStyle = TextStyle(
+                fontFamily = NotoSansJP,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Normal,
+                color = FujuBankColors.TextPrimary,
+            ),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = FujuBankColors.Surface,
+                unfocusedContainerColor = FujuBankColors.Surface,
+                disabledContainerColor = FujuBankColors.Surface,
+                focusedBorderColor = FujuBankColors.BrandPink,
+                unfocusedBorderColor = FujuBankColors.Hairline,
+            ),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(modifier = Modifier.size(4.dp))
+        Text(
+            text = "$length/$MEMO_MAX_LENGTH",
+            style = TextStyle(
+                fontFamily = NotoSansJP,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = counterColor,
+            ),
+        )
+    }
+}
+
+/** memo 上限。`SendFlowViewModel.MEMO_MAX_LENGTH` と同期させる。 */
+private const val MEMO_MAX_LENGTH = 80
+
+/** 残量がこの値以下になったらカウンタを警告色に切り替える。 */
+private const val MEMO_REMAINING_WARN_THRESHOLD = 10
 
 /**
  * 0-9 と削除キーを 4 行 x 3 列で並べる簡易数字パッド。

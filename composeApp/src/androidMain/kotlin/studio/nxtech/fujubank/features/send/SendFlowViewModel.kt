@@ -131,6 +131,7 @@ class SendFlowViewModel(
                 recipient = candidate,
                 step = SendFlowState.Step.Amount,
                 amount = 0L,
+                memo = "",
                 error = null,
                 submission = SendFlowState.Submission.Idle,
             )
@@ -144,10 +145,24 @@ class SendFlowViewModel(
                 step = SendFlowState.Step.Recipient,
                 recipient = null,
                 amount = 0L,
+                memo = "",
                 error = null,
                 submission = SendFlowState.Submission.Idle,
             )
         }
+    }
+
+    /**
+     * memo の入力変更ハンドラ。80 文字を超える入力はクライアント側で**超過分を切り捨て**、
+     * サーバ側 VALIDATION_FAILED の再現を避ける。
+     *
+     * 文字数は `String.length`（UTF-16 code unit）でカウントする。サロゲートペア（絵文字）は
+     * 2 としてカウントされる Kotlin 側既定動作を許容し、サーバ側仕様 (80 文字上限) と同じ
+     * 単位で揃える前提。
+     */
+    fun onMemoChange(value: String) {
+        val truncated = if (value.length > MEMO_MAX_LENGTH) value.take(MEMO_MAX_LENGTH) else value
+        _state.update { it.copy(memo = truncated) }
     }
 
     fun onAmountChange(value: Long) {
@@ -216,11 +231,15 @@ class SendFlowViewModel(
                 error = null,
             )
         }
+        // 空文字 / 空白のみの memo は null に正規化してサーバへ送る。
+        // 一部のサーバ実装で空文字が persist される懸念を避けるため。
+        val memo = snapshot.memo.takeIf { it.isNotBlank() }
         viewModelScope.launch {
             val result = ledgerRepository.transfer(
                 from = from,
                 to = recipient.id,
                 amount = snapshot.amount,
+                memo = memo,
                 retryKey = retryKey,
             )
             applyTransferResult(result)
@@ -285,5 +304,6 @@ class SendFlowViewModel(
 
     private companion object {
         const val SEARCH_DEBOUNCE_MS = 300L
+        const val MEMO_MAX_LENGTH = 80
     }
 }
