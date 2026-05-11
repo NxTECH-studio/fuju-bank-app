@@ -309,10 +309,13 @@ private fun RecipientChip(publicId: String) {
  * 「2 つの入力欄」UI として機能する。旧実装の `AmountDisplay` + 画面下 `NumericKeypad`
  * は撤去し、tap 対象（金額 vs メモ）に応じて IME が出し分けられる構成へ変更した。
  *
- * - `KeyboardType.Number` で数字キーボード IME。
+ * - `KeyboardType.NumberPassword` で **純粋な数字テンキー** を起動する（`Number` だと OS に
+ *   よっては `.` `-` `,` 等の記号キーが並ぶため）。`NumberPassword` は IME 種類だけを変える
+ *   指定で、表示が bullet (`●`) 化されたりはしない。
  * - `singleLine = true` だが OTP 同様、IME Done での自動 submit はしない（CTA タップ必須）。
- * - 数字以外を `onValueChange` 内で除去、先頭 0 を `trimStart('0')` で正規化、
- *   `toLongOrNull()` で parse。Long 範囲外（20 桁超）は null になり 0 扱いで安全側へ。
+ * - 数字以外を `onValueChange` 内で除去（物理キーボード / paste 経路の保険）、先頭 0 を
+ *   `trimStart('0')` で正規化、`toLongOrNull()` で parse。Long 範囲外（20 桁超）は null になり
+ *   0 扱いで安全側へ。
  * - [TextFieldValue] を Compose 側で保持するのは memo 同様、IME composition 維持のため。
  *   数字キーボードでは composition はほぼ発生しないが、外部 state (amount) との単方向同期を
  *   `LaunchedEffect(amount)` で行うパターンを揃えておく。
@@ -351,7 +354,7 @@ private fun AmountField(
         },
         enabled = enabled,
         singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
         textStyle = TextStyle(
             fontFamily = NotoSansJP,
             fontSize = 28.sp,
