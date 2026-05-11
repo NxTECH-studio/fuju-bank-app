@@ -84,6 +84,19 @@ class LoginViewModel(
     private suspend fun provisionAndAuthenticate() {
         when (val provision = userRepository.provisionMe()) {
             is NetworkResult.Success -> {
+                // SessionStore.userId は AuthCore の ULID (= bank の external_user_id) を源泉とする。
+                // `/users/me` レスポンスが旧スキーマで `sub` を返さない場合は認証完了扱いにできない
+                // （送金 API に渡せる識別子が無いため）。再ログインを促す。
+                val subject = provision.value.subject
+                if (subject == null) {
+                    _state.update {
+                        it.copy(
+                            isSubmitting = false,
+                            errorMessage = "セッション情報を取得できませんでした。もう一度ログインしてください",
+                        )
+                    }
+                    return
+                }
                 // mfa_enabled = false なら MFA セットアップを完了させてから Authenticated に倒す。
                 // getProfile が落ちた場合は安全側に倒し、既存挙動の Authenticated に進める
                 // （MFA セットアップ要求は次回ログイン時に再判定すれば良い）。
@@ -95,7 +108,7 @@ class LoginViewModel(
                     sessionStore.setMfaSetupRequired()
                     _state.update { LoginUiState() }
                 } else {
-                    sessionStore.setAuthenticated(provision.value.id)
+                    sessionStore.setAuthenticated(subject)
                     _state.update { LoginUiState() }
                 }
             }

@@ -3,7 +3,12 @@ package studio.nxtech.fujubank.domain.model
 import kotlin.time.Instant
 
 data class User(
+    // bank PK を文字列化したもの。`/users/:id/transactions` などの bank 内部経路で使う。
     val id: String,
+    // AuthCore の ULID (= bank の external_user_id)。`/ledger/transfer` の from/to や
+    // `SessionStore.userId` の源泉として使う。`/users/me` のレスポンスが sub を含まない
+    // 旧スキーマだった場合は null になりうる。
+    val subject: String?,
     val balanceFuju: Long,
     val createdAt: Instant,
 )

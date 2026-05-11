@@ -75,9 +75,11 @@ class SessionStoreTest {
         val mfa = assertIs<SessionState.MfaPending>(store.current)
         assertEquals("pt_123", mfa.preToken)
 
-        store.setAuthenticated("usr_1")
+        // SessionStore.userId は AuthCore の ULID (= bank の external_user_id) を源泉とするため、
+        // テストでも ULID 体裁 (Crockford Base32 26 文字) で渡す。
+        store.setAuthenticated("01HZX1A2B3C4D5E6F7G8H9JKM1")
         val auth = assertIs<SessionState.Authenticated>(store.current)
-        assertEquals("usr_1", auth.userId)
+        assertEquals("01HZX1A2B3C4D5E6F7G8H9JKM1", auth.userId)
 
         store.clear()
         assertEquals(SessionState.Unauthenticated, store.current)
@@ -85,7 +87,8 @@ class SessionStoreTest {
 
     @Test
     fun bootstrap_with_existing_access_calls_getMe_and_authenticates() = runTest {
-        // access あり → getMe が呼ばれる。
+        // access あり → getMe が呼ばれる。SessionStore は `UserResponse.sub` (= AuthCore ULID) を
+        // userId 源泉とするため、フィクスチャに `sub` を含める。
         val engine = MockEngine { request ->
             assertEquals("/users/me", request.url.encodedPath)
             respond(
@@ -93,6 +96,7 @@ class SessionStoreTest {
                     """
                     {
                       "id": 42,
+                      "sub": "01HZX1A2B3C4D5E6F7G8H9JKM1",
                       "balance_fuju": 100,
                       "created_at": "2026-04-21T12:34:56Z"
                     }
@@ -121,7 +125,7 @@ class SessionStoreTest {
         store.bootstrap(authRepo, userRepo)
 
         val auth = assertIs<SessionState.Authenticated>(store.current)
-        assertEquals("42", auth.userId)
+        assertEquals("01HZX1A2B3C4D5E6F7G8H9JKM1", auth.userId)
     }
 
     @Test
@@ -146,6 +150,7 @@ class SessionStoreTest {
                         """
                         {
                           "id": 43,
+                          "sub": "01HZX1A2B3C4D5E6F7G8H9JKM2",
                           "balance_fuju": 0,
                           "created_at": "2026-04-21T12:34:56Z"
                         }
@@ -173,7 +178,7 @@ class SessionStoreTest {
         store.bootstrap(authRepo, userRepo)
 
         val auth = assertIs<SessionState.Authenticated>(store.current)
-        assertEquals("43", auth.userId)
+        assertEquals("01HZX1A2B3C4D5E6F7G8H9JKM2", auth.userId)
         assertEquals("at_refreshed", storage.access)
     }
 
@@ -242,16 +247,17 @@ class SessionStoreTest {
     @Test
     fun state_can_loop_between_authenticated_and_unauthenticated() {
         // 一度ログイン → ログアウト → 再ログインのループが通ること。
+        // userId は ULID 体裁。
         val store = SessionStore()
-        store.setAuthenticated("usr_1")
+        store.setAuthenticated("01HZX1A2B3C4D5E6F7G8H9JKM1")
         assertIs<SessionState.Authenticated>(store.current)
 
         store.clear()
         assertEquals(SessionState.Unauthenticated, store.current)
 
-        store.setAuthenticated("usr_2")
+        store.setAuthenticated("01HZX1A2B3C4D5E6F7G8H9JKM2")
         val auth2 = assertIs<SessionState.Authenticated>(store.current)
-        assertEquals("usr_2", auth2.userId)
+        assertEquals("01HZX1A2B3C4D5E6F7G8H9JKM2", auth2.userId)
     }
 
     @Test
@@ -292,14 +298,14 @@ class SessionStoreTest {
         }
 
         store.setMfaPending("pt")
-        store.setAuthenticated("usr_1")
+        store.setAuthenticated("01HZX1A2B3C4D5E6F7G8H9JKM1")
         store.clear()
 
         assertEquals(
             listOf(
                 SessionState.Unauthenticated,
                 SessionState.MfaPending("pt"),
-                SessionState.Authenticated("usr_1"),
+                SessionState.Authenticated("01HZX1A2B3C4D5E6F7G8H9JKM1"),
                 SessionState.Unauthenticated,
             ),
             emitted,
@@ -319,6 +325,7 @@ class SessionStoreTest {
                     """
                     {
                       "id": 7,
+                      "sub": "01HZX1A2B3C4D5E6F7G8H9JKM3",
                       "balance_fuju": 0,
                       "created_at": "2026-04-21T12:34:56Z"
                     }
@@ -362,6 +369,7 @@ class SessionStoreTest {
                     """
                     {
                       "id": 9,
+                      "sub": "01HZX1A2B3C4D5E6F7G8H9JKM4",
                       "balance_fuju": 0,
                       "created_at": "2026-04-21T12:34:56Z"
                     }

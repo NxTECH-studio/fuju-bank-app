@@ -108,13 +108,14 @@ class UserRepository(
 }
 
 private fun UserSearchResultDto.toDomain(): UserSearchResult = UserSearchResult(
-    id = id.toString(),
+    id = id,
     publicId = publicId,
     iconUrl = iconUrl,
 )
 
 private fun UserResponse.toDomain(): User = User(
     id = id.toString(),
+    subject = subject,
     balanceFuju = balanceFuju,
     createdAt = Instant.parse(createdAt),
 )

@@ -93,7 +93,17 @@ class SessionStore {
                 }
             }
             when (val me = userRepository.getMe()) {
-                is NetworkResult.Success -> _state.value = SessionState.Authenticated(me.value.id)
+                is NetworkResult.Success -> {
+                    // SessionStore.userId は AuthCore の ULID (= bank の external_user_id) を
+                    // 源泉とする。`/ledger/transfer` の from/to に渡せる識別子を持っていなければ
+                    // 認証済みとして扱えない（送金経路でハマるため Unauthenticated に倒す）。
+                    val subject = me.value.subject
+                    if (subject != null) {
+                        _state.value = SessionState.Authenticated(subject)
+                    } else {
+                        _state.value = SessionState.Unauthenticated
+                    }
+                }
                 is NetworkResult.Failure, is NetworkResult.NetworkFailure -> {
                     _state.value = SessionState.Unauthenticated
                 }

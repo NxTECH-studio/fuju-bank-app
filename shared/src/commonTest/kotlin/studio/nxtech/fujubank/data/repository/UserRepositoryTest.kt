@@ -357,12 +357,12 @@ class UserRepositoryTest {
                     {
                       "users": [
                         {
-                          "id": 21,
+                          "id": "01HZX1A2B3C4D5E6F7G8H9JKMN",
                           "public_id": "yuki_a1b2",
                           "icon_url": "https://example.test/yuki.png"
                         },
                         {
-                          "id": 22,
+                          "id": "01HZX1A2B3C4D5E6F7G8H9JKMP",
                           "public_id": "yuki_c3d4",
                           "icon_url": null
                         }
@@ -386,10 +386,10 @@ class UserRepositoryTest {
 
         val success = assertIs<NetworkResult.Success<List<UserSearchResult>>>(result)
         assertEquals(2, success.value.size)
-        assertEquals("21", success.value[0].id)
+        assertEquals("01HZX1A2B3C4D5E6F7G8H9JKMN", success.value[0].id)
         assertEquals("yuki_a1b2", success.value[0].publicId)
         assertEquals("https://example.test/yuki.png", success.value[0].iconUrl)
-        assertEquals("22", success.value[1].id)
+        assertEquals("01HZX1A2B3C4D5E6F7G8H9JKMP", success.value[1].id)
         assertEquals("yuki_c3d4", success.value[1].publicId)
         assertEquals(null, success.value[1].iconUrl)
     }
@@ -425,8 +425,8 @@ class UserRepositoryTest {
                     """
                     {
                       "users": [
-                        { "id": 7, "public_id": "me_xxxx" },
-                        { "id": 8, "public_id": "other_yyyy" }
+                        { "id": "01HZY8X2B7K3J4M5N6P7Q8R9ST", "public_id": "me_xxxx" },
+                        { "id": "01HZY8X2B7K3J4M5N6P7Q8R9SV", "public_id": "other_yyyy" }
                       ]
                     }
                     """.trimIndent(),
@@ -435,7 +435,9 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val sessionStore = SessionStore().apply { setAuthenticated(userId = "7") }
+        val sessionStore = SessionStore().apply {
+            setAuthenticated(userId = "01HZY8X2B7K3J4M5N6P7Q8R9ST")
+        }
         val repository = UserRepository(
             userApi = UserApi(httpClient(engine)),
             userMeApi = UserMeApi(httpClient(engine)),
@@ -448,7 +450,7 @@ class UserRepositoryTest {
 
         val success = assertIs<NetworkResult.Success<List<UserSearchResult>>>(result)
         assertEquals(1, success.value.size)
-        assertEquals("8", success.value.single().id)
+        assertEquals("01HZY8X2B7K3J4M5N6P7Q8R9SV", success.value.single().id)
     }
 
     @Test
@@ -487,10 +489,10 @@ class UserRepositoryTest {
                     """
                     {
                       "users": [
-                        { "id": 1, "public_id": "valid_one" },
-                        { "id": 2, "public_id": "https://evil.example/" },
-                        { "id": 3, "public_id": "valid_two" },
-                        { "id": 4, "public_id": "" }
+                        { "id": "01HZX1A2B3C4D5E6F7G8H9JKM1", "public_id": "valid_one" },
+                        { "id": "01HZX1A2B3C4D5E6F7G8H9JKM2", "public_id": "https://evil.example/" },
+                        { "id": "01HZX1A2B3C4D5E6F7G8H9JKM3", "public_id": "valid_two" },
+                        { "id": "01HZX1A2B3C4D5E6F7G8H9JKM4", "public_id": "" }
                       ]
                     }
                     """.trimIndent(),
