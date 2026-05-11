@@ -26,14 +26,18 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -381,6 +385,10 @@ private fun BalancePreviewCard(balanceAfter: Long) {
  * - `singleLine = false` + `maxLines = 3` でメモらしい複数行入力を許容する。OTP 同様の
  *   「IME Done で自動 submit」は発生しないので、CTA タップが必須。
  * - 残量が 10 文字以下になったらカウンタを警告色 (Error) に切り替え、上限近接を視認できるようにする。
+ *
+ * 日本語 IME の変換中状態 (composition) を維持するため [TextFieldValue] を Compose 側で保持し、
+ * 外部 state (memo) との同期は単方向 (memo が変わったときだけ反映) で行う。String 版
+ * `OutlinedTextField` を直接 hoisting すると IME composition が破棄され日本語入力が成立しない。
  */
 @Composable
 private fun MemoField(
@@ -388,6 +396,18 @@ private fun MemoField(
     onMemoChange: (String) -> Unit,
     enabled: Boolean,
 ) {
+    var textFieldValue by remember {
+        mutableStateOf(TextFieldValue(text = memo, selection = TextRange(memo.length)))
+    }
+    LaunchedEffect(memo) {
+        if (textFieldValue.text != memo) {
+            textFieldValue = textFieldValue.copy(
+                text = memo,
+                selection = TextRange(memo.length),
+            )
+        }
+    }
+
     val length = memo.length
     val remaining = MEMO_MAX_LENGTH - length
     val counterColor = if (remaining <= MEMO_REMAINING_WARN_THRESHOLD) {
@@ -400,8 +420,11 @@ private fun MemoField(
         horizontalAlignment = Alignment.End,
     ) {
         OutlinedTextField(
-            value = memo,
-            onValueChange = onMemoChange,
+            value = textFieldValue,
+            onValueChange = { newValue ->
+                textFieldValue = newValue
+                onMemoChange(newValue.text)
+            },
             enabled = enabled,
             singleLine = false,
             maxLines = 3,
