@@ -34,11 +34,17 @@ struct AppRoot: View {
                     // 既存ユーザ resume: SignUpFlowState を再利用して MFA セットアップ画面群に誘導。
                     // 入口は MfaQr 固定。`SignUpFlowState` を新規生成して Phase は `.mfaQr` に強制する。
                     MfaSetupResumeView()
-                case is SessionState.Authenticated:
+                case let authenticated as SessionState.Authenticated:
                     if welcomeGate.shouldShowWelcome {
                         WelcomeView(onFinish: { welcomeGate.markShown() })
                     } else {
+                        // RootTabView は内部に `@StateObject` で SendFlow VM 等を保持し、
+                        // HomeView も `@StateObject` で HomeViewModel を抱えるため、別ユーザに
+                        // ログインし直したとき同一 View インスタンスが再利用されると前ユーザの
+                        // _state が残ったまま表示される。`bankUserId` を View id に組み込み、
+                        // ユーザが変わったら View tree ごと再生成して新ユーザ用に init し直す。
                         RootTabView()
+                            .id(authenticated.bankUserId)
                     }
                 default:
                     unauthenticatedRouter
