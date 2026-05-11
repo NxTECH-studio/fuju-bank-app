@@ -105,6 +105,48 @@ class SessionResetCoordinatorTest {
     }
 
     @Test
+    fun onLogoutBoundaryIsInvokedOnLogoutTransition() = runTest {
+        // logout 境界では AccountProfileProvider.reset と並んで onLogoutBoundary も
+        // 呼ばれる。Koin では `RealtimeRepository.clearCache` がここに繋がる。
+        val store = SessionStore()
+        val provider = FakeAccountProfileProvider()
+        var boundaryCalls = 0
+        SessionResetCoordinator(
+            sessionStore = store,
+            accountProfileProvider = provider,
+            onLogoutBoundary = { boundaryCalls += 1 },
+            scope = backgroundScope,
+        ).start()
+        testScheduler.runCurrent()
+
+        store.setAuthenticated(userId = "u1", bankUserId = "1")
+        testScheduler.runCurrent()
+        store.clear()
+        testScheduler.runCurrent()
+
+        assertEquals(1, provider.resetCount)
+        assertEquals(1, boundaryCalls)
+    }
+
+    @Test
+    fun onLogoutBoundaryIsNotInvokedOnInitialUnauthenticated() = runTest {
+        // アプリ起動直後の Unauthenticated emit を logout と誤認しない契約は
+        // onLogoutBoundary にも適用される。
+        val store = SessionStore()
+        val provider = FakeAccountProfileProvider()
+        var boundaryCalls = 0
+        SessionResetCoordinator(
+            sessionStore = store,
+            accountProfileProvider = provider,
+            onLogoutBoundary = { boundaryCalls += 1 },
+            scope = backgroundScope,
+        ).start()
+        testScheduler.runCurrent()
+
+        assertEquals(0, boundaryCalls)
+    }
+
+    @Test
     fun startIsIdempotent() = runTest {
         val store = SessionStore()
         val provider = FakeAccountProfileProvider()

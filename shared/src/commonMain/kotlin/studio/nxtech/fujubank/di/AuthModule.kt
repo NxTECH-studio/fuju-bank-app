@@ -3,11 +3,13 @@ package studio.nxtech.fujubank.di
 import io.ktor.client.HttpClient
 import kotlin.time.Clock
 import org.koin.dsl.module
+import studio.nxtech.fujubank.account.AccountProfileProvider
 import studio.nxtech.fujubank.auth.TokenStorage
 import studio.nxtech.fujubank.auth.TokenStorageFactory
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.remote.api.AuthApi
 import studio.nxtech.fujubank.data.repository.AuthRepository
+import studio.nxtech.fujubank.data.repository.RealtimeRepository
 import studio.nxtech.fujubank.network.AuthTokenRefresher
 import studio.nxtech.fujubank.network.BearerCacheInvalidator
 import studio.nxtech.fujubank.network.clearBearerCache
@@ -47,11 +49,23 @@ val authModule = module {
     }
     // nowMillis に実時刻を渡さないと AuthRepository.expiresAtFrom() が常に null を返し、
     // proactive な期限監視（TokenExpiryWatcher）が機能しなくなるので必ず注入する。
+    //
+    // onAuthBoundary は login / verifyMfa 成功直後に呼ばれ、Koin singleton が抱えている
+    // 前ユーザの in-memory state を破棄する。AccountProfileProvider は accountModule、
+    // RealtimeRepository は realtimeModule で別途登録されており、ここでは **invoke 時に
+    // getKoin().get(...)** で遅延解決する。factory 時点で get() してしまうと
+    // AccountProfileProvider → ProfileRepository → ... の解決順に縛られて将来的な
+    // 循環の温床になるため、lambda 内に閉じ込めて構築時点では Koin インスタンスだけ握る。
     single {
+        val koin = getKoin()
         AuthRepository(
             authApi = get(),
             tokenStorage = get(),
             bearerCacheInvalidator = get(),
+            onAuthBoundary = {
+                koin.get<AccountProfileProvider>().reset()
+                koin.get<RealtimeRepository>().clearCache()
+            },
             nowMillis = { Clock.System.now().toEpochMilliseconds() },
         )
     }
