@@ -75,19 +75,19 @@ class SendFlowViewModel(
         // クエリ分類は `shared/commonMain` 側に集約 (Android / iOS 共通)。サーバ側 public_id 仕様
         // (`/\A[a-zA-Z0-9]+\z/` 2..32) との同期は `classifySendSearchQuery` で 1 元管理する。
         when (classifySendSearchQuery(query)) {
-            SendSearchQueryClassification.Empty -> {
+            SendSearchQueryClassification.EMPTY -> {
                 _state.update { it.copy(searchState = SendFlowState.SearchState.Idle) }
                 return
             }
-            SendSearchQueryClassification.TooShort -> {
+            SendSearchQueryClassification.TOO_SHORT -> {
                 _state.update { it.copy(searchState = SendFlowState.SearchState.NeedsMoreChars) }
                 return
             }
-            SendSearchQueryClassification.Invalid -> {
+            SendSearchQueryClassification.INVALID -> {
                 _state.update { it.copy(searchState = SendFlowState.SearchState.InvalidChars) }
                 return
             }
-            SendSearchQueryClassification.Valid -> Unit
+            SendSearchQueryClassification.VALID -> Unit
         }
         val trimmed = query.trim()
         _state.update { it.copy(searchState = SendFlowState.SearchState.Loading) }

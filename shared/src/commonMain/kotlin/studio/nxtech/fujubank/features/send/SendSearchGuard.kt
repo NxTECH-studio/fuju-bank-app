@@ -32,17 +32,21 @@ private val SEND_SEARCH_QUERY_REGEX: Regex =
 /**
  * 検索クエリ入力ガードの分類結果。
  *
- * - [Empty]: 空文字 / 空白のみ。UI は「公開IDを入力してください」ヒントを出す。
- * - [TooShort]: trim 後 2 文字未満。UI は「2 文字以上で検索してください」ヒントを出す。
- * - [Invalid]: 英数字以外を含む / 32 文字超。UI は「英数字のみ、2〜32 文字」ヒントを出す。
- * - [Valid]: API を叩いて良い形。`SendFlowViewModel.runSearch` はこのケースだけ
+ * - [EMPTY]: 空文字 / 空白のみ。UI は「公開IDを入力してください」ヒントを出す。
+ * - [TOO_SHORT]: trim 後 2 文字未満。UI は「2 文字以上で検索してください」ヒントを出す。
+ * - [INVALID]: 英数字以外を含む / 32 文字超。UI は「英数字のみ、2〜32 文字」ヒントを出す。
+ * - [VALID]: API を叩いて良い形。`SendFlowViewModel.runSearch` はこのケースだけ
  *   `userRepository.searchByPublicId(query.trim())` を発火させる。
+ *
+ * Kotlin/Native の Obj-C 出力は PascalCase の enum 名を全文字小文字 (例: `TooShort` →
+ * `tooshort`) に変換するため、Swift 側で `.tooShort` として参照できるよう
+ * SCREAMING_SNAKE_CASE で宣言している (`TOO_SHORT` → `tooShort`)。
  */
 enum class SendSearchQueryClassification {
-    Empty,
-    TooShort,
-    Invalid,
-    Valid,
+    EMPTY,
+    TOO_SHORT,
+    INVALID,
+    VALID,
 }
 
 /**
@@ -54,9 +58,9 @@ enum class SendSearchQueryClassification {
 fun classifySendSearchQuery(query: String): SendSearchQueryClassification {
     val trimmed = query.trim()
     return when {
-        trimmed.isEmpty() -> SendSearchQueryClassification.Empty
-        trimmed.length < SEND_SEARCH_QUERY_MIN_LENGTH -> SendSearchQueryClassification.TooShort
-        !SEND_SEARCH_QUERY_REGEX.matches(trimmed) -> SendSearchQueryClassification.Invalid
-        else -> SendSearchQueryClassification.Valid
+        trimmed.isEmpty() -> SendSearchQueryClassification.EMPTY
+        trimmed.length < SEND_SEARCH_QUERY_MIN_LENGTH -> SendSearchQueryClassification.TOO_SHORT
+        !SEND_SEARCH_QUERY_REGEX.matches(trimmed) -> SendSearchQueryClassification.INVALID
+        else -> SendSearchQueryClassification.VALID
     }
 }

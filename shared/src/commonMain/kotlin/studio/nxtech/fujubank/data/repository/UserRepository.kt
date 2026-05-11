@@ -104,7 +104,7 @@ class UserRepository(
         // ViewModel の入力ガードをバイパスした呼び出しでも、サーバ側仕様を満たさないクエリは
         // API を発火させない。Valid 以外は黙って空リストを返す（呼び出し側は通常 ViewModel
         // 経由なので Valid のみが届く前提）。
-        if (classifySendSearchQuery(query) != SendSearchQueryClassification.Valid) {
+        if (classifySendSearchQuery(query) != SendSearchQueryClassification.VALID) {
             return NetworkResult.Success(emptyList())
         }
         val myUserId = (sessionStore.current as? SessionState.Authenticated)?.userId

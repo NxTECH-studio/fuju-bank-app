@@ -112,6 +112,8 @@ final class ObservableSendFlowViewModel: ObservableObject {
         searchTask?.cancel()
         searchToken?.cancel(cause: nil)
         // クエリ分類は shared (`SendSearchGuardKt`) に集約し、Android / iOS で同じ仕様に揃える。
+        // Kotlin enum entries は SCREAMING_SNAKE_CASE で宣言してあるため Swift では camelCase
+        // (.empty / .tooShort / .invalid / .valid) で参照できる。
         switch SendSearchGuardKt.classifySendSearchQuery(query: query) {
         case SendSearchQueryClassification.empty:
             searchState = .idle
@@ -125,6 +127,7 @@ final class ObservableSendFlowViewModel: ObservableObject {
         case SendSearchQueryClassification.valid:
             break
         default:
+            // 将来 enum case が追加された場合の防御。新ケース追加時はここを更新する。
             searchState = .idle
             return
         }

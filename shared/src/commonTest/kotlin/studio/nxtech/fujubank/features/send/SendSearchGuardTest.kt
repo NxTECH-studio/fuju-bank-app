@@ -21,60 +21,60 @@ class SendSearchGuardTest {
 
     @Test
     fun empty_or_whitespace_only_returns_empty() {
-        assertEquals(SendSearchQueryClassification.Empty, classifySendSearchQuery(""))
-        assertEquals(SendSearchQueryClassification.Empty, classifySendSearchQuery("   "))
+        assertEquals(SendSearchQueryClassification.EMPTY, classifySendSearchQuery(""))
+        assertEquals(SendSearchQueryClassification.EMPTY, classifySendSearchQuery("   "))
         // タブ・改行混じりの空白は IME や貼り付けで稀に流入する。
-        assertEquals(SendSearchQueryClassification.Empty, classifySendSearchQuery("\t\n"))
+        assertEquals(SendSearchQueryClassification.EMPTY, classifySendSearchQuery("\t\n"))
     }
 
     @Test
     fun one_character_returns_too_short() {
         // 1 文字英数は短すぎ扱い（前後空白は trim される）。
-        assertEquals(SendSearchQueryClassification.TooShort, classifySendSearchQuery("a"))
-        assertEquals(SendSearchQueryClassification.TooShort, classifySendSearchQuery("1"))
-        assertEquals(SendSearchQueryClassification.TooShort, classifySendSearchQuery(" Z "))
+        assertEquals(SendSearchQueryClassification.TOO_SHORT, classifySendSearchQuery("a"))
+        assertEquals(SendSearchQueryClassification.TOO_SHORT, classifySendSearchQuery("1"))
+        assertEquals(SendSearchQueryClassification.TOO_SHORT, classifySendSearchQuery(" Z "))
     }
 
     @Test
     fun english_alphanumeric_within_bounds_returns_valid() {
-        assertEquals(SendSearchQueryClassification.Valid, classifySendSearchQuery("ab"))
-        assertEquals(SendSearchQueryClassification.Valid, classifySendSearchQuery("abc123"))
-        assertEquals(SendSearchQueryClassification.Valid, classifySendSearchQuery("AbC123XYZ"))
+        assertEquals(SendSearchQueryClassification.VALID, classifySendSearchQuery("ab"))
+        assertEquals(SendSearchQueryClassification.VALID, classifySendSearchQuery("abc123"))
+        assertEquals(SendSearchQueryClassification.VALID, classifySendSearchQuery("AbC123XYZ"))
         // ちょうど最大長 (32) も Valid。
         assertEquals(
-            SendSearchQueryClassification.Valid,
+            SendSearchQueryClassification.VALID,
             classifySendSearchQuery("a".repeat(SEND_SEARCH_QUERY_MAX_LENGTH)),
         )
         // 前後の空白は trim 後に評価されるため Valid。
-        assertEquals(SendSearchQueryClassification.Valid, classifySendSearchQuery("  abc  "))
+        assertEquals(SendSearchQueryClassification.VALID, classifySendSearchQuery("  abc  "))
     }
 
     @Test
     fun japanese_characters_return_invalid() {
         // IME 入力中の日本語は API を発火させない（サーバ側 422 を未然に防ぐ）。
-        assertEquals(SendSearchQueryClassification.Invalid, classifySendSearchQuery("あい"))
-        assertEquals(SendSearchQueryClassification.Invalid, classifySendSearchQuery("田中"))
-        assertEquals(SendSearchQueryClassification.Invalid, classifySendSearchQuery("abcあ"))
+        assertEquals(SendSearchQueryClassification.INVALID, classifySendSearchQuery("あい"))
+        assertEquals(SendSearchQueryClassification.INVALID, classifySendSearchQuery("田中"))
+        assertEquals(SendSearchQueryClassification.INVALID, classifySendSearchQuery("abcあ"))
     }
 
     @Test
     fun symbols_and_punctuation_return_invalid() {
         // public_id は英数字のみ。`-` / `_` / 空白挿入 / 記号は禁止。
-        assertEquals(SendSearchQueryClassification.Invalid, classifySendSearchQuery("ab-cd"))
-        assertEquals(SendSearchQueryClassification.Invalid, classifySendSearchQuery("ab_cd"))
-        assertEquals(SendSearchQueryClassification.Invalid, classifySendSearchQuery("ab cd"))
-        assertEquals(SendSearchQueryClassification.Invalid, classifySendSearchQuery("ab!cd"))
-        assertEquals(SendSearchQueryClassification.Invalid, classifySendSearchQuery("@ab"))
+        assertEquals(SendSearchQueryClassification.INVALID, classifySendSearchQuery("ab-cd"))
+        assertEquals(SendSearchQueryClassification.INVALID, classifySendSearchQuery("ab_cd"))
+        assertEquals(SendSearchQueryClassification.INVALID, classifySendSearchQuery("ab cd"))
+        assertEquals(SendSearchQueryClassification.INVALID, classifySendSearchQuery("ab!cd"))
+        assertEquals(SendSearchQueryClassification.INVALID, classifySendSearchQuery("@ab"))
     }
 
     @Test
     fun over_max_length_returns_invalid() {
         // 33 文字以上は regex 内の `{2,32}` で弾かれる（defense in depth）。
         val tooLong = "a".repeat(SEND_SEARCH_QUERY_MAX_LENGTH + 1)
-        assertEquals(SendSearchQueryClassification.Invalid, classifySendSearchQuery(tooLong))
+        assertEquals(SendSearchQueryClassification.INVALID, classifySendSearchQuery(tooLong))
         // ペースト想定の極端な長さでも Invalid に倒れる（API 発火を抑止）。
         assertEquals(
-            SendSearchQueryClassification.Invalid,
+            SendSearchQueryClassification.INVALID,
             classifySendSearchQuery("a".repeat(1000)),
         )
     }
