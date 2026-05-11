@@ -37,7 +37,9 @@ final class MfaVerifyViewModel: ObservableObject {
     @Published var errorMessage: String?
 
     private let preToken: String
-    private var pendingUserId: String?
+    /// SessionStore.setAuthenticated に渡す ULID + bank PK の対。Brand 完了時まで保持する。
+    private struct PendingIds { let userId: String; let bankUserId: String }
+    private var pendingIds: PendingIds?
 
     init(preToken: String) {
         self.preToken = preToken
@@ -56,9 +58,9 @@ final class MfaVerifyViewModel: ObservableObject {
             errorMessage = "6 桁のコードを入力してください"
             return
         }
-        // submit 開始時に念のため pendingUserId を破棄。Input phase で submit を再試行するたびに
+        // submit 開始時に念のため pendingIds を破棄。Input phase で submit を再試行するたびに
         // 直前の verify 結果を引き継がないようにする防御措置。
-        pendingUserId = nil
+        pendingIds = nil
         isSubmitting = true
         errorMessage = nil
 
@@ -77,7 +79,10 @@ final class MfaVerifyViewModel: ObservableObject {
                 self.isSubmitting = false
                 switch outcome {
                 case let verified as MfaVerifyOutcome.Verified:
-                    self.pendingUserId = verified.userId
+                    self.pendingIds = PendingIds(
+                        userId: verified.userId,
+                        bankUserId: verified.bankUserId,
+                    )
                     self.code = ""
                     self.errorMessage = nil
                     self.phase = .onboarding(.success)
@@ -100,9 +105,12 @@ final class MfaVerifyViewModel: ObservableObject {
         case .welcome:
             phase = .onboarding(.brand)
         case .brand:
-            guard let userId = pendingUserId else { return }
-            pendingUserId = nil
-            KoinIosKt.sessionStore().setAuthenticated(userId: userId)
+            guard let ids = pendingIds else { return }
+            pendingIds = nil
+            KoinIosKt.sessionStore().setAuthenticated(
+                userId: ids.userId,
+                bankUserId: ids.bankUserId,
+            )
         }
     }
 

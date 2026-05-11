@@ -139,13 +139,16 @@ class HomeViewModel(
      *
      * 未認証 / 空の userId / API 失敗 / 通信失敗はすべて `Error` に集約してホーム本体は落とさない。
      * ダミーモードでは Repository が userId を無視するため、空文字でフォールスルーさせる。
+     *
+     * `/users/:id/transactions` は bank 内部 PK (`:id`) で叩く契約のため、SessionStore の
+     * `bankUserId` を渡す（`userId` は AuthCore ULID なので bank PK エンドポイントには使えない）。
      */
     private suspend fun fetchRecentTransactions(): RecentTransactionsState {
-        val sessionUserId = (sessionStore.current as? SessionState.Authenticated)?.userId
-        if (sessionUserId == null && !userRepository.useDummyData) {
+        val sessionBankUserId = (sessionStore.current as? SessionState.Authenticated)?.bankUserId
+        if (sessionBankUserId == null && !userRepository.useDummyData) {
             return RecentTransactionsState.Error(message = "最近の取引を取得できませんでした")
         }
-        val userId = sessionUserId ?: ""
+        val userId = sessionBankUserId ?: ""
         return when (val result = userRepository.transactions(userId)) {
             is NetworkResult.Success -> {
                 val items = result.value

@@ -53,6 +53,7 @@ class UserRepositoryTest {
                     """
                     {
                       "id": 7,
+                      "sub": "01HZY8X2B7K3J4M5N6P7Q8R9ST",
                       "balance_fuju": 0,
                       "created_at": "2026-04-21T12:34:56Z"
                     }
@@ -86,6 +87,7 @@ class UserRepositoryTest {
                     """
                     {
                       "id": 7,
+                      "sub": "01HZY8X2B7K3J4M5N6P7Q8R9ST",
                       "balance_fuju": 1000,
                       "created_at": "2026-04-21T12:34:56Z"
                     }
@@ -286,6 +288,7 @@ class UserRepositoryTest {
                     """
                     {
                       "id": 11,
+                      "sub": "01HZY8X2B7K3J4M5N6P7Q8R9ST",
                       "name": null,
                       "public_key": null,
                       "balance_fuju": 0,
@@ -322,6 +325,7 @@ class UserRepositoryTest {
                     """
                     {
                       "id": 12,
+                      "sub": "01HZY8X2B7K3J4M5N6P7Q8R9ST",
                       "balance_fuju": 5000,
                       "created_at": "2026-04-21T12:34:56Z"
                     }
@@ -357,12 +361,12 @@ class UserRepositoryTest {
                     {
                       "users": [
                         {
-                          "id": 21,
+                          "id": "01HZX1A2B3C4D5E6F7G8H9JKMN",
                           "public_id": "yuki_a1b2",
                           "icon_url": "https://example.test/yuki.png"
                         },
                         {
-                          "id": 22,
+                          "id": "01HZX1A2B3C4D5E6F7G8H9JKMP",
                           "public_id": "yuki_c3d4",
                           "icon_url": null
                         }
@@ -386,12 +390,43 @@ class UserRepositoryTest {
 
         val success = assertIs<NetworkResult.Success<List<UserSearchResult>>>(result)
         assertEquals(2, success.value.size)
-        assertEquals("21", success.value[0].id)
+        assertEquals("01HZX1A2B3C4D5E6F7G8H9JKMN", success.value[0].id)
         assertEquals("yuki_a1b2", success.value[0].publicId)
         assertEquals("https://example.test/yuki.png", success.value[0].iconUrl)
-        assertEquals("22", success.value[1].id)
+        assertEquals("01HZX1A2B3C4D5E6F7G8H9JKMP", success.value[1].id)
         assertEquals("yuki_c3d4", success.value[1].publicId)
         assertEquals(null, success.value[1].iconUrl)
+    }
+
+    @Test
+    fun searchByPublicId_does_not_hit_api_for_invalid_query() = runTest {
+        // Repository 側の defense in depth ガード: サーバ側 public_id 仕様
+        // (`/\A[a-zA-Z0-9]+\z/` `2..32`) を満たさないクエリは API を発火させず空リストを返す。
+        // ViewModel の入力ガードをバイパスする経路（テスト・他 feature 流用）でも安全な挙動。
+        var apiCallCount = 0
+        val engine = MockEngine {
+            apiCallCount += 1
+            respond(
+                content = ByteReadChannel("""{"users":[{"id":"01HZX1A2B3C4D5E6F7G8H9JKMN","public_id":"x"}]}"""),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
+
+        // 1 文字 (TooShort) / 日本語 (Invalid) / 33 文字超 (Invalid) すべて API 発火しない。
+        for (badQuery in listOf("a", "あい", "a".repeat(33), "", "ab-cd")) {
+            val result = repository.searchByPublicId(badQuery)
+            val success = assertIs<NetworkResult.Success<List<UserSearchResult>>>(result)
+            assertEquals(0, success.value.size)
+        }
+        assertEquals(0, apiCallCount)
     }
 
     @Test
@@ -425,8 +460,8 @@ class UserRepositoryTest {
                     """
                     {
                       "users": [
-                        { "id": 7, "public_id": "me_xxxx" },
-                        { "id": 8, "public_id": "other_yyyy" }
+                        { "id": "01HZY8X2B7K3J4M5N6P7Q8R9ST", "public_id": "me_xxxx" },
+                        { "id": "01HZY8X2B7K3J4M5N6P7Q8R9SV", "public_id": "other_yyyy" }
                       ]
                     }
                     """.trimIndent(),
@@ -435,7 +470,9 @@ class UserRepositoryTest {
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
             )
         }
-        val sessionStore = SessionStore().apply { setAuthenticated(userId = "7") }
+        val sessionStore = SessionStore().apply {
+            setAuthenticated(userId = "01HZY8X2B7K3J4M5N6P7Q8R9ST", bankUserId = "7")
+        }
         val repository = UserRepository(
             userApi = UserApi(httpClient(engine)),
             userMeApi = UserMeApi(httpClient(engine)),
@@ -448,7 +485,7 @@ class UserRepositoryTest {
 
         val success = assertIs<NetworkResult.Success<List<UserSearchResult>>>(result)
         assertEquals(1, success.value.size)
-        assertEquals("8", success.value.single().id)
+        assertEquals("01HZY8X2B7K3J4M5N6P7Q8R9SV", success.value.single().id)
     }
 
     @Test
@@ -487,10 +524,10 @@ class UserRepositoryTest {
                     """
                     {
                       "users": [
-                        { "id": 1, "public_id": "valid_one" },
-                        { "id": 2, "public_id": "https://evil.example/" },
-                        { "id": 3, "public_id": "valid_two" },
-                        { "id": 4, "public_id": "" }
+                        { "id": "01HZX1A2B3C4D5E6F7G8H9JKM1", "public_id": "valid_one" },
+                        { "id": "01HZX1A2B3C4D5E6F7G8H9JKM2", "public_id": "https://evil.example/" },
+                        { "id": "01HZX1A2B3C4D5E6F7G8H9JKM3", "public_id": "valid_two" },
+                        { "id": "01HZX1A2B3C4D5E6F7G8H9JKM4", "public_id": "" }
                       ]
                     }
                     """.trimIndent(),

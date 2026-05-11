@@ -19,6 +19,8 @@ import studio.nxtech.fujubank.domain.model.TransactionDirection
 import studio.nxtech.fujubank.domain.model.TransactionKind
 import studio.nxtech.fujubank.domain.model.User
 import studio.nxtech.fujubank.domain.model.UserSearchResult
+import studio.nxtech.fujubank.features.send.SendSearchQueryClassification
+import studio.nxtech.fujubank.features.send.classifySendSearchQuery
 import studio.nxtech.fujubank.session.SessionState
 import studio.nxtech.fujubank.session.SessionStore
 import kotlin.time.Instant
@@ -85,7 +87,10 @@ class UserRepository(
     /**
      * 公開ID (public_id) の前方一致で送金先候補を検索する。
      *
-     * - クエリ最低 2 文字バリデーションは ViewModel 側で行う前提（Repository は通過させる）。
+     * - クエリのバリデーションは ViewModel 側で行う前提だが、Repository でも
+     *   [classifySendSearchQuery] を通して **defense in depth** をかける。ViewModel をバイパス
+     *   する経路（テスト・他 feature 流用）でも、サーバ側 public_id 仕様
+     *   (`/\A[a-zA-Z0-9]+\z/` `2..32`) を満たさないクエリは API を発火させず空リストを返す。
      * - サーバ側でも自分自身を除外する契約だが、UI 側の安全網として SessionStore の現在
      *   `userId` と一致する候補を Repository でも弾く。
      * - 取得した `public_id` は UI で `@{publicId}` として表示される他、将来 QR / Code128 に
@@ -96,6 +101,12 @@ class UserRepository(
      *   反映する）。
      */
     suspend fun searchByPublicId(query: String): NetworkResult<List<UserSearchResult>> {
+        // ViewModel の入力ガードをバイパスした呼び出しでも、サーバ側仕様を満たさないクエリは
+        // API を発火させない。Valid 以外は黙って空リストを返す（呼び出し側は通常 ViewModel
+        // 経由なので Valid のみが届く前提）。
+        if (classifySendSearchQuery(query) != SendSearchQueryClassification.VALID) {
+            return NetworkResult.Success(emptyList())
+        }
         val myUserId = (sessionStore.current as? SessionState.Authenticated)?.userId
         return userSearchApi.searchByPublicId(query).map { dtos ->
             dtos.asSequence()
@@ -108,13 +119,14 @@ class UserRepository(
 }
 
 private fun UserSearchResultDto.toDomain(): UserSearchResult = UserSearchResult(
-    id = id.toString(),
+    id = id,
     publicId = publicId,
     iconUrl = iconUrl,
 )
 
 private fun UserResponse.toDomain(): User = User(
     id = id.toString(),
+    subject = subject,
     balanceFuju = balanceFuju,
     createdAt = Instant.parse(createdAt),
 )

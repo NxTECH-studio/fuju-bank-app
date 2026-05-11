@@ -47,8 +47,8 @@ class SessionStore {
     val current: SessionState
         get() = _state.value
 
-    fun setAuthenticated(userId: String) {
-        _state.value = SessionState.Authenticated(userId)
+    fun setAuthenticated(userId: String, bankUserId: String) {
+        _state.value = SessionState.Authenticated(userId = userId, bankUserId = bankUserId)
     }
 
     fun setMfaPending(preToken: String) {
@@ -93,7 +93,16 @@ class SessionStore {
                 }
             }
             when (val me = userRepository.getMe()) {
-                is NetworkResult.Success -> _state.value = SessionState.Authenticated(me.value.id)
+                is NetworkResult.Success -> {
+                    // SessionStore.userId は AuthCore の ULID (= bank の external_user_id) を
+                    // 源泉とする。bank-backend 2026-05 以降 `serialize_user` で `sub` が必ず
+                    // 返るので、DTO 層で非 null として受けている（欠落時は NetworkFailure に
+                    // 倒れて else 分岐で Unauthenticated になる）。
+                    _state.value = SessionState.Authenticated(
+                        userId = me.value.subject,
+                        bankUserId = me.value.id,
+                    )
+                }
                 is NetworkResult.Failure, is NetworkResult.NetworkFailure -> {
                     _state.value = SessionState.Unauthenticated
                 }

@@ -95,7 +95,12 @@ class LoginViewModel(
                     sessionStore.setMfaSetupRequired()
                     _state.update { LoginUiState() }
                 } else {
-                    sessionStore.setAuthenticated(provision.value.id)
+                    // SessionStore.userId は AuthCore ULID (= external_user_id) を源泉とする。
+                    // bank-backend が `sub` を必ず返すため `User.subject` は非 null。
+                    sessionStore.setAuthenticated(
+                        userId = provision.value.subject,
+                        bankUserId = provision.value.id,
+                    )
                     _state.update { LoginUiState() }
                 }
             }

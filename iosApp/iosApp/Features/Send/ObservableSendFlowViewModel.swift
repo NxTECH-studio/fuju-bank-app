@@ -16,6 +16,9 @@ final class ObservableSendFlowViewModel: ObservableObject {
     enum SearchState: Equatable {
         case idle
         case needsMoreChars
+        /// 英数字以外を含む / 32 文字超など、サーバ側 public_id 仕様 (`/\A[a-zA-Z0-9]+\z/` 2..32) を
+        /// 満たさないクエリ。検索 API は発火させず、UI 側でヒントを出して入力修正を促す。
+        case invalidChars
         case loading
         case ready(results: [UserSearchResult])
         case error(message: String)
@@ -23,7 +26,8 @@ final class ObservableSendFlowViewModel: ObservableObject {
         // [UserSearchResult] は Kotlin 側 data class。Equatable 適合のため id ベースで比較する。
         static func == (lhs: SearchState, rhs: SearchState) -> Bool {
             switch (lhs, rhs) {
-            case (.idle, .idle), (.needsMoreChars, .needsMoreChars), (.loading, .loading): return true
+            case (.idle, .idle), (.needsMoreChars, .needsMoreChars),
+                 (.invalidChars, .invalidChars), (.loading, .loading): return true
             case let (.ready(a), .ready(b)): return a.map { $0.id } == b.map { $0.id }
             case let (.error(a), .error(b)): return a == b
             default: return false
@@ -64,7 +68,6 @@ final class ObservableSendFlowViewModel: ObservableObject {
     private var searchTask: Task<Void, Never>?
 
     private static let searchDebounceMs: UInt64 = 300
-    private static let minSearchLength: Int = 2
 
     init() {
         self.userRepository = KoinIosKt.userRepository()
@@ -75,6 +78,11 @@ final class ObservableSendFlowViewModel: ObservableObject {
     }
 
     deinit {
+        // Kotlin Job.cancel() / Swift Task.cancel() はどちらも thread-safe 仕様で、
+        // deinit が main thread 以外で実行されても安全。Swift 5 では `@MainActor` 隔離
+        // プロパティへの nonisolated アクセスは警告止まりだが、Swift 6 への移行時には
+        // `MainActor.assumeIsolated` で囲むか non-isolated holder にリファクタする想定。
+        // 現状は cancel API の thread-safe 性に依存して残置する（実害なし）。
         searchToken?.cancel(cause: nil)
         transferToken?.cancel(cause: nil)
         searchTask?.cancel()
@@ -98,16 +106,32 @@ final class ObservableSendFlowViewModel: ObservableObject {
     // MARK: - Step 1: search & candidate
 
     private func scheduleSearch() {
+        // 既存の debounce Task に加えて、すでに発火済みの searchToken（Kotlin Job）も
+        // 早期キャンセルする。これがないと debounce 中に新クエリが来ても、前回の API
+        // レスポンスが後から `searchState` を上書きしてしまうレース条件が残る。
         searchTask?.cancel()
-        let snapshot = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        if snapshot.isEmpty {
+        searchToken?.cancel(cause: nil)
+        // クエリ分類は shared (`SendSearchGuardKt`) に集約し、Android / iOS で同じ仕様に揃える。
+        // Kotlin enum entries は SCREAMING_SNAKE_CASE で宣言してあるため Swift では camelCase
+        // (.empty / .tooShort / .invalid / .valid) で参照できる。
+        switch SendSearchGuardKt.classifySendSearchQuery(query: query) {
+        case SendSearchQueryClassification.empty:
+            searchState = .idle
+            return
+        case SendSearchQueryClassification.tooShort:
+            searchState = .needsMoreChars
+            return
+        case SendSearchQueryClassification.invalid:
+            searchState = .invalidChars
+            return
+        case SendSearchQueryClassification.valid:
+            break
+        default:
+            // 将来 enum case が追加された場合の防御。新ケース追加時はここを更新する。
             searchState = .idle
             return
         }
-        if snapshot.count < Self.minSearchLength {
-            searchState = .needsMoreChars
-            return
-        }
+        let snapshot = query.trimmingCharacters(in: .whitespacesAndNewlines)
         searchTask = Task { [weak self] in
             // try? だと sleep がキャンセルされても続行してしまうため、
             // do-catch で確実に早期 return させる。
@@ -131,6 +155,11 @@ final class ObservableSendFlowViewModel: ObservableObject {
         ) { [weak self] outcome in
             Task { @MainActor in
                 guard let self else { return }
+                // 古い検索のレスポンスが新しい入力を上書きしないよう、現在のクエリと
+                // 一致するときだけ state を更新する（debounce + searchToken キャンセルでも
+                // すり抜けるレースを 1 段強化）。
+                let currentTrimmed = self.query.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard currentTrimmed == query else { return }
                 switch outcome {
                 case let loaded as UserSearchOutcome.Loaded:
                     self.searchState = .ready(results: loaded.results)
@@ -203,6 +232,15 @@ final class ObservableSendFlowViewModel: ObservableObject {
 
     /// alert の「送金する」CTA から呼ばれる。MFA 経路では retryKey を引き継ぐ。
     func submit() {
+        // 送金中 / 送金成功直後の二重 submit を防御。`.success` の経路は通常 UI 側でホーム遷移
+        // してから ViewModel が破棄されるため到達しないが、再入のレース対策として明示ガードを
+        // 残す（`.mfaRequired` は再試行可能なのでガード対象外）。
+        switch submission {
+        case .submitting, .success:
+            return
+        case .idle, .mfaRequired:
+            break
+        }
         guard let recipient else { return }
         guard let from = (sessionStore.current as? SessionState.Authenticated)?.userId else {
             showAmountConfirm = false

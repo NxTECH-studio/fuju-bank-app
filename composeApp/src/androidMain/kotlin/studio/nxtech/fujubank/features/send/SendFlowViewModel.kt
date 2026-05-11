@@ -2,11 +2,12 @@ package studio.nxtech.fujubank.features.send
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
@@ -39,7 +40,6 @@ class SendFlowViewModel(
 
     // 検索クエリ用の Flow。debounce してから API を叩く。
     private val queryFlow = MutableStateFlow("")
-    private var searchJob: Job? = null
 
     init {
         // 初期残高をホームと同じ ProfileRepository から取得する。失敗時は 0 のまま、
@@ -57,26 +57,39 @@ class SendFlowViewModel(
         }
     }
 
-    @OptIn(FlowPreview::class)
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private fun observeQuery() {
         viewModelScope.launch {
+            // `collectLatest` で前検索のレスポンス待ちを打ち切る。`runSearch` 内で
+            // `userRepository.searchByPublicId` が suspend 中に新クエリが来た場合、collect だと
+            // 前検索完了まで次の値を読み始めないため UI 体感が遅れる。collectLatest なら
+            // 新値到着時点で前 collector を cancel して即新検索に切り替えられる。
             queryFlow
                 .debounce(SEARCH_DEBOUNCE_MS)
                 .distinctUntilChanged()
-                .collect { q -> runSearch(q) }
+                .collectLatest { q -> runSearch(q) }
         }
     }
 
     private suspend fun runSearch(query: String) {
+        // クエリ分類は `shared/commonMain` 側に集約 (Android / iOS 共通)。サーバ側 public_id 仕様
+        // (`/\A[a-zA-Z0-9]+\z/` 2..32) との同期は `classifySendSearchQuery` で 1 元管理する。
+        when (classifySendSearchQuery(query)) {
+            SendSearchQueryClassification.EMPTY -> {
+                _state.update { it.copy(searchState = SendFlowState.SearchState.Idle) }
+                return
+            }
+            SendSearchQueryClassification.TOO_SHORT -> {
+                _state.update { it.copy(searchState = SendFlowState.SearchState.NeedsMoreChars) }
+                return
+            }
+            SendSearchQueryClassification.INVALID -> {
+                _state.update { it.copy(searchState = SendFlowState.SearchState.InvalidChars) }
+                return
+            }
+            SendSearchQueryClassification.VALID -> Unit
+        }
         val trimmed = query.trim()
-        if (trimmed.isEmpty()) {
-            _state.update { it.copy(searchState = SendFlowState.SearchState.Idle) }
-            return
-        }
-        if (trimmed.length < MIN_SEARCH_LENGTH) {
-            _state.update { it.copy(searchState = SendFlowState.SearchState.NeedsMoreChars) }
-            return
-        }
         _state.update { it.copy(searchState = SendFlowState.SearchState.Loading) }
         when (val result = userRepository.searchByPublicId(trimmed)) {
             is NetworkResult.Success -> _state.update {
@@ -173,6 +186,17 @@ class SendFlowViewModel(
     /** AlertDialog の「送金する」CTA から呼ばれる。 */
     fun submit() {
         val snapshot = _state.value
+        // 送金中 / 送金成功直後の二重 submit を防御。`Submission.Success` の経路は通常 UI 側で
+        // ホーム遷移してから ViewModel が破棄されるため到達しないが、再入のレース対策として
+        // 明示ガードを残す（MfaRequired は再試行可能なのでガード対象外）。
+        when (snapshot.submission) {
+            SendFlowState.Submission.Submitting,
+            is SendFlowState.Submission.Success,
+            -> return
+            SendFlowState.Submission.Idle,
+            is SendFlowState.Submission.MfaRequired,
+            -> Unit
+        }
         val recipient = snapshot.recipient ?: return
         val from = (sessionStore.current as? SessionState.Authenticated)?.userId ?: run {
             _state.update {
@@ -261,6 +285,5 @@ class SendFlowViewModel(
 
     private companion object {
         const val SEARCH_DEBOUNCE_MS = 300L
-        const val MIN_SEARCH_LENGTH = 2
     }
 }

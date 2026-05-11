@@ -50,6 +50,7 @@ class UserApiTest {
                     """
                     {
                       "id": 6,
+                      "sub": "01HZY8X2B7K3J4M5N6P7Q8R9ST",
                       "balance_fuju": 0,
                       "created_at": "2026-04-21T12:34:56Z"
                     }
@@ -78,6 +79,7 @@ class UserApiTest {
                     """
                     {
                       "id": 6,
+                      "sub": "01HZY8X2B7K3J4M5N6P7Q8R9ST",
                       "balance_fuju": 1000,
                       "created_at": "2026-04-21T12:34:56Z"
                     }

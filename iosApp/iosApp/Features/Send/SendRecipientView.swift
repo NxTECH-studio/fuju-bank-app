@@ -61,19 +61,27 @@ struct SendRecipientView: View {
     }
 
     private var searchField: some View {
-        TextField("公開IDで送金先を検索", text: $viewModel.query)
-            .textFieldStyle(.plain)
-            .font(.system(size: 14))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 12)
-            .background(FujuBankPalette.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(FujuBankPalette.hairline, lineWidth: 1),
-            )
-            .padding(.top, 8)
-            .submitLabel(.search)
+        VStack(alignment: .leading, spacing: 4) {
+            TextField("公開IDで送金先を検索", text: $viewModel.query)
+                .textFieldStyle(.plain)
+                .font(.system(size: 14))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 12)
+                .background(FujuBankPalette.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(FujuBankPalette.hairline, lineWidth: 1),
+                )
+                .submitLabel(.search)
+                .autocorrectionDisabled(true)
+                .textInputAutocapitalization(.never)
+            Text("英数字 2〜32 文字")
+                .font(.system(size: 12))
+                .foregroundStyle(FujuBankPalette.textTertiary)
+                .padding(.horizontal, 4)
+        }
+        .padding(.top, 8)
     }
 
     @ViewBuilder
@@ -83,6 +91,8 @@ struct SendRecipientView: View {
             HintView(message: "公開IDを入力して送金先を検索してください")
         case .needsMoreChars:
             HintView(message: "2 文字以上で検索してください")
+        case .invalidChars:
+            HintView(message: "英数字のみ、2〜32 文字で入力してください")
         case .loading:
             VStack {
                 Spacer()

@@ -55,8 +55,10 @@ fun fetchTransactionDetail(
     sessionStore: SessionStore,
     onResult: (TransactionDetailOutcome) -> Unit,
 ): Job = transactionDetailScope.launch {
-    val sessionUserId = (sessionStore.current as? SessionState.Authenticated)?.userId
-    val userId = sessionUserId ?: if (userRepository.useDummyData) "" else null
+    // `/users/:id/transactions` は bank 内部 PK (`:id`) で叩く契約のため、SessionStore の
+    // `bankUserId` を渡す（`userId` は AuthCore ULID なので bank PK エンドポイントには使えない）。
+    val sessionBankUserId = (sessionStore.current as? SessionState.Authenticated)?.bankUserId
+    val userId = sessionBankUserId ?: if (userRepository.useDummyData) "" else null
     val outcome = if (userId == null) {
         TransactionDetailOutcome.Unauthenticated
     } else {

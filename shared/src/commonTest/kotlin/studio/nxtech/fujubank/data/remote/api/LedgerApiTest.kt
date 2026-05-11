@@ -67,8 +67,8 @@ class LedgerApiTest {
         )
 
         val result = api.transfer(
-            fromUserId = "usr_from",
-            toUserId = "usr_to",
+            fromUserId = "01HZX1A2B3C4D5E6F7G8H9JKMN",
+            toUserId = "01HZX1A2B3C4D5E6F7G8H9JKMP",
             amount = 500,
             memo = "gift",
         )
@@ -81,8 +81,8 @@ class LedgerApiTest {
         assertEquals("idem_fixed_key", request.headers["Idempotency-Key"])
         val body = request.bodyText()
         assertTrue(body.contains("\"idempotency_key\":\"idem_fixed_key\""))
-        assertTrue(body.contains("\"from_user_id\":\"usr_from\""))
-        assertTrue(body.contains("\"to_user_id\":\"usr_to\""))
+        assertTrue(body.contains("\"from_user_id\":\"01HZX1A2B3C4D5E6F7G8H9JKMN\""))
+        assertTrue(body.contains("\"to_user_id\":\"01HZX1A2B3C4D5E6F7G8H9JKMP\""))
         assertTrue(body.contains("\"amount\":500"))
         assertTrue(body.contains("\"memo\":\"gift\""))
     }
@@ -111,8 +111,8 @@ class LedgerApiTest {
         )
 
         val result = api.transfer(
-            fromUserId = "usr_from",
-            toUserId = "usr_to",
+            fromUserId = "01HZX1A2B3C4D5E6F7G8H9JKMN",
+            toUserId = "01HZX1A2B3C4D5E6F7G8H9JKMP",
             amount = 10_000,
         )
 
@@ -146,8 +146,8 @@ class LedgerApiTest {
         )
 
         val result = api.transfer(
-            fromUserId = "usr_from",
-            toUserId = "usr_to",
+            fromUserId = "01HZX1A2B3C4D5E6F7G8H9JKMN",
+            toUserId = "01HZX1A2B3C4D5E6F7G8H9JKMP",
             amount = 1_000_000,
         )
 
@@ -182,14 +182,14 @@ class LedgerApiTest {
         val explicitKey = "idem_caller_owned"
 
         api.transfer(
-            fromUserId = "usr_from",
-            toUserId = "usr_to",
+            fromUserId = "01HZX1A2B3C4D5E6F7G8H9JKMN",
+            toUserId = "01HZX1A2B3C4D5E6F7G8H9JKMP",
             amount = 1_000,
             idempotencyKey = explicitKey,
         )
         api.transfer(
-            fromUserId = "usr_from",
-            toUserId = "usr_to",
+            fromUserId = "01HZX1A2B3C4D5E6F7G8H9JKMN",
+            toUserId = "01HZX1A2B3C4D5E6F7G8H9JKMP",
             amount = 1_000,
             idempotencyKey = explicitKey,
         )

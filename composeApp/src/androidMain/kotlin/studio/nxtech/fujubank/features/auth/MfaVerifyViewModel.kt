@@ -54,8 +54,11 @@ class MfaVerifyViewModel(
     private val _state = MutableStateFlow(MfaVerifyUiState())
     val state: StateFlow<MfaVerifyUiState> = _state.asStateFlow()
 
-    // verify+provision 成功後、Brand 完了時に setAuthenticated するまで保持する userId。
-    private var pendingUserId: String? = null
+    /** SessionStore.setAuthenticated に渡す ULID + bank PK の対。Brand 完了時まで保持する。 */
+    private data class PendingIds(val userId: String, val bankUserId: String)
+
+    // verify+provision 成功後、Brand 完了時に setAuthenticated するまで保持する識別子の対。
+    private var pendingIds: PendingIds? = null
 
     fun onCodeChange(value: String) {
         // 数字のみ・最大 6 桁にサニタイズ。ペースト時の余分な空白・ハイフン等を除去する。
@@ -75,9 +78,9 @@ class MfaVerifyViewModel(
             _state.update { it.copy(errorMessage = "6 桁のコードを入力してください") }
             return
         }
-        // submit 開始時に念のため pendingUserId を破棄。Input phase で submit を再試行するたびに
+        // submit 開始時に念のため pendingIds を破棄。Input phase で submit を再試行するたびに
         // 直前の verify 結果を引き継がないようにする防御措置。
-        pendingUserId = null
+        pendingIds = null
         _state.update { it.copy(isSubmitting = true, errorMessage = null) }
         viewModelScope.launch {
             // Recovery code 入力 UI は仮設で隠しているが、AuthRepository.verifyMfa の
@@ -101,9 +104,12 @@ class MfaVerifyViewModel(
             OnboardingStage.Welcome ->
                 _state.update { it.copy(phase = MfaPhase.Onboarding(OnboardingStage.Brand)) }
             OnboardingStage.Brand -> {
-                val userId = pendingUserId ?: return
-                pendingUserId = null
-                sessionStore.setAuthenticated(userId)
+                val ids = pendingIds ?: return
+                pendingIds = null
+                sessionStore.setAuthenticated(
+                    userId = ids.userId,
+                    bankUserId = ids.bankUserId,
+                )
             }
         }
     }
@@ -111,7 +117,12 @@ class MfaVerifyViewModel(
     private suspend fun provisionAndStartOnboarding() {
         when (val provision = userRepository.provisionMe()) {
             is NetworkResult.Success -> {
-                pendingUserId = provision.value.id
+                // SessionStore.userId は AuthCore の ULID (= bank の external_user_id) を源泉とする。
+                // bank-backend が `sub` を必ず返すため `User.subject` は非 null。
+                pendingIds = PendingIds(
+                    userId = provision.value.subject,
+                    bankUserId = provision.value.id,
+                )
                 _state.update {
                     it.copy(
                         isSubmitting = false,

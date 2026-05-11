@@ -92,6 +92,16 @@ fun SendRecipientScreen(
                         ),
                     )
                 },
+                supportingText = {
+                    Text(
+                        text = "英数字 2〜32 文字",
+                        style = TextStyle(
+                            fontFamily = NotoSansJP,
+                            fontSize = 12.sp,
+                            color = FujuBankColors.TextTertiary,
+                        ),
+                    )
+                },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -114,6 +124,9 @@ fun SendRecipientScreen(
                     )
                     SendFlowState.SearchState.NeedsMoreChars -> Hint(
                         message = "2 文字以上で検索してください",
+                    )
+                    SendFlowState.SearchState.InvalidChars -> Hint(
+                        message = "英数字のみ、2〜32 文字で入力してください",
                     )
                     SendFlowState.SearchState.Loading -> Box(
                         modifier = Modifier.fillMaxSize(),

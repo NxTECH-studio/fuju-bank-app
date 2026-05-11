@@ -6,7 +6,10 @@ import kotlinx.serialization.Serializable
 /**
  * `GET /users/search?q=...` の 1 件分のレスポンス DTO。
  *
- * - [id]: bank 内部の user 主キー（Long）。`POST /ledger/transfer` の `to_user_id` に渡す。
+ * - [id]: AuthCore の ULID (= bank の `external_user_id`、26 文字 Crockford Base32)。
+ *   `POST /ledger/transfer` の `to_user_id` にそのまま渡す。
+ *   bank-backend は `Authcore::UserSearchClient` の payload を素通しするため、
+ *   bank PK ではなく AuthCore 由来 ID が返る (PR #101 以降)。
  * - [publicId]: ハンドル文字列。検索キーかつ UI の主表示。
  * - [iconUrl]: 円形アバターに表示する画像 URL。null 可（現状サーバは常に null を返す）。
  *
@@ -15,8 +18,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class UserSearchResultDto(
-    // bank 側のユーザー主キーは整数。クライアントの domain 表現では文字列に変換する。
-    val id: Long,
+    val id: String,
     @SerialName("public_id")
     val publicId: String,
     @SerialName("icon_url")

@@ -37,7 +37,7 @@ class SessionResetCoordinatorTest {
         SessionResetCoordinator(store, provider, scope = backgroundScope).start()
         testScheduler.runCurrent()
 
-        store.setAuthenticated("u1")
+        store.setAuthenticated(userId = "u1", bankUserId = "1")
         testScheduler.runCurrent()
         store.clear()
         testScheduler.runCurrent()
@@ -79,7 +79,7 @@ class SessionResetCoordinatorTest {
         SessionResetCoordinator(store, provider, scope = backgroundScope).start()
         testScheduler.runCurrent()
 
-        store.setAuthenticated("u1")
+        store.setAuthenticated(userId = "u1", bankUserId = "1")
         testScheduler.runCurrent()
         store.setMfaPending("pt_1")
         testScheduler.runCurrent()
@@ -95,7 +95,7 @@ class SessionResetCoordinatorTest {
         testScheduler.runCurrent()
 
         repeat(3) {
-            store.setAuthenticated("u$it")
+            store.setAuthenticated(userId = "u$it", bankUserId = "$it")
             testScheduler.runCurrent()
             store.clear()
             testScheduler.runCurrent()
@@ -117,7 +117,7 @@ class SessionResetCoordinatorTest {
         assertNotNull(first)
         assertNull(second)
 
-        store.setAuthenticated("u1")
+        store.setAuthenticated(userId = "u1", bankUserId = "1")
         testScheduler.runCurrent()
         store.clear()
         testScheduler.runCurrent()

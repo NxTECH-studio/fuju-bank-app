@@ -18,5 +18,19 @@ sealed class SessionState {
 
     object MfaSetupRequired : SessionState()
 
-    data class Authenticated(val userId: String) : SessionState()
+    /**
+     * 認証完了状態。bank 側 user 行と AuthCore ULID の両方が手元にある。
+     *
+     * - [userId]: AuthCore の ULID (= bank の `external_user_id`、26 文字 Crockford Base32)。
+     *   `POST /ledger/transfer` の `from_user_id` / `to_user_id` や AuthCore 横断 API に渡す。
+     * - [bankUserId]: bank 内部の user 主キーを文字列化した値。`GET /users/:id/transactions`
+     *   のように bank 内部識別子 (`:id` = bank PK) を URL に embed するエンドポイントに渡す。
+     *
+     * 用途で使い分けるため、誤って `userId` を bank 内部経路に流すと 404 / 識別子流出を招く。
+     * 取引履歴系は [bankUserId]、送金 / AuthCore 系は [userId] と覚える。
+     */
+    data class Authenticated(
+        val userId: String,
+        val bankUserId: String,
+    ) : SessionState()
 }

@@ -46,6 +46,7 @@ class UserMeApiTest {
                     """
                     {
                       "id": 6,
+                      "sub": "01HZY8X2B7K3J4M5N6P7Q8R9ST",
                       "name": null,
                       "public_key": null,
                       "balance_fuju": 0,
@@ -76,6 +77,7 @@ class UserMeApiTest {
                     """
                     {
                       "id": 6,
+                      "sub": "01HZY8X2B7K3J4M5N6P7Q8R9ST",
                       "balance_fuju": 1234,
                       "created_at": "2026-04-21T12:34:56Z"
                     }

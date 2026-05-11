@@ -109,7 +109,7 @@ class TokenExpiryWatcherTest {
     fun checkNow_doesNothing_when_expiresAt_is_null() = runTest {
         val engine = MockEngine { error("refresh should not be called when expiresAt is null") }
         val storage = FakeTokenStorage(initialAccess = "at_legacy", initialExpiresAt = null)
-        val store = SessionStore().apply { setAuthenticated("u1") }
+        val store = SessionStore().apply { setAuthenticated(userId = "u1", bankUserId = "1") }
         val watcher = watcher(engine, storage, store, nowMillis = { 1_000L })
 
         watcher.checkNow()
@@ -126,7 +126,7 @@ class TokenExpiryWatcherTest {
         // ただし 1000 < (10000 - 60000) は 1000 < -50000 で false なので「閾値内」と誤判定する。
         // → expiresAt を threshold より十分大きく取る必要がある。expiresAt=200_000 にする。
         val storage = FakeTokenStorage(initialAccess = "at_fresh", initialExpiresAt = 200_000L)
-        val store = SessionStore().apply { setAuthenticated("u1") }
+        val store = SessionStore().apply { setAuthenticated(userId = "u1", bankUserId = "1") }
         val watcher = watcher(engine, storage, store, nowMillis = { 1_000L })
 
         watcher.checkNow()
@@ -148,7 +148,7 @@ class TokenExpiryWatcherTest {
             )
         }
         val storage = FakeTokenStorage(initialAccess = "at_old", initialExpiresAt = 30_000L)
-        val store = SessionStore().apply { setAuthenticated("u1") }
+        val store = SessionStore().apply { setAuthenticated(userId = "u1", bankUserId = "1") }
         val watcher = watcher(engine, storage, store, nowMillis = { 1_000L })
 
         watcher.checkNow()
@@ -173,7 +173,7 @@ class TokenExpiryWatcherTest {
             )
         }
         val storage = FakeTokenStorage(initialAccess = "at_old", initialExpiresAt = 30_000L)
-        val store = SessionStore().apply { setAuthenticated("u1") }
+        val store = SessionStore().apply { setAuthenticated(userId = "u1", bankUserId = "1") }
         val watcher = watcher(engine, storage, store, nowMillis = { 1_000L })
 
         watcher.checkNow()
@@ -190,7 +190,7 @@ class TokenExpiryWatcherTest {
         // 経路を踏ませる。圏外復帰時に毎回ログアウトされる UX を避けるため clear しないこと。
         val engine = MockEngine { error("simulated network failure") }
         val storage = FakeTokenStorage(initialAccess = "at_old", initialExpiresAt = 30_000L)
-        val store = SessionStore().apply { setAuthenticated("u1") }
+        val store = SessionStore().apply { setAuthenticated(userId = "u1", bankUserId = "1") }
         val watcher = watcher(engine, storage, store, nowMillis = { 1_000L })
 
         watcher.checkNow()
@@ -198,6 +198,6 @@ class TokenExpiryWatcherTest {
         // 一時障害扱いで session も storage も維持。
         assertEquals(0, storage.clearCalls)
         assertEquals("at_old", storage.access)
-        assertEquals(SessionState.Authenticated("u1"), store.current)
+        assertEquals(SessionState.Authenticated(userId = "u1", bankUserId = "1"), store.current)
     }
 }
