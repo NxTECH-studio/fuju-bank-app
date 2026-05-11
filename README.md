@@ -231,8 +231,15 @@ fun initKoin(
 | `POST` | `/users/me` | 自分の lazy provision（初回ログイン時に新規作成、既存なら no-op） | AuthCore JWT | `UserMeApi.upsertMe(...)` |
 | `GET` | `/users/me` | 自分の最新状態取得（残高・名前・public_key） | AuthCore JWT | `UserMeApi.getMe()` |
 | `GET` | `/users/:id/transactions` | 取引履歴（mint / transfer 統合） | AuthCore JWT | `UserApi.transactions(userId)` |
+| `GET` | `/users/search` | 公開ID 前方一致で送金先候補を検索（AuthCore 委譲） | AuthCore JWT | `UserSearchApi.searchByPublicId(query)` |
 | `GET` | `/artifacts/:id` | Artifact 情報 | AuthCore JWT | `ArtifactApi`（`GET /artifacts/:id`） |
 | `POST` | `/ledger/transfer` | 送金（User → User） | AuthCore JWT + introspection | `LedgerApi.transfer(...)` |
+
+`/users/search` のレスポンス `id` および `/ledger/transfer` の `from_user_id` / `to_user_id` は、
+bank-backend PR #101 (`users-search-authcore-delegation`) 以降は **AuthCore の ULID
+(= bank の `external_user_id`、26 文字 Crockford Base32)** で扱う。`SessionStore.userId` も同じ
+源泉に揃え、`UserResponse.subject` (= `sub` フィールド) からセットする。bank の内部主キーは
+クライアント側 domain `User.id` に残るが、API 経路 (`/ledger/transfer` 等) に渡すのは ULID 側。
 
 `BANK_API_BASE_URL` は `BuildKonfig.BANK_API_BASE_URL`（`https://api.fujupay.app`）を
 `shared/commonMain/.../di/BuildConfigFacade.kt` の `defaultBankApiBaseUrl()` 経由で参照します。

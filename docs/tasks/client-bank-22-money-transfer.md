@@ -106,12 +106,16 @@
 
 新規に必要なバックエンド変更は **「表示名で送金先候補を検索する API」のみ** で、これはバックエンド計画書 `server-bank-22-recipient-resolution-api.md` で個別タスク化済み。
 
-- API: `GET /users/search?q={表示名}` → `[{ id, public_id, name, icon_url }, ...]`
+- API: `GET /users/search?q={公開ID}` → `[{ id, public_id, icon_url }, ...]`
 - 認証必須（AuthCore JWT）
 - レート制限強化（per-user 30/min、per-IP 60/min 程度）
-- クエリ最低 2 文字
+- クエリは英数字 2〜32 文字（サーバ側仕様 `/\A[a-zA-Z0-9]+\z/` と `2..32`、クライアント側でも前段ガード）
 - 自分自身は API 側 or UI 側で除外（バックエンド計画書の Open Questions で議論中）
 - email / balance / mfa_enabled 等の機密は返さない
+- **`id` は AuthCore の ULID (= bank の `external_user_id`、26 文字 Crockford Base32)**。
+  bank-backend PR #101 (`users-search-authcore-delegation`) 以降、`UsersController#search` が
+  `Authcore::UserSearchClient` の payload を素通しするため、bank PK ではなく AuthCore 由来 ID が返る。
+  クライアントは `POST /ledger/transfer` の `to_user_id` にそのまま渡す。
 
 なお、以下 2 点はバックエンド側で別途確認が残る:
 
