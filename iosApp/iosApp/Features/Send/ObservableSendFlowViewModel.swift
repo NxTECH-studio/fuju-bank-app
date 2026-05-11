@@ -68,13 +68,6 @@ final class ObservableSendFlowViewModel: ObservableObject {
     private var searchTask: Task<Void, Never>?
 
     private static let searchDebounceMs: UInt64 = 300
-    private static let minSearchLength: Int = 2
-    /// サーバ側 public_id 上限 (`bank-backend` の `public_id` バリデーション `2..32`) に合わせる。
-    /// これを超えた入力は API を叩く前に弾く。
-    private static let maxSearchLength: Int = 32
-    /// サーバ側 public_id 許容文字集合 (`/\A[a-zA-Z0-9]+\z/`) と一致。
-    /// これを満たさない入力は API を叩く前に弾き、ユーザーにヒントを表示する。
-    private static let searchRegex = try! NSRegularExpression(pattern: "^[a-zA-Z0-9]+$")
 
     init() {
         self.userRepository = KoinIosKt.userRepository()
@@ -108,23 +101,29 @@ final class ObservableSendFlowViewModel: ObservableObject {
     // MARK: - Step 1: search & candidate
 
     private func scheduleSearch() {
+        // 既存の debounce Task に加えて、すでに発火済みの searchToken（Kotlin Job）も
+        // 早期キャンセルする。これがないと debounce 中に新クエリが来ても、前回の API
+        // レスポンスが後から `searchState` を上書きしてしまうレース条件が残る。
         searchTask?.cancel()
-        let snapshot = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        if snapshot.isEmpty {
+        searchToken?.cancel(cause: nil)
+        // クエリ分類は shared (`SendSearchGuardKt`) に集約し、Android / iOS で同じ仕様に揃える。
+        switch SendSearchGuardKt.classifySendSearchQuery(query: query) {
+        case SendSearchQueryClassification.empty:
+            searchState = .idle
+            return
+        case SendSearchQueryClassification.tooShort:
+            searchState = .needsMoreChars
+            return
+        case SendSearchQueryClassification.invalid:
+            searchState = .invalidChars
+            return
+        case SendSearchQueryClassification.valid:
+            break
+        default:
             searchState = .idle
             return
         }
-        if snapshot.count < Self.minSearchLength {
-            searchState = .needsMoreChars
-            return
-        }
-        // サーバ側 public_id 仕様 (`/\A[a-zA-Z0-9]+\z/` 2..32) を満たさないクエリは API を
-        // 発火させない。IME composition と相性が悪いため query setter 経由 (`scheduleSearch` 起動時)
-        // でだけ判定する（妥協案）。
-        if snapshot.count > Self.maxSearchLength || !Self.matchesSearchRegex(snapshot) {
-            searchState = .invalidChars
-            return
-        }
+        let snapshot = query.trimmingCharacters(in: .whitespacesAndNewlines)
         searchTask = Task { [weak self] in
             // try? だと sleep がキャンセルされても続行してしまうため、
             // do-catch で確実に早期 return させる。
@@ -139,11 +138,6 @@ final class ObservableSendFlowViewModel: ObservableObject {
         }
     }
 
-    private static func matchesSearchRegex(_ s: String) -> Bool {
-        let range = NSRange(s.startIndex..<s.endIndex, in: s)
-        return searchRegex.firstMatch(in: s, options: [], range: range) != nil
-    }
-
     private func runSearch(query: String) {
         searchState = .loading
         searchToken?.cancel(cause: nil)
@@ -153,6 +147,11 @@ final class ObservableSendFlowViewModel: ObservableObject {
         ) { [weak self] outcome in
             Task { @MainActor in
                 guard let self else { return }
+                // 古い検索のレスポンスが新しい入力を上書きしないよう、現在のクエリと
+                // 一致するときだけ state を更新する（debounce + searchToken キャンセルでも
+                // すり抜けるレースを 1 段強化）。
+                let currentTrimmed = self.query.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard currentTrimmed == query else { return }
                 switch outcome {
                 case let loaded as UserSearchOutcome.Loaded:
                     self.searchState = .ready(results: loaded.results)

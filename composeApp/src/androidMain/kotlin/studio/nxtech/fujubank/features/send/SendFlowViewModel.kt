@@ -2,11 +2,12 @@ package studio.nxtech.fujubank.features.send
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
@@ -39,7 +40,6 @@ class SendFlowViewModel(
 
     // 検索クエリ用の Flow。debounce してから API を叩く。
     private val queryFlow = MutableStateFlow("")
-    private var searchJob: Job? = null
 
     init {
         // 初期残高をホームと同じ ProfileRepository から取得する。失敗時は 0 のまま、
@@ -57,33 +57,39 @@ class SendFlowViewModel(
         }
     }
 
-    @OptIn(FlowPreview::class)
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private fun observeQuery() {
         viewModelScope.launch {
+            // `collectLatest` で前検索のレスポンス待ちを打ち切る。`runSearch` 内で
+            // `userRepository.searchByPublicId` が suspend 中に新クエリが来た場合、collect だと
+            // 前検索完了まで次の値を読み始めないため UI 体感が遅れる。collectLatest なら
+            // 新値到着時点で前 collector を cancel して即新検索に切り替えられる。
             queryFlow
                 .debounce(SEARCH_DEBOUNCE_MS)
                 .distinctUntilChanged()
-                .collect { q -> runSearch(q) }
+                .collectLatest { q -> runSearch(q) }
         }
     }
 
     private suspend fun runSearch(query: String) {
+        // クエリ分類は `shared/commonMain` 側に集約 (Android / iOS 共通)。サーバ側 public_id 仕様
+        // (`/\A[a-zA-Z0-9]+\z/` 2..32) との同期は `classifySendSearchQuery` で 1 元管理する。
+        when (classifySendSearchQuery(query)) {
+            SendSearchQueryClassification.Empty -> {
+                _state.update { it.copy(searchState = SendFlowState.SearchState.Idle) }
+                return
+            }
+            SendSearchQueryClassification.TooShort -> {
+                _state.update { it.copy(searchState = SendFlowState.SearchState.NeedsMoreChars) }
+                return
+            }
+            SendSearchQueryClassification.Invalid -> {
+                _state.update { it.copy(searchState = SendFlowState.SearchState.InvalidChars) }
+                return
+            }
+            SendSearchQueryClassification.Valid -> Unit
+        }
         val trimmed = query.trim()
-        if (trimmed.isEmpty()) {
-            _state.update { it.copy(searchState = SendFlowState.SearchState.Idle) }
-            return
-        }
-        if (trimmed.length < MIN_SEARCH_LENGTH) {
-            _state.update { it.copy(searchState = SendFlowState.SearchState.NeedsMoreChars) }
-            return
-        }
-        // サーバ側 public_id 仕様 (`/\A[a-zA-Z0-9]+\z/` 2..32) を満たさないクエリは API を
-        // 発火させない。IME composition と相性が悪いため `onQueryChange` 時点では弾かず、
-        // 検索 trigger 段階（debounce 後）でだけ判定する（妥協案）。
-        if (trimmed.length > SEARCH_MAX_LENGTH || !SEARCH_REGEX.matches(trimmed)) {
-            _state.update { it.copy(searchState = SendFlowState.SearchState.InvalidChars) }
-            return
-        }
         _state.update { it.copy(searchState = SendFlowState.SearchState.Loading) }
         when (val result = userRepository.searchByPublicId(trimmed)) {
             is NetworkResult.Success -> _state.update {
@@ -266,20 +272,7 @@ class SendFlowViewModel(
         else -> "送金に失敗しました"
     }
 
-    internal companion object {
+    private companion object {
         const val SEARCH_DEBOUNCE_MS = 300L
-        const val MIN_SEARCH_LENGTH = 2
-
-        /**
-         * サーバ側 public_id 上限 (`bank-backend` の `public_id` バリデーション `2..32`) に合わせる。
-         * これを超えた入力は API を叩く前に弾く。
-         */
-        const val SEARCH_MAX_LENGTH = 32
-
-        /**
-         * サーバ側 public_id 許容文字集合 (`/\A[a-zA-Z0-9]+\z/`) と一致。
-         * これを満たさない入力は API を叩く前に弾き、ユーザーにヒントを表示する。
-         */
-        val SEARCH_REGEX = Regex("^[a-zA-Z0-9]+$")
     }
 }
