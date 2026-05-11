@@ -78,6 +78,11 @@ final class ObservableSendFlowViewModel: ObservableObject {
     }
 
     deinit {
+        // Kotlin Job.cancel() / Swift Task.cancel() はどちらも thread-safe 仕様で、
+        // deinit が main thread 以外で実行されても安全。Swift 5 では `@MainActor` 隔離
+        // プロパティへの nonisolated アクセスは警告止まりだが、Swift 6 への移行時には
+        // `MainActor.assumeIsolated` で囲むか non-isolated holder にリファクタする想定。
+        // 現状は cancel API の thread-safe 性に依存して残置する（実害なし）。
         searchToken?.cancel(cause: nil)
         transferToken?.cancel(cause: nil)
         searchTask?.cancel()
@@ -224,6 +229,15 @@ final class ObservableSendFlowViewModel: ObservableObject {
 
     /// alert の「送金する」CTA から呼ばれる。MFA 経路では retryKey を引き継ぐ。
     func submit() {
+        // 送金中 / 送金成功直後の二重 submit を防御。`.success` の経路は通常 UI 側でホーム遷移
+        // してから ViewModel が破棄されるため到達しないが、再入のレース対策として明示ガードを
+        // 残す（`.mfaRequired` は再試行可能なのでガード対象外）。
+        switch submission {
+        case .submitting, .success:
+            return
+        case .idle, .mfaRequired:
+            break
+        }
         guard let recipient else { return }
         guard let from = (sessionStore.current as? SessionState.Authenticated)?.userId else {
             showAmountConfirm = false

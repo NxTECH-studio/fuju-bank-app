@@ -395,6 +395,37 @@ class UserRepositoryTest {
     }
 
     @Test
+    fun searchByPublicId_does_not_hit_api_for_invalid_query() = runTest {
+        // Repository 側の defense in depth ガード: サーバ側 public_id 仕様
+        // (`/\A[a-zA-Z0-9]+\z/` `2..32`) を満たさないクエリは API を発火させず空リストを返す。
+        // ViewModel の入力ガードをバイパスする経路（テスト・他 feature 流用）でも安全な挙動。
+        var apiCallCount = 0
+        val engine = MockEngine {
+            apiCallCount += 1
+            respond(
+                content = ByteReadChannel("""{"users":[{"id":"01HZX1A2B3C4D5E6F7G8H9JKMN","public_id":"x"}]}"""),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
+
+        // 1 文字 (TooShort) / 日本語 (Invalid) / 33 文字超 (Invalid) すべて API 発火しない。
+        for (badQuery in listOf("a", "あい", "a".repeat(33), "", "ab-cd")) {
+            val result = repository.searchByPublicId(badQuery)
+            val success = assertIs<NetworkResult.Success<List<UserSearchResult>>>(result)
+            assertEquals(0, success.value.size)
+        }
+        assertEquals(0, apiCallCount)
+    }
+
+    @Test
     fun searchByPublicId_returns_empty_list_for_zero_hit() = runTest {
         val engine = MockEngine {
             respond(

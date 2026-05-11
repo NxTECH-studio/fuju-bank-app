@@ -186,6 +186,17 @@ class SendFlowViewModel(
     /** AlertDialog の「送金する」CTA から呼ばれる。 */
     fun submit() {
         val snapshot = _state.value
+        // 送金中 / 送金成功直後の二重 submit を防御。`Submission.Success` の経路は通常 UI 側で
+        // ホーム遷移してから ViewModel が破棄されるため到達しないが、再入のレース対策として
+        // 明示ガードを残す（MfaRequired は再試行可能なのでガード対象外）。
+        when (snapshot.submission) {
+            SendFlowState.Submission.Submitting,
+            is SendFlowState.Submission.Success,
+            -> return
+            SendFlowState.Submission.Idle,
+            is SendFlowState.Submission.MfaRequired,
+            -> Unit
+        }
         val recipient = snapshot.recipient ?: return
         val from = (sessionStore.current as? SessionState.Authenticated)?.userId ?: run {
             _state.update {
