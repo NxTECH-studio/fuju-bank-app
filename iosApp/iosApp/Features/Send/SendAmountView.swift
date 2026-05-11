@@ -90,6 +90,7 @@ struct SendAmountView: View {
                     .foregroundStyle(Color.red)
             }
             balancePreviewCard
+            memoField
             if let err = viewModel.error {
                 Text(err)
                     .font(.system(size: 13, weight: .medium))
@@ -135,6 +136,41 @@ struct SendAmountView: View {
         }
         .padding(.top, 24)
         .padding(.bottom, 8)
+    }
+
+    /// 任意メモ入力欄 + `n/80` カウンタ。Android 側 `MemoField` と対称。
+    ///
+    /// - 80 文字上限のクライアントガードは ViewModel の `memo` didSet で末尾を切り詰める。
+    /// - `axis: .vertical` + `lineLimit(1...3)` でメモらしい複数行入力を許容する。
+    /// - 残量が 10 文字以下になったらカウンタを警告色 (red) に切り替える。
+    private var memoField: some View {
+        let length = viewModel.memo.count
+        let remaining = ObservableSendFlowViewModel.memoMaxLength - length
+        let counterColor: Color = remaining <= memoRemainingWarnThreshold
+            ? Color.red
+            : FujuBankPalette.textSecondary
+        return VStack(alignment: .trailing, spacing: 4) {
+            TextField(
+                "メモ（任意・80文字まで）",
+                text: $viewModel.memo,
+                axis: .vertical,
+            )
+            .lineLimit(1...3)
+            .font(.system(size: 14, weight: .regular))
+            .foregroundStyle(FujuBankPalette.textPrimary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(FujuBankPalette.surface)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(FujuBankPalette.hairline, lineWidth: 1),
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .disabled(viewModel.submission == .submitting)
+            Text("\(length)/\(ObservableSendFlowViewModel.memoMaxLength)")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(counterColor)
+        }
     }
 
     private var balancePreviewCard: some View {
@@ -237,6 +273,9 @@ struct SendAmountView: View {
         .disabled(!enabled || key == .empty)
     }
 }
+
+/// memo カウンタの警告色しきい値。残量がこの値以下になったら red に切り替える。
+private let memoRemainingWarnThreshold: Int = 10
 
 private enum KeypadKey: Hashable {
     case digit(Int)

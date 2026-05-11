@@ -53,6 +53,19 @@ final class ObservableSendFlowViewModel: ObservableObject {
     @Published private(set) var recipient: UserSearchResult?
     @Published private(set) var balance: Int64 = 0
     @Published var amount: Int64 = 0
+    /// 送金時に付与する任意メモ。Android `SendFlowState.memo` と対称。
+    /// 80 文字を超える代入は didSet で末尾を切り捨てる（クライアントガード）。
+    /// `String.count` は Grapheme Cluster ベースのため Kotlin `String.length` (UTF-16 code unit)
+    /// と非対称だが、80 文字程度の短文かつどちらも目視で違和感のない範囲のため UX 上は許容する。
+    @Published var memo: String = "" {
+        didSet {
+            if memo.count > Self.memoMaxLength {
+                // 再代入で再帰呼び出しが起こるが、prefix によって 1 度の再代入で 80 文字以下に
+                // 収まるため didSet は計 2 回までで停止する。
+                memo = String(memo.prefix(Self.memoMaxLength))
+            }
+        }
+    }
     @Published var showAmountConfirm: Bool = false
     @Published private(set) var submission: Submission = .idle
     @Published private(set) var error: String?
@@ -68,6 +81,8 @@ final class ObservableSendFlowViewModel: ObservableObject {
     private var searchTask: Task<Void, Never>?
 
     private static let searchDebounceMs: UInt64 = 300
+    /// memo 上限。Android `SendFlowViewModel.MEMO_MAX_LENGTH` と同期させる。
+    static let memoMaxLength: Int = 80
 
     init() {
         self.userRepository = KoinIosKt.userRepository()
@@ -187,6 +202,7 @@ final class ObservableSendFlowViewModel: ObservableObject {
         confirmCandidate = nil
         recipient = candidate
         amount = 0
+        memo = ""
         error = nil
         submission = .idle
         step = .amount
@@ -198,6 +214,7 @@ final class ObservableSendFlowViewModel: ObservableObject {
         step = .recipient
         recipient = nil
         amount = 0
+        memo = ""
         error = nil
         submission = .idle
     }
@@ -251,6 +268,9 @@ final class ObservableSendFlowViewModel: ObservableObject {
             if case let .mfaRequired(key) = submission { return key }
             return nil
         }()
+        // 空文字 / 空白のみの memo は nil に正規化してサーバへ送る（Android 側と同じ挙動）。
+        let trimmedMemo = memo.trimmingCharacters(in: .whitespacesAndNewlines)
+        let memoForRequest: String? = trimmedMemo.isEmpty ? nil : memo
         showAmountConfirm = false
         submission = .submitting
         error = nil
@@ -260,6 +280,7 @@ final class ObservableSendFlowViewModel: ObservableObject {
             fromUserId: from,
             toUserId: recipient.id,
             amount: amount,
+            memo: memoForRequest,
             retryKey: retryKey,
         ) { [weak self] outcome in
             Task { @MainActor in
