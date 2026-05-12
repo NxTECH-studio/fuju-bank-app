@@ -86,12 +86,16 @@ fun searchRecipients(
 /**
  * Swift 側 `SendAmountView` から送金実行を kick するためのファサード。
  * MFA 経路では呼び出し側で `retryKey` を保持しておき、verify 完了後に同じ key で再呼出する。
+ *
+ * `memo` は送金時の任意メモ（最大 80 文字）。空文字 / null の場合は memo なしで送金する。
+ * 80 文字超のクライアントガードは Swift 側 ([ObservableSendFlowViewModel]) で行う。
  */
 fun executeTransfer(
     ledgerRepository: LedgerRepository,
     fromUserId: String,
     toUserId: String,
     amount: Long,
+    memo: String?,
     retryKey: String?,
     onResult: (TransferOutcome) -> Unit,
 ): Job = launchPerCall {
@@ -99,6 +103,7 @@ fun executeTransfer(
         from = fromUserId,
         to = toUserId,
         amount = amount,
+        memo = memo,
         retryKey = retryKey,
     )) {
         is TransferResult.Success -> TransferOutcome.Success(

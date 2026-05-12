@@ -27,6 +27,8 @@ data class SendFlowState(
     val balance: Long = 0L,
     // 金額入力ボックスの現在値。0 は「未入力」相当として扱い、CTA を非活性にする。
     val amount: Long = 0L,
+    // 送金時に付与する任意メモ（最大 80 文字、空文字は送信時に null へ正規化）。
+    val memo: String = "",
     // Step 2 の AlertDialog 表示中フラグ。
     val showAmountConfirm: Boolean = false,
     val submission: Submission = Submission.Idle,

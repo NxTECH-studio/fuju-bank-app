@@ -121,8 +121,49 @@ private fun LoadedContent(transaction: Transaction) {
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             DetailTransactionRow(transaction = transaction)
+            // memo セクションは memo 有りのときだけ差し込む。memo なしでは完全に非表示。
+            transaction.memo?.takeIf { it.isNotBlank() }?.let { memo ->
+                MemoCard(memo = memo)
+            }
             EmotionMetadataCard()
         }
+    }
+}
+
+/**
+ * 取引詳細画面の memo セクション。送金時に付与された任意メモ本文を表示する。
+ *
+ * - memo 無し / 空白のみの取引では呼び出し側でセクションごと描画しない（受け入れ条件 3）。
+ * - 角丸 20dp + 薄ピンク背景で、感情データカード（白背景）と差別化する。
+ */
+@Composable
+private fun MemoCard(memo: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(FujuBankColors.LightPink)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = "メモ",
+            style = TextStyle(
+                fontFamily = NotoSansJP,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = FujuBankColors.TextPrimary,
+            ),
+        )
+        Text(
+            text = memo,
+            style = TextStyle(
+                fontFamily = NotoSansJP,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Normal,
+                color = FujuBankColors.TextPrimary,
+            ),
+        )
     }
 }
 

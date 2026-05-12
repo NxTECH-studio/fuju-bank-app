@@ -3,8 +3,8 @@ import Shared
 
 /// 送金フロー Step 2 — 金額入力 + プレビュー画面（iOS）。
 ///
-/// 大金額表示 + 残高プレビューカード + ピンク CTA + カスタム数字パッド + 確認 alert。
-/// 完了時は [onComplete] を呼び、親で Snackbar 相当の Toast 表示 + ホーム自動遷移を行う。
+/// 金額入力欄（数字キーボード IME）+ 残高プレビューカード + メモ入力欄（標準 IME）+ ピンク CTA
+/// + 確認 alert。完了時は [onComplete] を呼び、親で Snackbar 相当の Toast 表示 + ホーム自動遷移を行う。
 struct SendAmountView: View {
     @ObservedObject var viewModel: ObservableSendFlowViewModel
     var onBack: () -> Void
@@ -83,13 +83,14 @@ struct SendAmountView: View {
     private func content(recipient: UserSearchResult) -> some View {
         VStack(spacing: 16) {
             recipientChip(recipient: recipient)
-            amountDisplay
+            amountField
             if viewModel.isOverBalance {
                 Text("残高が不足しています")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Color.red)
             }
             balancePreviewCard
+            memoField
             if let err = viewModel.error {
                 Text(err)
                     .font(.system(size: 13, weight: .medium))
@@ -99,7 +100,6 @@ struct SendAmountView: View {
             }
             Spacer(minLength: 0)
             sendCta
-            numericKeypad
             Spacer().frame(height: 8)
         }
         .padding(.horizontal, 16)
@@ -124,17 +124,81 @@ struct SendAmountView: View {
         .padding(.top, 4)
     }
 
-    private var amountDisplay: some View {
-        HStack(alignment: .lastTextBaseline, spacing: 6) {
-            Text(formatAmount(viewModel.amount))
-                .font(.system(size: 40, weight: .bold))
+    /// 金額入力欄。OS 標準の数字キーボード IME を起動し、メモ欄 (`memoField`) と並列の
+    /// 「2 つの入力欄」UI として機能する。旧実装の `amountDisplay` + `numericKeypad` は撤去し、
+    /// tap 対象（金額 vs メモ）に応じて IME が出し分けられる構成へ変更した。
+    ///
+    /// - `.keyboardType(.numberPad)` で数字キーボード IME。
+    /// - 数字以外を `set` 内で除去、先頭 0 を `drop(while:)` で正規化、`Int64(...)` で parse。
+    ///   Int64 範囲外は nil になり 0 扱いで安全側へ。
+    private var amountField: some View {
+        let amountText = viewModel.amount == 0 ? "" : String(viewModel.amount)
+        let binding = Binding<String>(
+            get: { amountText },
+            set: { newValue in
+                let digitsOnly = newValue.filter { $0.isNumber }
+                let normalized = String(digitsOnly.drop(while: { $0 == "0" }))
+                let parsed = Int64(normalized) ?? 0
+                viewModel.onAmountChange(parsed)
+            },
+        )
+        return HStack(alignment: .firstTextBaseline, spacing: 8) {
+            TextField("0", text: binding)
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.trailing)
+                .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(FujuBankPalette.textPrimary)
+                .disabled(viewModel.submission == .submitting)
+                .frame(maxWidth: .infinity)
             Text(currencyUnit)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(FujuBankPalette.textSecondary)
         }
-        .padding(.top, 24)
-        .padding(.bottom, 8)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(FujuBankPalette.surface)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(FujuBankPalette.hairline, lineWidth: 1),
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(.top, 8)
+    }
+
+    /// 任意メモ入力欄 + `n/80` カウンタ。Android 側 `MemoField` と対称。
+    ///
+    /// - 80 文字上限のクライアントガードは `submit()` 内で `prefix(80)` により安全側に丸める
+    ///   （IME 干渉を避けるため入力時の即時切り詰めは行わない / 詳細は ViewModel `memo` 参照）。
+    /// - `axis: .vertical` + `lineLimit(1...3)` でメモらしい複数行入力を許容する。
+    /// - 残量が 10 文字以下になったらカウンタを警告色 (red) に切り替える。
+    private var memoField: some View {
+        let length = viewModel.memo.count
+        let remaining = ObservableSendFlowViewModel.memoMaxLength - length
+        let counterColor: Color = remaining <= memoRemainingWarnThreshold
+            ? Color.red
+            : FujuBankPalette.textSecondary
+        return VStack(alignment: .trailing, spacing: 4) {
+            TextField(
+                "メモ（任意・80文字まで）",
+                text: $viewModel.memo,
+                axis: .vertical,
+            )
+            .lineLimit(1...3)
+            .font(.system(size: 14, weight: .regular))
+            .foregroundStyle(FujuBankPalette.textPrimary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(FujuBankPalette.surface)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(FujuBankPalette.hairline, lineWidth: 1),
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .disabled(viewModel.submission == .submitting)
+            Text("\(length)/\(ObservableSendFlowViewModel.memoMaxLength)")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(counterColor)
+        }
     }
 
     private var balancePreviewCard: some View {
@@ -179,70 +243,10 @@ struct SendAmountView: View {
         .disabled(!viewModel.canShowConfirm)
     }
 
-    private var numericKeypad: some View {
-        VStack(spacing: 6) {
-            ForEach(keypadRows, id: \.self) { row in
-                HStack(spacing: 6) {
-                    ForEach(row, id: \.self) { key in
-                        keyView(key: key)
-                    }
-                }
-            }
-        }
-        .padding(.bottom, 8)
-    }
-
-    private var keypadRows: [[KeypadKey]] {
-        [
-            [.digit(1), .digit(2), .digit(3)],
-            [.digit(4), .digit(5), .digit(6)],
-            [.digit(7), .digit(8), .digit(9)],
-            [.empty, .digit(0), .delete],
-        ]
-    }
-
-    private func keyView(key: KeypadKey) -> some View {
-        let enabled = viewModel.submission != .submitting
-        return Button(action: {
-            switch key {
-            case let .digit(value): viewModel.appendDigit(value)
-            case .delete: viewModel.deleteDigit()
-            case .empty: break
-            }
-        }) {
-            ZStack {
-                if case .empty = key {
-                    Color.clear
-                } else {
-                    FujuBankPalette.surface
-                }
-                switch key {
-                case let .digit(value):
-                    Text("\(value)")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(FujuBankPalette.textPrimary)
-                case .delete:
-                    Text("⌫")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(FujuBankPalette.textPrimary)
-                case .empty:
-                    EmptyView()
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 48)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-        }
-        .buttonStyle(.plain)
-        .disabled(!enabled || key == .empty)
-    }
 }
 
-private enum KeypadKey: Hashable {
-    case digit(Int)
-    case delete
-    case empty
-}
+/// memo カウンタの警告色しきい値。残量がこの値以下になったら red に切り替える。
+private let memoRemainingWarnThreshold: Int = 10
 
 /// 「ふじゅ〜」単位文字列。Android 側 `CurrencyFormatter.UNIT` と一致。
 private let currencyUnit = "ふじゅ〜"

@@ -15,23 +15,30 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -77,11 +84,6 @@ fun SendAmountScreen(
     val canSubmit = state.amount > 0L && !isOverBalance &&
         state.submission !is SendFlowState.Submission.Submitting
 
-    // 数字パッドに渡す callback は viewModel が同じ間は同一インスタンスを使い回し、
-    // 子 Composable の不要な再コンポーズを抑える。
-    val onDigitClick = remember(viewModel) { { digit: Int -> viewModel.onDigitAppend(digit) } }
-    val onDeleteClick = remember(viewModel) { { viewModel.onDigitDelete() } }
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -96,7 +98,11 @@ fun SendAmountScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             RecipientChip(publicId = recipient.publicId)
-            AmountDisplay(amount = state.amount)
+            AmountField(
+                amount = state.amount,
+                onAmountChange = viewModel::onAmountChange,
+                enabled = state.submission !is SendFlowState.Submission.Submitting,
+            )
             if (isOverBalance) {
                 Text(
                     text = "残高が不足しています",
@@ -110,6 +116,11 @@ fun SendAmountScreen(
             }
             BalancePreviewCard(
                 balanceAfter = (state.balance - state.amount).coerceAtLeast(0L),
+            )
+            MemoField(
+                memo = state.memo,
+                onMemoChange = viewModel::onMemoChange,
+                enabled = state.submission !is SendFlowState.Submission.Submitting,
             )
             state.error?.let { errMsg ->
                 Text(
@@ -164,11 +175,6 @@ fun SendAmountScreen(
                     )
                 }
             }
-            NumericKeypad(
-                onDigit = onDigitClick,
-                onDelete = onDeleteClick,
-                enabled = state.submission !is SendFlowState.Submission.Submitting,
-            )
             Spacer(modifier = Modifier.size(8.dp))
         }
     }
@@ -298,36 +304,100 @@ private fun RecipientChip(publicId: String) {
     }
 }
 
+/**
+ * 金額入力欄。OS 標準の数字キーボード IME を起動し、メモ欄 ([MemoField]) と並列の
+ * 「2 つの入力欄」UI として機能する。旧実装の `AmountDisplay` + 画面下 `NumericKeypad`
+ * は撤去し、tap 対象（金額 vs メモ）に応じて IME が出し分けられる構成へ変更した。
+ *
+ * - `KeyboardType.NumberPassword` で **純粋な数字テンキー** を起動する（`Number` だと OS に
+ *   よっては `.` `-` `,` 等の記号キーが並ぶため）。`NumberPassword` は IME 種類だけを変える
+ *   指定で、表示が bullet (`●`) 化されたりはしない。
+ * - `singleLine = true` だが OTP 同様、IME Done での自動 submit はしない（CTA タップ必須）。
+ * - 数字以外を `onValueChange` 内で除去（物理キーボード / paste 経路の保険）、先頭 0 を
+ *   `trimStart('0')` で正規化、`toLongOrNull()` で parse。Long 範囲外（20 桁超）は null になり
+ *   0 扱いで安全側へ。
+ * - [TextFieldValue] を Compose 側で保持するのは memo 同様、IME composition 維持のため。
+ *   数字キーボードでは composition はほぼ発生しないが、外部 state (amount) との単方向同期を
+ *   `LaunchedEffect(amount)` で行うパターンを揃えておく。
+ */
 @Composable
-private fun AmountDisplay(amount: Long) {
-    Row(
+private fun AmountField(
+    amount: Long,
+    onAmountChange: (Long) -> Unit,
+    enabled: Boolean,
+) {
+    var textFieldValue by remember {
+        val initial = if (amount == 0L) "" else amount.toString()
+        mutableStateOf(TextFieldValue(text = initial, selection = TextRange(initial.length)))
+    }
+    LaunchedEffect(amount) {
+        val expected = if (amount == 0L) "" else amount.toString()
+        if (textFieldValue.text != expected) {
+            textFieldValue = textFieldValue.copy(
+                text = expected,
+                selection = TextRange(expected.length),
+            )
+        }
+    }
+
+    OutlinedTextField(
+        value = textFieldValue,
+        onValueChange = { newValue ->
+            val digitsOnly = newValue.text.filter { it.isDigit() }
+            val normalized = digitsOnly.trimStart('0')
+            val parsed = normalized.toLongOrNull() ?: 0L
+            textFieldValue = TextFieldValue(
+                text = normalized,
+                selection = TextRange(normalized.length),
+            )
+            onAmountChange(parsed)
+        },
+        enabled = enabled,
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+        textStyle = TextStyle(
+            fontFamily = NotoSansJP,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            color = FujuBankColors.TextPrimary,
+            textAlign = TextAlign.End,
+        ),
+        placeholder = {
+            Text(
+                text = "0",
+                modifier = Modifier.fillMaxWidth(),
+                style = TextStyle(
+                    fontFamily = NotoSansJP,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = FujuBankColors.TextTertiary,
+                    textAlign = TextAlign.End,
+                ),
+            )
+        },
+        suffix = {
+            Text(
+                text = CurrencyFormatter.UNIT,
+                style = TextStyle(
+                    fontFamily = NotoSansJP,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = FujuBankColors.TextSecondary,
+                ),
+            )
+        },
+        shape = RoundedCornerShape(16.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = FujuBankColors.Surface,
+            unfocusedContainerColor = FujuBankColors.Surface,
+            disabledContainerColor = FujuBankColors.Surface,
+            focusedBorderColor = FujuBankColors.BrandPink,
+            unfocusedBorderColor = FujuBankColors.Hairline,
+        ),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 24.dp, bottom = 8.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.Bottom,
-    ) {
-        Text(
-            text = CurrencyFormatter.formatAmount(amount),
-            style = TextStyle(
-                fontFamily = NotoSansJP,
-                fontSize = 40.sp,
-                fontWeight = FontWeight.Bold,
-                color = FujuBankColors.TextPrimary,
-            ),
-        )
-        Spacer(modifier = Modifier.size(6.dp))
-        Text(
-            text = CurrencyFormatter.UNIT,
-            style = TextStyle(
-                fontFamily = NotoSansJP,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = FujuBankColors.TextSecondary,
-            ),
-            modifier = Modifier.padding(bottom = 6.dp),
-        )
-    }
+            .padding(top = 8.dp),
+    )
 }
 
 @Composable
@@ -367,84 +437,98 @@ private fun BalancePreviewCard(balanceAfter: Long) {
 }
 
 /**
- * 0-9 と削除キーを 4 行 x 3 列で並べる簡易数字パッド。
+ * 任意メモ入力欄 + `n/80` カウンタ。
  *
- * Compose の TextField + ソフトキーボードを使わない理由: 大金額表示に直接バインドし、
- * カスタム書式（`12,020`）を維持しながら 1 桁ずつ確実に追記/削除させたいため。
+ * - 80 文字上限のクライアントガードは ViewModel 側 ([SendFlowViewModel.onMemoChange]) で
+ *   切り捨てるため、TextField 自体は素の入力値を `onMemoChange` に流すだけでよい。
+ * - `singleLine = false` + `maxLines = 3` でメモらしい複数行入力を許容する。OTP 同様の
+ *   「IME Done で自動 submit」は発生しないので、CTA タップが必須。
+ * - 残量が 10 文字以下になったらカウンタを警告色 (Error) に切り替え、上限近接を視認できるようにする。
+ *
+ * 日本語 IME の変換中状態 (composition) を維持するため [TextFieldValue] を Compose 側で保持し、
+ * 外部 state (memo) との同期は単方向 (memo が変わったときだけ反映) で行う。String 版
+ * `OutlinedTextField` を直接 hoisting すると IME composition が破棄され日本語入力が成立しない。
  */
 @Composable
-private fun NumericKeypad(
-    onDigit: (Int) -> Unit,
-    onDelete: () -> Unit,
+private fun MemoField(
+    memo: String,
+    onMemoChange: (String) -> Unit,
     enabled: Boolean,
 ) {
+    var textFieldValue by remember {
+        mutableStateOf(TextFieldValue(text = memo, selection = TextRange(memo.length)))
+    }
+    LaunchedEffect(memo) {
+        if (textFieldValue.text != memo) {
+            textFieldValue = textFieldValue.copy(
+                text = memo,
+                selection = TextRange(memo.length),
+            )
+        }
+    }
+
+    val length = memo.length
+    val remaining = MEMO_MAX_LENGTH - length
+    val counterColor = if (remaining <= MEMO_REMAINING_WARN_THRESHOLD) {
+        FujuBankColors.Error
+    } else {
+        FujuBankColors.TextSecondary
+    }
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalAlignment = Alignment.End,
     ) {
-        KEYPAD_ROWS.forEach { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                row.forEach { key ->
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                when (key) {
-                                    is KeyButton.Empty -> Color.Transparent
-                                    else -> FujuBankColors.Surface
-                                },
-                            )
-                            .let {
-                                when (key) {
-                                    is KeyButton.Digit -> if (enabled) it.clickable { onDigit(key.value) } else it
-                                    is KeyButton.Delete -> if (enabled) it.clickable(onClick = onDelete) else it
-                                    is KeyButton.Empty -> it
-                                }
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        when (key) {
-                            is KeyButton.Digit -> Text(
-                                text = key.value.toString(),
-                                style = TextStyle(
-                                    fontFamily = NotoSansJP,
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = FujuBankColors.TextPrimary,
-                                ),
-                            )
-                            is KeyButton.Delete -> Text(
-                                text = "⌫",
-                                style = TextStyle(
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = FujuBankColors.TextPrimary,
-                                ),
-                            )
-                            is KeyButton.Empty -> Unit
-                        }
-                    }
-                }
-            }
-        }
+        OutlinedTextField(
+            value = textFieldValue,
+            onValueChange = { newValue ->
+                textFieldValue = newValue
+                onMemoChange(newValue.text)
+            },
+            enabled = enabled,
+            singleLine = false,
+            maxLines = 3,
+            shape = RoundedCornerShape(16.dp),
+            placeholder = {
+                Text(
+                    text = "メモ（任意・80文字まで）",
+                    style = TextStyle(
+                        fontFamily = NotoSansJP,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = FujuBankColors.TextTertiary,
+                    ),
+                )
+            },
+            textStyle = TextStyle(
+                fontFamily = NotoSansJP,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Normal,
+                color = FujuBankColors.TextPrimary,
+            ),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = FujuBankColors.Surface,
+                unfocusedContainerColor = FujuBankColors.Surface,
+                disabledContainerColor = FujuBankColors.Surface,
+                focusedBorderColor = FujuBankColors.BrandPink,
+                unfocusedBorderColor = FujuBankColors.Hairline,
+            ),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(modifier = Modifier.size(4.dp))
+        Text(
+            text = "$length/$MEMO_MAX_LENGTH",
+            style = TextStyle(
+                fontFamily = NotoSansJP,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = counterColor,
+            ),
+        )
     }
 }
 
-private sealed class KeyButton {
-    data class Digit(val value: Int) : KeyButton()
-    data object Delete : KeyButton()
-    data object Empty : KeyButton()
-}
+/** memo 上限。`SendFlowViewModel.MEMO_MAX_LENGTH` と同期させる。 */
+private const val MEMO_MAX_LENGTH = 80
 
-/** 数字パッドの行/列レイアウト。リコンポーズ毎の再生成を避けるためトップレベル定数で保持する。 */
-private val KEYPAD_ROWS: List<List<KeyButton>> = listOf(
-    listOf(KeyButton.Digit(1), KeyButton.Digit(2), KeyButton.Digit(3)),
-    listOf(KeyButton.Digit(4), KeyButton.Digit(5), KeyButton.Digit(6)),
-    listOf(KeyButton.Digit(7), KeyButton.Digit(8), KeyButton.Digit(9)),
-    listOf(KeyButton.Empty, KeyButton.Digit(0), KeyButton.Delete),
-)
+/** 残量がこの値以下になったらカウンタを警告色に切り替える。 */
+private const val MEMO_REMAINING_WARN_THRESHOLD = 10

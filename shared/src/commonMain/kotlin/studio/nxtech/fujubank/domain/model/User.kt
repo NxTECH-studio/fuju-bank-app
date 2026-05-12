@@ -24,6 +24,8 @@ data class Transaction(
     val counterpartyPublicId: String?,
     val artifactId: String?,
     val occurredAt: Instant,
+    // 送金時の任意メモ（最大 80 文字）。mint や memo 未指定 transfer は null。
+    val memo: String? = null,
 )
 
 /**

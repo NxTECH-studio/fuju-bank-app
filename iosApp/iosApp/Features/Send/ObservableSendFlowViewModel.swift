@@ -53,6 +53,16 @@ final class ObservableSendFlowViewModel: ObservableObject {
     @Published private(set) var recipient: UserSearchResult?
     @Published private(set) var balance: Int64 = 0
     @Published var amount: Int64 = 0
+    /// 送金時に付与する任意メモ。Android `SendFlowState.memo` と対称。
+    ///
+    /// 入力時の即時切り詰め（didSet で `prefix(80)`）は、SwiftUI Binding 経由で View 側に値が
+    /// 逆流する際に IME の marked text（変換中の未確定文字）と衝突し、日本語/中国語等の IME
+    /// 入力が成立しなくなる（変換確定できない / 入力した文字が消える）ため行わない。
+    /// 80 文字超過は `submit()` 内で `prefix(80)` により安全側で丸め、表示上のカウンタが
+    /// 80 を超えた時点で warning 色に切り替わる UI で過入力をユーザーに気付かせる。
+    /// `String.count` は Grapheme Cluster ベースのため Kotlin `String.length` (UTF-16 code unit)
+    /// と非対称だが、80 文字程度の短文かつどちらも目視で違和感のない範囲のため UX 上は許容する。
+    @Published var memo: String = ""
     @Published var showAmountConfirm: Bool = false
     @Published private(set) var submission: Submission = .idle
     @Published private(set) var error: String?
@@ -68,6 +78,8 @@ final class ObservableSendFlowViewModel: ObservableObject {
     private var searchTask: Task<Void, Never>?
 
     private static let searchDebounceMs: UInt64 = 300
+    /// memo 上限。Android `SendFlowViewModel.MEMO_MAX_LENGTH` と同期させる。
+    static let memoMaxLength: Int = 80
 
     init() {
         self.userRepository = KoinIosKt.userRepository()
@@ -187,6 +199,7 @@ final class ObservableSendFlowViewModel: ObservableObject {
         confirmCandidate = nil
         recipient = candidate
         amount = 0
+        memo = ""
         error = nil
         submission = .idle
         step = .amount
@@ -198,21 +211,15 @@ final class ObservableSendFlowViewModel: ObservableObject {
         step = .recipient
         recipient = nil
         amount = 0
+        memo = ""
         error = nil
         submission = .idle
     }
 
-    func appendDigit(_ digit: Int) {
-        precondition((0...9).contains(digit), "digit must be 0..9")
-        let next = amount &* 10 &+ Int64(digit)
-        // overflow 検知: &* / &+ は wrap 演算なので除算で逆変換できなければ overflow。
-        if amount != 0 && next / 10 != amount { return }
-        amount = next
-        error = nil
-    }
-
-    func deleteDigit() {
-        amount = amount / 10
+    /// 金額入力。OS 標準の数字キーボード IME 経由で `TextField` から呼ばれる。
+    /// Int64 範囲外は UI 側で `Int64(...)` が nil になり 0 扱いになるため、ここまで届かない前提。
+    func onAmountChange(_ value: Int64) {
+        amount = value
         error = nil
     }
 
@@ -251,6 +258,12 @@ final class ObservableSendFlowViewModel: ObservableObject {
             if case let .mfaRequired(key) = submission { return key }
             return nil
         }()
+        // 80 文字超過は submit 時にここで安全側に丸める（IME 干渉を避けるため didSet で
+        // 切り詰めない方針。詳細は memo プロパティの doc コメント参照）。
+        // 空文字 / 空白のみの memo は nil に正規化してサーバへ送る（Android 側と同じ挙動）。
+        let truncatedMemo = String(memo.prefix(Self.memoMaxLength))
+        let trimmedMemo = truncatedMemo.trimmingCharacters(in: .whitespacesAndNewlines)
+        let memoForRequest: String? = trimmedMemo.isEmpty ? nil : truncatedMemo
         showAmountConfirm = false
         submission = .submitting
         error = nil
@@ -260,6 +273,7 @@ final class ObservableSendFlowViewModel: ObservableObject {
             fromUserId: from,
             toUserId: recipient.id,
             amount: amount,
+            memo: memoForRequest,
             retryKey: retryKey,
         ) { [weak self] outcome in
             Task { @MainActor in

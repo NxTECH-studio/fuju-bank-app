@@ -131,6 +131,7 @@ class SendFlowViewModel(
                 recipient = candidate,
                 step = SendFlowState.Step.Amount,
                 amount = 0L,
+                memo = "",
                 error = null,
                 submission = SendFlowState.Submission.Idle,
             )
@@ -144,33 +145,33 @@ class SendFlowViewModel(
                 step = SendFlowState.Step.Recipient,
                 recipient = null,
                 amount = 0L,
+                memo = "",
                 error = null,
                 submission = SendFlowState.Submission.Idle,
             )
         }
     }
 
+    /**
+     * memo の入力変更ハンドラ。80 文字を超える入力はクライアント側で**超過分を切り捨て**、
+     * サーバ側 VALIDATION_FAILED の再現を避ける。
+     *
+     * 文字数は `String.length`（UTF-16 code unit）でカウントする。サロゲートペア（絵文字）は
+     * 2 としてカウントされる Kotlin 側既定動作を許容し、サーバ側仕様 (80 文字上限) と同じ
+     * 単位で揃える前提。
+     */
+    fun onMemoChange(value: String) {
+        val truncated = if (value.length > MEMO_MAX_LENGTH) value.take(MEMO_MAX_LENGTH) else value
+        _state.update { it.copy(memo = truncated) }
+    }
+
+    /**
+     * 金額入力。OS 標準の数字キーボード IME 経由で `OutlinedTextField` から呼ばれる。
+     * 巨大値は内部で打ち切らない（CTA 側で「残高超過」として disable する）。Long 範囲外は
+     * UI 側で `toLongOrNull()` が null になり 0 扱いになるため、ここまで届かない前提。
+     */
     fun onAmountChange(value: Long) {
-        // 巨大値は内部で打ち切らない。CTA 側で「残高超過」として disable する。
         _state.update { it.copy(amount = value, error = null) }
-    }
-
-    /** カスタム数字パッドで 1 桁入力する。先頭 0 を抑制し、Long の範囲を超えないようガードする。 */
-    fun onDigitAppend(digit: Int) {
-        require(digit in 0..9) { "digit must be 0..9" }
-        val current = _state.value.amount
-        // Long.MAX_VALUE = 9223372036854775807。10 倍してから加算が overflow しないかチェック。
-        val multiplied = current * 10
-        val next = multiplied + digit
-        if (multiplied / 10 != current || next < current) {
-            // overflow: 何もしない（最大値で頭打ち）。
-            return
-        }
-        _state.update { it.copy(amount = next, error = null) }
-    }
-
-    fun onDigitDelete() {
-        _state.update { it.copy(amount = it.amount / 10, error = null) }
     }
 
     fun showAmountConfirm() {
@@ -216,11 +217,15 @@ class SendFlowViewModel(
                 error = null,
             )
         }
+        // 空文字 / 空白のみの memo は null に正規化してサーバへ送る。
+        // 一部のサーバ実装で空文字が persist される懸念を避けるため。
+        val memo = snapshot.memo.takeIf { it.isNotBlank() }
         viewModelScope.launch {
             val result = ledgerRepository.transfer(
                 from = from,
                 to = recipient.id,
                 amount = snapshot.amount,
+                memo = memo,
                 retryKey = retryKey,
             )
             applyTransferResult(result)
@@ -285,5 +290,6 @@ class SendFlowViewModel(
 
     private companion object {
         const val SEARCH_DEBOUNCE_MS = 300L
+        const val MEMO_MAX_LENGTH = 80
     }
 }
