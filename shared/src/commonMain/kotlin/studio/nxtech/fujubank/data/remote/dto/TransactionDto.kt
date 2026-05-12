@@ -37,6 +37,10 @@ data class TransactionDto(
     // transfer のときだけ非 null。mint は常に null。
     @SerialName("counterparty_user_id")
     val counterpartyUserId: String?,
+    // transfer のとき AuthCore 公開ハンドル (public_id) を返す。mint は null。
+    // UI 表示は `@{publicId}` を採用するため bank PK ではなくこちらを使う。
+    @SerialName("counterparty_public_id")
+    val counterpartyPublicId: String?,
     // ISO8601 文字列。Instant への変換は Repository 層で行う。
     @SerialName("occurred_at")
     val occurredAt: String,

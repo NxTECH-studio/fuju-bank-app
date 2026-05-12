@@ -83,20 +83,23 @@ fun verifyMfaWithoutAuthenticating(
 ) {
     sessionStore.scope.launch {
         val outcome = when (val verify = authRepository.verifyMfa(preToken, code = code, recoveryCode = recoveryCode)) {
-            is NetworkResult.Success -> when (val provision = userRepository.provisionMe()) {
-                is NetworkResult.Success -> MfaVerifyOutcome.Verified(
-                    // SessionStore.userId は AuthCore ULID (= external_user_id) を源泉とする。
-                    // bank-backend が `sub` を必ず返すため `User.subject` は非 null。
-                    userId = provision.value.subject,
-                    bankUserId = provision.value.id,
-                )
-                is NetworkResult.Failure -> MfaVerifyOutcome.Failure(
-                    message = AuthErrorMessages.forMfa(provision.error),
-                    error = provision.error,
-                )
-                is NetworkResult.NetworkFailure -> MfaVerifyOutcome.NetworkFailure(
-                    message = AuthErrorMessages.forNetworkFailure(),
-                )
+            is NetworkResult.Success -> {
+                val authCorePublicId = fetchAuthCoreProfile()?.publicId
+                when (val provision = userRepository.provisionMe(publicId = authCorePublicId)) {
+                    is NetworkResult.Success -> MfaVerifyOutcome.Verified(
+                        // SessionStore.userId は AuthCore ULID (= external_user_id) を源泉とする。
+                        // bank-backend が `sub` を必ず返すため `User.subject` は非 null。
+                        userId = provision.value.subject,
+                        bankUserId = provision.value.id,
+                    )
+                    is NetworkResult.Failure -> MfaVerifyOutcome.Failure(
+                        message = AuthErrorMessages.forMfa(provision.error),
+                        error = provision.error,
+                    )
+                    is NetworkResult.NetworkFailure -> MfaVerifyOutcome.NetworkFailure(
+                        message = AuthErrorMessages.forNetworkFailure(),
+                    )
+                }
             }
             is NetworkResult.Failure -> MfaVerifyOutcome.Failure(
                 message = AuthErrorMessages.forMfa(verify.error),
@@ -202,35 +205,48 @@ fun bootstrapSession(
 private suspend fun provisionAfterAuth(
     userRepository: UserRepository,
     sessionStore: SessionStore,
-): AuthFlowOutcome = when (val provision = userRepository.provisionMe()) {
-    is NetworkResult.Success -> {
-        // mfa_enabled = false の既存ユーザは MFA セットアップ画面群に誘導する
-        // （client-bank-21 の resume 経路）。getProfile 失敗は安全側に倒し、Authenticated に進める。
-        val authCoreUserApi: AuthCoreUserApi = KoinPlatform.getKoin().get()
-        val needsSetup = when (val profile = authCoreUserApi.getProfile()) {
-            is NetworkResult.Success -> !profile.value.mfaEnabled
-            is NetworkResult.Failure, is NetworkResult.NetworkFailure -> false
+): AuthFlowOutcome {
+    // AuthCore /v1/user/profile を先に取得し、publicId と mfa_enabled を一度のレスポンスで
+    // 得る。getProfile が落ちたら publicId は null で fail-safe（needsSetup = false に倒し
+    // 既存挙動の Authenticated に進める）。
+    val profile = fetchAuthCoreProfile()
+    return when (val provision = userRepository.provisionMe(publicId = profile?.publicId)) {
+        is NetworkResult.Success -> {
+            val needsSetup = profile != null && !profile.mfaEnabled
+            if (needsSetup) {
+                sessionStore.setMfaSetupRequired()
+            } else {
+                // SessionStore.userId は AuthCore ULID (= external_user_id) を源泉とする。
+                // bank-backend が `sub` を必ず返すため `User.subject` は非 null。
+                sessionStore.setAuthenticated(
+                    userId = provision.value.subject,
+                    bankUserId = provision.value.id,
+                )
+            }
+            AuthFlowOutcome.Authenticated
         }
-        if (needsSetup) {
-            sessionStore.setMfaSetupRequired()
-        } else {
-            // SessionStore.userId は AuthCore ULID (= external_user_id) を源泉とする。
-            // bank-backend が `sub` を必ず返すため `User.subject` は非 null。
-            sessionStore.setAuthenticated(
-                userId = provision.value.subject,
-                bankUserId = provision.value.id,
-            )
-        }
-        AuthFlowOutcome.Authenticated
+        is NetworkResult.Failure -> AuthFlowOutcome.Failure(
+            message = AuthErrorMessages.forLogin(provision.error),
+            error = provision.error,
+        )
+        is NetworkResult.NetworkFailure -> AuthFlowOutcome.NetworkFailure(
+            message = AuthErrorMessages.forNetworkFailure(),
+        )
     }
-    is NetworkResult.Failure -> AuthFlowOutcome.Failure(
-        message = AuthErrorMessages.forLogin(provision.error),
-        error = provision.error,
-    )
-    is NetworkResult.NetworkFailure -> AuthFlowOutcome.NetworkFailure(
-        message = AuthErrorMessages.forNetworkFailure(),
-    )
 }
+
+/**
+ * AuthCore `/v1/user/profile` を取得する共通ヘルパー。
+ *
+ * bank `POST /users/me` の `public_id` 流し込み + ログイン経路の mfa_enabled 判定で
+ * 共有する。Failure / NetworkFailure は null に倒し、呼び出し側で fail-safe 分岐できる
+ * よう契約を一本化する。
+ */
+private suspend fun fetchAuthCoreProfile() =
+    when (val result = KoinPlatform.getKoin().get<AuthCoreUserApi>().getProfile()) {
+        is NetworkResult.Success -> result.value
+        is NetworkResult.Failure, is NetworkResult.NetworkFailure -> null
+    }
 
 // --- Signup + MFA setup フロー（client-bank-21）-----------------------------
 
@@ -302,7 +318,9 @@ fun registerAndAutoLogin(
                         is LoginResult.Authenticated -> {
                             // provisionMe は失敗しても致命傷ではないが、後段の mfa/register が
                             // bank user 行を要求するため、ここで成功させておく。
-                            when (userRepository.provisionMe()) {
+                            // signup 直後なので AuthCore は public_id を確実に持っている。
+                            val authCorePublicId = fetchAuthCoreProfile()?.publicId
+                            when (userRepository.provisionMe(publicId = authCorePublicId)) {
                                 is NetworkResult.Success -> RegisterOutcome.Started
                                 is NetworkResult.Failure, is NetworkResult.NetworkFailure ->
                                     RegisterOutcome.LoginAfterRegisterFailed
@@ -397,19 +415,22 @@ fun enableMfaAndProvision(
 
 private suspend fun provisionToMfaEnableOutcome(
     userRepository: UserRepository,
-): MfaEnableOutcome = when (val provision = userRepository.provisionMe()) {
-    is NetworkResult.Success -> MfaEnableOutcome.Enabled(
-        // Swift 側はこの userId / bankUserId を後で `setAuthenticated(userId, bankUserId)` に渡す
-        // 契約。SessionStore は ULID と bank PK の両方を併存させるため、subject (AuthCore sub) と
-        // 内部 id (bank PK) の双方を返す。bank-backend が `sub` を必ず返すため非 null。
-        userId = provision.value.subject,
-        bankUserId = provision.value.id,
-    )
-    is NetworkResult.Failure -> MfaEnableOutcome.Failure(
-        message = AuthErrorMessages.forMfaEnable(provision.error),
-        error = provision.error,
-    )
-    is NetworkResult.NetworkFailure -> MfaEnableOutcome.NetworkFailure(
-        message = AuthErrorMessages.forNetworkFailure(),
-    )
+): MfaEnableOutcome {
+    val authCorePublicId = fetchAuthCoreProfile()?.publicId
+    return when (val provision = userRepository.provisionMe(publicId = authCorePublicId)) {
+        is NetworkResult.Success -> MfaEnableOutcome.Enabled(
+            // Swift 側はこの userId / bankUserId を後で `setAuthenticated(userId, bankUserId)` に渡す
+            // 契約。SessionStore は ULID と bank PK の両方を併存させるため、subject (AuthCore sub) と
+            // 内部 id (bank PK) の双方を返す。bank-backend が `sub` を必ず返すため非 null。
+            userId = provision.value.subject,
+            bankUserId = provision.value.id,
+        )
+        is NetworkResult.Failure -> MfaEnableOutcome.Failure(
+            message = AuthErrorMessages.forMfaEnable(provision.error),
+            error = provision.error,
+        )
+        is NetworkResult.NetworkFailure -> MfaEnableOutcome.NetworkFailure(
+            message = AuthErrorMessages.forNetworkFailure(),
+        )
+    }
 }

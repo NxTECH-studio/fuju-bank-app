@@ -236,11 +236,11 @@ private fun DetailTransactionRow(transaction: Transaction) {
         TransactionDirection.Mint -> transaction.artifactId
             ?.let { "アーティファクト ${it.takeLast(SHORT_ID_LEN)}" }
             ?: "発行"
-        TransactionDirection.Incoming -> transaction.counterpartyUserId
-            ?.let { "${it.takeLast(SHORT_ID_LEN)} からもらいました" }
+        TransactionDirection.Incoming -> transaction.counterpartyPublicId
+            ?.let { "@$it からもらいました" }
             ?: "入金"
-        TransactionDirection.Outgoing -> transaction.counterpartyUserId
-            ?.let { "${it.takeLast(SHORT_ID_LEN)} に送りました" }
+        TransactionDirection.Outgoing -> transaction.counterpartyPublicId
+            ?.let { "@$it に送りました" }
             ?: "送金"
     }
     // Figma `702:6440` 準拠: アバター = アーティファクト画像、左上 X バッジ = SNS 出典 (X) という

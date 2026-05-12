@@ -96,15 +96,13 @@ private struct TransactionRowVariant {
             self.sign = "+"
             self.amountColor = FujuBankPalette.brandPink
         } else if direction == TransactionDirection.incoming {
-            let from = transaction.counterpartyUserId
-                .map { String($0.suffix(TransactionDisplay.shortIdLength)) }
-            self.title = from.map { "\($0) からもらいました" } ?? "入金"
+            self.title = transaction.counterpartyPublicId
+                .map { "@\($0) からもらいました" } ?? "入金"
             self.sign = "+"
             self.amountColor = FujuBankPalette.brandPink
         } else {
-            let to = transaction.counterpartyUserId
-                .map { String($0.suffix(TransactionDisplay.shortIdLength)) }
-            self.title = to.map { "\($0) に送りました" } ?? "送金"
+            self.title = transaction.counterpartyPublicId
+                .map { "@\($0) に送りました" } ?? "送金"
             self.sign = "-"
             self.amountColor = FujuBankPalette.textPrimary
         }

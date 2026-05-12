@@ -82,15 +82,17 @@ class LoginViewModel(
     }
 
     private suspend fun provisionAndAuthenticate() {
-        when (val provision = userRepository.provisionMe()) {
+        // AuthCore /v1/user/profile を先に取得し、bank backend へ流す publicId と、
+        // MFA セットアップ要否を一度のレスポンスから取り出す。getProfile が落ちた場合は
+        // 既存挙動と同じく安全側に倒し、publicId は null で provision を続行する
+        // （MFA セットアップ要求は次回ログイン時に再判定すれば良い）。
+        val profile = when (val result = authCoreUserApi.getProfile()) {
+            is NetworkResult.Success -> result.value
+            is NetworkResult.Failure, is NetworkResult.NetworkFailure -> null
+        }
+        when (val provision = userRepository.provisionMe(publicId = profile?.publicId)) {
             is NetworkResult.Success -> {
-                // mfa_enabled = false なら MFA セットアップを完了させてから Authenticated に倒す。
-                // getProfile が落ちた場合は安全側に倒し、既存挙動の Authenticated に進める
-                // （MFA セットアップ要求は次回ログイン時に再判定すれば良い）。
-                val needsSetup = when (val profile = authCoreUserApi.getProfile()) {
-                    is NetworkResult.Success -> !profile.value.mfaEnabled
-                    is NetworkResult.Failure, is NetworkResult.NetworkFailure -> false
-                }
+                val needsSetup = profile != null && !profile.mfaEnabled
                 if (needsSetup) {
                     sessionStore.setMfaSetupRequired()
                     _state.update { LoginUiState() }

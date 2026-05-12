@@ -17,4 +17,10 @@ data class UpsertMeRequest(
     val name: String? = null,
     @SerialName("public_key")
     val publicKey: String? = null,
+    // AuthCore /v1/user/profile の `public_id` を lazy provision 時に bank へ伝搬する。
+    // bank-backend 側はカラム自体は NULL 許容のままだが、NOT NULL 化に追従する想定で
+    // 呼び出し側は基本的に値を渡す。AuthCore 側で取得失敗した場合のみ null 送信で
+    // fail-safe（既存ユーザーの provision を止めないため）。
+    @SerialName("public_id")
+    val publicId: String? = null,
 )

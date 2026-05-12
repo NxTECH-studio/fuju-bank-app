@@ -174,15 +174,15 @@ private data class TransactionRowVariant(
                 amountColor = FujuBankColors.BrandPink,
             )
             TransactionDirection.Incoming -> TransactionRowVariant(
-                title = transaction.counterpartyUserId
-                    ?.let { "${it.takeLast(SHORT_ID_LEN)} からもらいました" }
+                title = transaction.counterpartyPublicId
+                    ?.let { "@$it からもらいました" }
                     ?: "入金",
                 sign = "+",
                 amountColor = FujuBankColors.BrandPink,
             )
             TransactionDirection.Outgoing -> TransactionRowVariant(
-                title = transaction.counterpartyUserId
-                    ?.let { "${it.takeLast(SHORT_ID_LEN)} に送りました" }
+                title = transaction.counterpartyPublicId
+                    ?.let { "@$it に送りました" }
                     ?: "送金",
                 sign = "-",
                 amountColor = FujuBankColors.TextPrimary,
