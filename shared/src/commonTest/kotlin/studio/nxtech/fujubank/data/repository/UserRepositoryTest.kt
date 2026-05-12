@@ -12,6 +12,7 @@ import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.remote.api.UserApi
@@ -27,6 +28,7 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.time.Instant
 
@@ -300,6 +302,195 @@ class UserRepositoryTest {
         val success = assertIs<NetworkResult.Success<List<Transaction>>>(result)
         val txn = success.value.single()
         assertEquals("ランチ代", txn.memo)
+    }
+
+    @Test
+    fun transactions_maps_mint_metadata_to_domain() = runTest {
+        // mining 側 e2e fixture 同形の payload を decode して、Repository が
+        // `Transaction.metadata` に 3 フィールドを伝播することを保証する。
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """
+                    {
+                      "data": [
+                        {
+                          "transaction_id": "txn_mint_metadata",
+                          "transaction_kind": "mint",
+                          "direction": "credit",
+                          "amount": 100,
+                          "artifact_id": null,
+                          "counterparty_user_id": null,
+                          "counterparty_public_id": null,
+                          "memo": null,
+                          "metadata": {
+                            "n_exposures": 3,
+                            "target_date": "2026-05-10",
+                            "model_version": "dummy_test"
+                          },
+                          "occurred_at": "2026-05-10T08:00:00Z"
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
+
+        val result = repository.transactions("usr_me")
+
+        val success = assertIs<NetworkResult.Success<List<Transaction>>>(result)
+        val metadata = assertNotNull(success.value.single().metadata)
+        assertEquals(3, metadata.nExposures)
+        assertEquals(LocalDate(2026, 5, 10), metadata.targetDate)
+        assertEquals("dummy_test", metadata.modelVersion)
+    }
+
+    @Test
+    fun transactions_normalizes_empty_metadata_object_to_null() = runTest {
+        // backend が `metadata: {}` を返した場合は domain Transaction.metadata = null に
+        // 正規化される（UI のカード非表示分岐をシンプルに保つため）。
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """
+                    {
+                      "data": [
+                        {
+                          "transaction_id": "txn_empty_metadata",
+                          "transaction_kind": "mint",
+                          "direction": "credit",
+                          "amount": 100,
+                          "artifact_id": null,
+                          "counterparty_user_id": null,
+                          "counterparty_public_id": null,
+                          "memo": null,
+                          "metadata": {},
+                          "occurred_at": "2026-05-10T08:00:00Z"
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
+
+        val result = repository.transactions("usr_me")
+
+        val success = assertIs<NetworkResult.Success<List<Transaction>>>(result)
+        assertNull(success.value.single().metadata)
+    }
+
+    @Test
+    fun transactions_transfer_with_absent_metadata_maps_to_null_metadata() = runTest {
+        // transfer 取引は client から metadata を送出していないため、DB 上は常に `{}` か
+        // payload に metadata キーが無い状態。どちらの場合も Transaction.metadata = null。
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """
+                    {
+                      "data": [
+                        {
+                          "transaction_id": "txn_transfer_no_metadata",
+                          "transaction_kind": "transfer",
+                          "direction": "debit",
+                          "amount": 200,
+                          "artifact_id": null,
+                          "counterparty_user_id": "usr_other",
+                          "counterparty_public_id": "alice",
+                          "memo": null,
+                          "occurred_at": "2026-05-10T09:00:00Z"
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
+
+        val result = repository.transactions("usr_me")
+
+        val success = assertIs<NetworkResult.Success<List<Transaction>>>(result)
+        assertNull(success.value.single().metadata)
+    }
+
+    @Test
+    fun transactions_invalid_target_date_falls_back_to_null_while_other_fields_propagate() = runTest {
+        // 不正 ISO 日付文字列が来ても runCatching で握りつぶし、対象日のみ非表示に劣化する
+        // ことを保証する（運用では発生しない想定だが防御層の挙動を担保する）。
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(
+                    """
+                    {
+                      "data": [
+                        {
+                          "transaction_id": "txn_bad_date",
+                          "transaction_kind": "mint",
+                          "direction": "credit",
+                          "amount": 100,
+                          "artifact_id": null,
+                          "counterparty_user_id": null,
+                          "counterparty_public_id": null,
+                          "memo": null,
+                          "metadata": {
+                            "n_exposures": 7,
+                            "target_date": "not-a-date",
+                            "model_version": "dummy_test"
+                          },
+                          "occurred_at": "2026-05-10T08:00:00Z"
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
+
+        val result = repository.transactions("usr_me")
+
+        val success = assertIs<NetworkResult.Success<List<Transaction>>>(result)
+        val metadata = assertNotNull(success.value.single().metadata)
+        assertEquals(7, metadata.nExposures)
+        assertNull(metadata.targetDate)
+        assertEquals("dummy_test", metadata.modelVersion)
     }
 
     @Test

@@ -1,6 +1,7 @@
 package studio.nxtech.fujubank.data.repository
 
 import kotlinx.coroutines.delay
+import kotlinx.datetime.LocalDate
 import studio.nxtech.fujubank.BuildKonfig
 import studio.nxtech.fujubank.data.remote.ApiError
 import studio.nxtech.fujubank.data.remote.ApiErrorCode
@@ -9,11 +10,13 @@ import studio.nxtech.fujubank.data.remote.api.UserApi
 import studio.nxtech.fujubank.data.remote.api.UserMeApi
 import studio.nxtech.fujubank.data.remote.api.UserSearchApi
 import studio.nxtech.fujubank.data.remote.dto.CreateUserRequest
+import studio.nxtech.fujubank.data.remote.dto.MintMetadataDto
 import studio.nxtech.fujubank.data.remote.dto.TransactionDirectionWire
 import studio.nxtech.fujubank.data.remote.dto.TransactionDto
 import studio.nxtech.fujubank.data.remote.dto.UserResponse
 import studio.nxtech.fujubank.data.remote.dto.UserSearchResultDto
 import studio.nxtech.fujubank.data.remote.map
+import studio.nxtech.fujubank.domain.model.MintMetadata
 import studio.nxtech.fujubank.domain.model.Transaction
 import studio.nxtech.fujubank.domain.model.TransactionDirection
 import studio.nxtech.fujubank.domain.model.TransactionKind
@@ -142,7 +145,35 @@ private fun TransactionDto.toDomain(): Transaction = Transaction(
     artifactId = artifactId,
     occurredAt = Instant.parse(occurredAt),
     memo = memo,
+    metadata = metadata?.toDomain(),
 )
+
+// mining → bank 経由の mint metadata を domain に正規化する。
+// - 不正 ISO 文字列の target_date は IllegalArgumentException を限定 catch して握り潰し、
+//   対象行だけ非表示に劣化させる（CancellationException 等の制御例外を巻き込まないため
+//   runCatching ではなく型限定 catch を採用）。
+// - 空文字 model_version も null 同等とみなす。
+// - 3 フィールド全て null（≒ `metadata: {}` や payload 形状ずれ）の場合は metadata ごと null
+//   に正規化し、UI のカード非表示分岐をシンプルに保つ。
+private fun MintMetadataDto.toDomain(): MintMetadata? {
+    val parsedDate = targetDate?.let { parseTargetDateOrNull(it) }
+    val normalizedModelVersion = modelVersion?.takeIf { it.isNotBlank() }
+    if (nExposures == null && parsedDate == null && normalizedModelVersion == null) {
+        return null
+    }
+    return MintMetadata(
+        nExposures = nExposures,
+        targetDate = parsedDate,
+        modelVersion = normalizedModelVersion,
+    )
+}
+
+private fun parseTargetDateOrNull(value: String): LocalDate? =
+    try {
+        LocalDate.parse(value)
+    } catch (_: IllegalArgumentException) {
+        null
+    }
 
 // mint は常に Mint 扱い（現 MVP では burn = mint+debit が発生しない契約）。
 // transfer は server の credit/debit をそのまま Incoming/Outgoing にマップする。
@@ -202,6 +233,13 @@ private fun dummyTransactions(): List<Transaction> = listOf(
         counterpartyPublicId = null,
         artifactId = "art_welcome_bonus",
         occurredAt = Instant.parse("2025-12-10T08:00:00Z"),
+        // mining 側 e2e fixture (`fuju-emotion-model/tests/e2e/test_full_pipeline.py:270-272`) と
+        // 同値。ユーザーが mining → bank → client を手動で繋いだときの動作確認に使う。
+        metadata = MintMetadata(
+            nExposures = 3,
+            targetDate = LocalDate(2026, 5, 10),
+            modelVersion = "dummy_test",
+        ),
     ),
     Transaction(
         id = "txn_dummy_005",
@@ -253,6 +291,11 @@ private fun dummyTransactions(): List<Transaction> = listOf(
         counterpartyPublicId = null,
         artifactId = "art_daily_bonus_07",
         occurredAt = Instant.parse("2025-12-06T08:00:00Z"),
+        metadata = MintMetadata(
+            nExposures = 12,
+            targetDate = LocalDate(2025, 12, 6),
+            modelVersion = "dummy_test",
+        ),
     ),
     Transaction(
         id = "txn_dummy_010",
@@ -304,6 +347,12 @@ private fun dummyTransactions(): List<Transaction> = listOf(
         counterpartyPublicId = null,
         artifactId = "art_streak_7d",
         occurredAt = Instant.parse("2025-12-03T08:00:00Z"),
+        // 本番モデル想定のバージョン文字列見え方確認用。
+        metadata = MintMetadata(
+            nExposures = 47,
+            targetDate = LocalDate(2025, 12, 3),
+            modelVersion = "v_2026-04-26",
+        ),
     ),
     Transaction(
         id = "txn_dummy_015",
@@ -354,6 +403,13 @@ private fun dummyTransactions(): List<Transaction> = listOf(
         counterpartyPublicId = null,
         artifactId = "art_daily_bonus_05",
         occurredAt = Instant.parse("2025-11-30T08:00:00Z"),
+        // 防御フォールバック確認用。targetDate のみ欠落 → 対象日行のみ非表示で他は表示される
+        // 挙動を dummy モードで観察できる（運用では発生しない想定）。
+        metadata = MintMetadata(
+            nExposures = 1,
+            targetDate = null,
+            modelVersion = "dummy_test",
+        ),
     ),
     Transaction(
         id = "txn_dummy_020",
@@ -404,6 +460,11 @@ private fun dummyTransactions(): List<Transaction> = listOf(
         counterpartyPublicId = null,
         artifactId = "art_signup_thanks",
         occurredAt = Instant.parse("2025-11-26T08:00:00Z"),
+        metadata = MintMetadata(
+            nExposures = 200,
+            targetDate = LocalDate(2025, 11, 26),
+            modelVersion = "dummy_test",
+        ),
     ),
     Transaction(
         id = "txn_dummy_025",
