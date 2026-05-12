@@ -49,8 +49,9 @@ class UserRepository(
     suspend fun provisionMe(
         name: String? = null,
         publicKey: String? = null,
+        publicId: String? = null,
     ): NetworkResult<User> =
-        userMeApi.upsertMe(name = name, publicKey = publicKey).map { it.toDomain() }
+        userMeApi.upsertMe(name = name, publicKey = publicKey, publicId = publicId).map { it.toDomain() }
 
     /**
      * 自分の最新状態を取得する（`GET /users/me`）。残高表示やセッション復元に使う。

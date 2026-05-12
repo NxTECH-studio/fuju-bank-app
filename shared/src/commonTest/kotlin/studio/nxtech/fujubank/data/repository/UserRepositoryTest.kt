@@ -3,6 +3,7 @@ package studio.nxtech.fujubank.data.repository
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.engine.mock.toByteArray
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.http.HttpHeaders
@@ -23,6 +24,7 @@ import studio.nxtech.fujubank.domain.model.User
 import studio.nxtech.fujubank.domain.model.UserSearchResult
 import studio.nxtech.fujubank.session.SessionStore
 import kotlin.test.Test
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
@@ -313,6 +315,42 @@ class UserRepositoryTest {
         val success = assertIs<NetworkResult.Success<User>>(result)
         assertEquals("11", success.value.id)
         assertEquals(0L, success.value.balanceFuju)
+    }
+
+    @Test
+    fun provisionMe_passes_public_id_to_upsert_request() = runTest {
+        val engine = MockEngine { request ->
+            assertEquals("/users/me", request.url.encodedPath)
+            val body = request.body.toByteArray().decodeToString()
+            // Repository が引数で受けた publicId をそのまま `public_id` フィールドに
+            // シリアライズして POST する契約を担保する。
+            assertContains(body, "\"public_id\":\"alice\"")
+            respond(
+                content = ByteReadChannel(
+                    """
+                    {
+                      "id": 11,
+                      "sub": "01HZY8X2B7K3J4M5N6P7Q8R9ST",
+                      "balance_fuju": 0,
+                      "created_at": "2026-04-21T12:34:56Z"
+                    }
+                    """.trimIndent(),
+                ),
+                status = HttpStatusCode.Created,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val repository = UserRepository(
+            userApi = UserApi(httpClient(engine)),
+            userMeApi = UserMeApi(httpClient(engine)),
+            userSearchApi = UserSearchApi(httpClient(engine)),
+            sessionStore = SessionStore(),
+            useDummyData = false,
+        )
+
+        val result = repository.provisionMe(publicId = "alice")
+
+        assertIs<NetworkResult.Success<User>>(result)
     }
 
     @Test

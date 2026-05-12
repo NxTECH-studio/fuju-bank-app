@@ -3,6 +3,7 @@ package studio.nxtech.fujubank.data.remote.api
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.engine.mock.toByteArray
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.http.HttpHeaders
@@ -16,6 +17,7 @@ import studio.nxtech.fujubank.data.remote.ApiErrorCode
 import studio.nxtech.fujubank.data.remote.NetworkResult
 import studio.nxtech.fujubank.data.remote.dto.UserResponse
 import kotlin.test.Test
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
@@ -65,6 +67,37 @@ class UserMeApiTest {
         val success = assertIs<NetworkResult.Success<UserResponse>>(result)
         assertEquals(6L, success.value.id)
         assertEquals(0L, success.value.balanceFuju)
+    }
+
+    @Test
+    fun upsertMe_includes_public_id_in_request_body_when_provided() = runTest {
+        val engine = MockEngine { request ->
+            assertEquals("/users/me", request.url.encodedPath)
+            assertEquals("POST", request.method.value)
+            val body = request.body.toByteArray().decodeToString()
+            // explicitNulls = false の Json 設定により null フィールドは省略されるため、
+            // public_id が明示的にキーとして JSON ボディに含まれることを検証する。
+            assertContains(body, "\"public_id\":\"alice\"")
+            respond(
+                content = ByteReadChannel(
+                    """
+                    {
+                      "id": 7,
+                      "sub": "01HZY8X2B7K3J4M5N6P7Q8R9SU",
+                      "balance_fuju": 0,
+                      "created_at": "2026-04-21T12:34:56Z"
+                    }
+                    """.trimIndent(),
+                ),
+                status = HttpStatusCode.Created,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val api = UserMeApi(httpClient(engine))
+
+        val result = api.upsertMe(publicId = "alice")
+
+        assertIs<NetworkResult.Success<UserResponse>>(result)
     }
 
     @Test
