@@ -19,6 +19,9 @@ data class Transaction(
     val direction: TransactionDirection,
     val amount: Long,
     val counterpartyUserId: String?,
+    // transfer のとき counterparty の AuthCore 公開ハンドル (public_id)。mint は null。
+    // UI 表示はこちらを `@{publicId}` 形式で出す（counterpartyUserId は内部経路用に保持）。
+    val counterpartyPublicId: String?,
     val artifactId: String?,
     val occurredAt: Instant,
 )

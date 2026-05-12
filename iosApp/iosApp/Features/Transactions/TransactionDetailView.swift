@@ -182,11 +182,11 @@ private struct DetailTransactionRow: View {
             let suffix = transaction.artifactId.map { String($0.suffix(TransactionDisplay.shortIdLength)) }
             return suffix.map { "アーティファクト \($0)" } ?? "発行"
         } else if direction == TransactionDirection.incoming {
-            let from = transaction.counterpartyUserId.map { String($0.suffix(TransactionDisplay.shortIdLength)) }
-            return from.map { "\($0) からもらいました" } ?? "入金"
+            return transaction.counterpartyPublicId
+                .map { "@\($0) からもらいました" } ?? "入金"
         } else {
-            let to = transaction.counterpartyUserId.map { String($0.suffix(TransactionDisplay.shortIdLength)) }
-            return to.map { "\($0) に送りました" } ?? "送金"
+            return transaction.counterpartyPublicId
+                .map { "@\($0) に送りました" } ?? "送金"
         }
     }
 }

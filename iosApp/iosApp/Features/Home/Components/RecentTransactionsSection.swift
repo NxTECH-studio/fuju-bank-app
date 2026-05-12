@@ -24,11 +24,11 @@ extension RecentTransactionItem {
             let suffix = transaction.artifactId.map { String($0.suffix(TransactionDisplay.shortIdLength)) }
             title = suffix.map { "アーティファクト \($0)" } ?? "発行"
         } else if direction == TransactionDirection.incoming {
-            let from = transaction.counterpartyUserId.map { String($0.suffix(TransactionDisplay.shortIdLength)) }
-            title = from.map { "\($0) からもらいました" } ?? "入金"
+            title = transaction.counterpartyPublicId
+                .map { "@\($0) からもらいました" } ?? "入金"
         } else {
-            let to = transaction.counterpartyUserId.map { String($0.suffix(TransactionDisplay.shortIdLength)) }
-            title = to.map { "\($0) に送りました" } ?? "送金"
+            title = transaction.counterpartyPublicId
+                .map { "@\($0) に送りました" } ?? "送金"
         }
         let timestamp = TransactionDateFormatterIosKt.formatTransactionDateTimeSlashForIos(instant: transaction.occurredAt)
         return RecentTransactionItem(
