@@ -7,8 +7,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.koin.mp.KoinPlatform
 import studio.nxtech.fujubank.data.remote.ApiErrorCode
 import studio.nxtech.fujubank.data.remote.NetworkResult
+import studio.nxtech.fujubank.data.remote.api.AuthCoreUserApi
 import studio.nxtech.fujubank.data.repository.AuthRepository
 import studio.nxtech.fujubank.data.repository.LoginResult
 import studio.nxtech.fujubank.data.repository.UserRepository
@@ -69,6 +71,7 @@ class SignUpFlowViewModel(
     private val userRepository: UserRepository,
     private val sessionStore: SessionStore,
     private val signupCompletionSignal: SignupCompletionSignal,
+    private val authCoreUserApi: AuthCoreUserApi = KoinPlatform.getKoin().get(),
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SignUpFlowState())
@@ -170,7 +173,14 @@ class SignUpFlowViewModel(
         when (val login = authRepository.login(email, password)) {
             is NetworkResult.Success -> when (login.value) {
                 is LoginResult.Authenticated -> {
-                    when (userRepository.provisionMe()) {
+                    // signup 直後の lazy provision で AuthCore の `public_id` を bank に流す。
+                    // getProfile が落ちたら publicId は null で fail-safe（既存挙動の救済に
+                    // 任せて再ログインを促す）。
+                    val authCorePublicId = when (val profile = authCoreUserApi.getProfile()) {
+                        is NetworkResult.Success -> profile.value.publicId
+                        is NetworkResult.Failure, is NetworkResult.NetworkFailure -> null
+                    }
+                    when (userRepository.provisionMe(publicId = authCorePublicId)) {
                         is NetworkResult.Success -> startMfaSetup()
                         // provisionMe 失敗は致命傷ではないが、続けて mfa/register が必要なため
                         // bank user 行ができていないと後段で困る。ここでログイン画面に戻す。

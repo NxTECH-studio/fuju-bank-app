@@ -7,7 +7,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.koin.mp.KoinPlatform
 import studio.nxtech.fujubank.data.remote.NetworkResult
+import studio.nxtech.fujubank.data.remote.api.AuthCoreUserApi
 import studio.nxtech.fujubank.data.repository.AuthRepository
 import studio.nxtech.fujubank.data.repository.UserRepository
 import studio.nxtech.fujubank.session.AuthErrorMessages
@@ -49,6 +51,7 @@ class MfaVerifyViewModel(
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
     private val sessionStore: SessionStore,
+    private val authCoreUserApi: AuthCoreUserApi = KoinPlatform.getKoin().get(),
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MfaVerifyUiState())
@@ -115,7 +118,14 @@ class MfaVerifyViewModel(
     }
 
     private suspend fun provisionAndStartOnboarding() {
-        when (val provision = userRepository.provisionMe()) {
+        // bank backend が `public_id` を NOT NULL に揃える前提のため、provision に
+        // AuthCore /v1/user/profile の値を流す。getProfile が落ちたら publicId は null で
+        // fail-safe（既存ユーザーの MFA 完走を止めない）。
+        val authCorePublicId = when (val result = authCoreUserApi.getProfile()) {
+            is NetworkResult.Success -> result.value.publicId
+            is NetworkResult.Failure, is NetworkResult.NetworkFailure -> null
+        }
+        when (val provision = userRepository.provisionMe(publicId = authCorePublicId)) {
             is NetworkResult.Success -> {
                 // SessionStore.userId は AuthCore の ULID (= bank の external_user_id) を源泉とする。
                 // bank-backend が `sub` を必ず返すため `User.subject` は非 null。

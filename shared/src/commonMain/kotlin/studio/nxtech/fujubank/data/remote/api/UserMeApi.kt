@@ -28,10 +28,11 @@ class UserMeApi(private val client: HttpClient) {
     suspend fun upsertMe(
         name: String? = null,
         publicKey: String? = null,
+        publicId: String? = null,
     ): NetworkResult<UserResponse> = runCatchingNetwork {
         client.post("/users/me") {
             contentType(ContentType.Application.Json)
-            setBody(UpsertMeRequest(name = name, publicKey = publicKey))
+            setBody(UpsertMeRequest(name = name, publicKey = publicKey, publicId = publicId))
         }.body()
     }
 
