@@ -7,9 +7,9 @@ import Shared
 /// - ヘッダー: 戻る `<` / 「取引詳細」/ 通知ベル
 /// - 大金額カード: 「+342,535 ふじゅ〜」をピンクで大きく表示（h=110、角丸 32）
 /// - 取引行カード: アーティファクトアバター + タイトル/サブタイトル + 左上 X バッジ + 日時
-/// - 感情データカード: 「感情データ (metadata)」見出し + 滞留時間 / 視線強度 の 2 行（暫定モック値）
-///
-/// 感情データの値（`18 秒` / `0.94`）は Figma 上のモックそのまま。バックエンド統合は後続タスク。
+/// - 感情データカード: mint kind のみ。mining 側 `metadata.{n_exposures, target_date,
+///   model_version}` を「接触回数 / 対象日 / モデルバージョン」の 3 行で表示する。
+///   metadata が nil の場合（transfer や mining 未配線 mint）はカードごと描画しない。
 struct TransactionDetailView: View {
     @StateObject private var viewModel: TransactionDetailViewModel
     var onBack: () -> Void = {}
@@ -68,7 +68,12 @@ struct TransactionDetailView: View {
                    !memo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     MemoCard(memo: memo)
                 }
-                EmotionMetadataCard()
+                // 感情データカードは mint metadata がある場合のみ描画。transfer や mining 未配線
+                // mint では Repository マッピングで metadata=nil に正規化されているため、ここで
+                // カードごと非表示にする。
+                if let metadata = transaction.metadata {
+                    EmotionMetadataCard(metadata: metadata)
+                }
             }
             Spacer(minLength: 0)
         }
@@ -220,16 +225,35 @@ private struct DetailTransactionRow: View {
     }
 }
 
-/// Figma `702:6440` 下段の感情データカード。バックエンド統合前は Figma 上のモック値
-/// （滞留時間 18 秒 / 視線強度 0.94）をそのまま表示する。
+/// Figma `702:6440` 下段の感情データカード。mining 側 `metadata.{n_exposures, target_date,
+/// model_version}` を「接触回数 / 対象日 / モデルバージョン」の 3 行で表示する。各行は対応
+/// フィールドが nil のときに非表示（mining contract は 3 キー固定で来る前提だが防御）。
 private struct EmotionMetadataCard: View {
+    let metadata: Shared.MintMetadata
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("感情データ (metadata)")
+            Text("感情データ")
                 .font(FujuBankTypography.title)
                 .foregroundStyle(FujuBankPalette.textPrimary)
-            metadataRow(label: "滞留時間", value: "18 秒")
-            metadataRow(label: "視線強度", value: "0.94")
+            if let nExposures = metadata.nExposures {
+                metadataRow(
+                    label: "接触回数",
+                    value: MintMetadataFormatter.shared.formatExposures(value: nExposures.int32Value),
+                )
+            }
+            if let targetDate = metadata.targetDate {
+                metadataRow(
+                    label: "対象日",
+                    value: MintMetadataFormatter.shared.formatTargetDate(value: targetDate),
+                )
+            }
+            if let modelVersion = metadata.modelVersion {
+                metadataRow(
+                    label: "モデルバージョン",
+                    value: MintMetadataFormatter.shared.formatModelVersion(value: modelVersion),
+                )
+            }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)

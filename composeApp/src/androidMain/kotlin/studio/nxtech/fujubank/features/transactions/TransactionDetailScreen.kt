@@ -30,10 +30,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import studio.nxtech.fujubank.R
+import studio.nxtech.fujubank.domain.model.MintMetadata
 import studio.nxtech.fujubank.domain.model.Transaction
 import studio.nxtech.fujubank.domain.model.TransactionDirection
 import studio.nxtech.fujubank.features.home.components.NotificationBellButton
 import studio.nxtech.fujubank.format.CurrencyFormatter
+import studio.nxtech.fujubank.format.MintMetadataFormatter
 import studio.nxtech.fujubank.theme.FujuBankColors
 import studio.nxtech.fujubank.theme.NotoSansJP
 import studio.nxtech.fujubank.util.formatTransactionDateTimeSlash
@@ -45,9 +47,9 @@ import studio.nxtech.fujubank.util.formatTransactionDateTimeSlash
  * - ヘッダー: 戻る `<` / 「取引詳細」/ 通知ベル
  * - 大金額カード: 「+342,535 ふじゅ〜」をピンクで大きく表示（h=110、rounded 32）
  * - 取引行カード: アーティファクトアバター + タイトル/サブタイトル + 左上 X バッジ + 日時
- * - 感情データカード: 「感情データ (metadata)」見出し + 滞留時間 / 視線強度 の 2 行（暫定モック値）
- *
- * 感情データの値（`18 秒` / `0.94`）は Figma 上のモックそのまま。バックエンド統合は後続タスク。
+ * - 感情データカード: mint kind のみ。mining 側 `metadata.{n_exposures, target_date,
+ *   model_version}` を「接触回数 / 対象日 / モデルバージョン」の 3 行で表示する。
+ *   metadata が null の場合（transfer や mining 未配線 mint）はカードごと描画しない。
  */
 @Composable
 fun TransactionDetailScreen(
@@ -125,7 +127,12 @@ private fun LoadedContent(transaction: Transaction) {
             transaction.memo?.takeIf { it.isNotBlank() }?.let { memo ->
                 MemoCard(memo = memo)
             }
-            EmotionMetadataCard()
+            // 感情データカードは mint metadata がある場合のみ描画。transfer や mining 未配線
+            // mint では Repository マッピングで metadata=null に正規化されているため、ここで
+            // カードごと非表示にする。
+            transaction.metadata?.let { metadata ->
+                EmotionMetadataCard(metadata = metadata)
+            }
         }
     }
 }
@@ -328,7 +335,7 @@ private fun DetailTransactionRow(transaction: Transaction) {
 }
 
 @Composable
-private fun EmotionMetadataCard() {
+private fun EmotionMetadataCard(metadata: MintMetadata) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -338,7 +345,7 @@ private fun EmotionMetadataCard() {
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
-            text = "感情データ (metadata)",
+            text = "感情データ",
             style = TextStyle(
                 fontFamily = NotoSansJP,
                 fontSize = 14.sp,
@@ -346,8 +353,26 @@ private fun EmotionMetadataCard() {
                 color = FujuBankColors.TextPrimary,
             ),
         )
-        EmotionMetadataRow(label = "滞留時間", value = "18 秒")
-        EmotionMetadataRow(label = "視線強度", value = "0.94")
+        // 各行は対応フィールドが非 null のときだけ描画する（mining contract は 3 キー固定で
+        // 来る前提だが、片肺欠落時の防御）。
+        metadata.nExposures?.let { value ->
+            EmotionMetadataRow(
+                label = "接触回数",
+                value = MintMetadataFormatter.formatExposures(value),
+            )
+        }
+        metadata.targetDate?.let { value ->
+            EmotionMetadataRow(
+                label = "対象日",
+                value = MintMetadataFormatter.formatTargetDate(value),
+            )
+        }
+        metadata.modelVersion?.let { value ->
+            EmotionMetadataRow(
+                label = "モデルバージョン",
+                value = MintMetadataFormatter.formatModelVersion(value),
+            )
+        }
     }
 }
 
