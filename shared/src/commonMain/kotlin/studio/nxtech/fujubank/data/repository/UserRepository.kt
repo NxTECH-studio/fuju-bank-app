@@ -149,12 +149,14 @@ private fun TransactionDto.toDomain(): Transaction = Transaction(
 )
 
 // mining → bank 経由の mint metadata を domain に正規化する。
-// - 不正 ISO 文字列の target_date は runCatching で握りつぶし、対象行だけ非表示に劣化させる。
+// - 不正 ISO 文字列の target_date は IllegalArgumentException を限定 catch して握り潰し、
+//   対象行だけ非表示に劣化させる（CancellationException 等の制御例外を巻き込まないため
+//   runCatching ではなく型限定 catch を採用）。
 // - 空文字 model_version も null 同等とみなす。
 // - 3 フィールド全て null（≒ `metadata: {}` や payload 形状ずれ）の場合は metadata ごと null
 //   に正規化し、UI のカード非表示分岐をシンプルに保つ。
 private fun MintMetadataDto.toDomain(): MintMetadata? {
-    val parsedDate = targetDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+    val parsedDate = targetDate?.let { parseTargetDateOrNull(it) }
     val normalizedModelVersion = modelVersion?.takeIf { it.isNotBlank() }
     if (nExposures == null && parsedDate == null && normalizedModelVersion == null) {
         return null
@@ -165,6 +167,13 @@ private fun MintMetadataDto.toDomain(): MintMetadata? {
         modelVersion = normalizedModelVersion,
     )
 }
+
+private fun parseTargetDateOrNull(value: String): LocalDate? =
+    try {
+        LocalDate.parse(value)
+    } catch (_: IllegalArgumentException) {
+        null
+    }
 
 // mint は常に Mint 扱い（現 MVP では burn = mint+debit が発生しない契約）。
 // transfer は server の credit/debit をそのまま Incoming/Outgoing にマップする。
