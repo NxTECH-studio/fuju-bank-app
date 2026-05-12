@@ -21,6 +21,7 @@ class TransactionDtoTest {
               "amount": 1000,
               "artifact_id": "art_01HZY8X2B7",
               "counterparty_user_id": null,
+              "counterparty_public_id": null,
               "memo": null,
               "metadata": null,
               "occurred_at": "2026-04-21T12:34:56Z",
@@ -36,6 +37,7 @@ class TransactionDtoTest {
         assertEquals(1_000L, decoded.amount)
         assertEquals("art_01HZY8X2B7", decoded.artifactId)
         assertNull(decoded.counterpartyUserId)
+        assertNull(decoded.counterpartyPublicId)
         assertEquals("2026-04-21T12:34:56Z", decoded.occurredAt)
     }
 
@@ -50,6 +52,7 @@ class TransactionDtoTest {
               "amount": 500,
               "artifact_id": null,
               "counterparty_user_id": "usr_other",
+              "counterparty_public_id": "alice",
               "occurred_at": "2026-04-21T12:35:00Z",
               "created_at": "2026-04-21T12:35:01Z"
             }
@@ -60,6 +63,7 @@ class TransactionDtoTest {
         assertEquals(TransactionKind.TRANSFER, decoded.kind)
         assertEquals(TransactionDirectionWire.DEBIT, decoded.direction)
         assertEquals("usr_other", decoded.counterpartyUserId)
+        assertEquals("alice", decoded.counterpartyPublicId)
         assertNull(decoded.artifactId)
     }
 
@@ -72,6 +76,7 @@ class TransactionDtoTest {
             amount = 1_000L,
             artifactId = "art_01HZY8X2B7",
             counterpartyUserId = null,
+            counterpartyPublicId = null,
             occurredAt = "2026-04-21T12:34:56Z",
         )
         val encoded = json.encodeToString(TransactionDto.serializer(), original)
@@ -88,6 +93,7 @@ class TransactionDtoTest {
             amount = 500L,
             artifactId = null,
             counterpartyUserId = "usr_other",
+            counterpartyPublicId = "alice",
             occurredAt = "2026-04-21T12:35:00Z",
         )
         val encoded = json.encodeToString(TransactionDto.serializer(), original)
@@ -125,6 +131,7 @@ class TransactionDtoTest {
               "amount": 9223372036854775807,
               "artifact_id": "art_1",
               "counterparty_user_id": null,
+              "counterparty_public_id": null,
               "occurred_at": "2026-04-21T00:00:00Z"
             }
         """.trimIndent()
@@ -145,6 +152,7 @@ class TransactionDtoTest {
                     amount = 1_000L,
                     artifactId = "art_1",
                     counterpartyUserId = null,
+                    counterpartyPublicId = null,
                     occurredAt = "2026-04-21T12:34:56Z",
                 ),
                 TransactionDto(
@@ -154,6 +162,7 @@ class TransactionDtoTest {
                     amount = 500L,
                     artifactId = null,
                     counterpartyUserId = "usr_2",
+                    counterpartyPublicId = "bob",
                     occurredAt = "2026-04-21T12:35:00Z",
                 ),
             ),

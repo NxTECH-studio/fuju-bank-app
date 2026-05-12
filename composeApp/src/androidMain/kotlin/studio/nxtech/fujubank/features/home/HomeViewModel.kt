@@ -180,11 +180,11 @@ private fun Transaction.toRecentItem(): RecentTransactionItem {
         TransactionDirection.Mint -> artifactId
             ?.let { "アーティファクト ${it.takeLast(SHORT_ID_LEN)}" }
             ?: "発行"
-        TransactionDirection.Incoming -> counterpartyUserId
-            ?.let { "${it.takeLast(SHORT_ID_LEN)} からもらいました" }
+        TransactionDirection.Incoming -> counterpartyPublicId
+            ?.let { "@$it からもらいました" }
             ?: "入金"
-        TransactionDirection.Outgoing -> counterpartyUserId
-            ?.let { "${it.takeLast(SHORT_ID_LEN)} に送りました" }
+        TransactionDirection.Outgoing -> counterpartyPublicId
+            ?.let { "@$it に送りました" }
             ?: "送金"
     }
     return RecentTransactionItem(
