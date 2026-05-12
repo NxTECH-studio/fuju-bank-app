@@ -1,5 +1,6 @@
 package studio.nxtech.fujubank.domain.model
 
+import kotlinx.datetime.LocalDate
 import kotlin.time.Instant
 
 data class User(
@@ -26,6 +27,22 @@ data class Transaction(
     val occurredAt: Instant,
     // 送金時の任意メモ（最大 80 文字）。mint や memo 未指定 transfer は null。
     val memo: String? = null,
+    // mint kind の集計メタデータ。transfer や mining 未配線の mint では null。
+    // Repository 層で `{}` 相当（全フィールド null）を null に正規化する契約。
+    val metadata: MintMetadata? = null,
+)
+
+/**
+ * mint kind 取引に紐付く集計メタデータ。mining 側（`fuju-emotion-model`）が
+ * `{n_exposures, target_date, model_version}` の 3 キー固定で送出する契約。
+ *
+ * 防御のため 3 フィールドとも nullable で受け、UI 側で行ごとに描画判定する。
+ * `targetDate` は ISO `YYYY-MM-DD` を `LocalDate` に変換済み（Repository 層）。
+ */
+data class MintMetadata(
+    val nExposures: Int?,
+    val targetDate: LocalDate?,
+    val modelVersion: String?,
 )
 
 /**

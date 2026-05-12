@@ -37,7 +37,9 @@ kotlin {
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.kotlinx.datetime)
+            // domain model (`MintMetadata.targetDate: LocalDate`) で公開しているため、
+            // composeApp 等の consumer 側でも型を解決できるよう api スコープで露出する。
+            api(libs.kotlinx.datetime)
             implementation(libs.koin.core)
             implementation(libs.multiplatform.settings.no.arg)
         }
