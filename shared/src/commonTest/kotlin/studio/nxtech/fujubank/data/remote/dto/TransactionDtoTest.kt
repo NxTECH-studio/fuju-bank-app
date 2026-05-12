@@ -82,6 +82,7 @@ class TransactionDtoTest {
               "amount": 1500,
               "artifact_id": null,
               "counterparty_user_id": "usr_other",
+              "counterparty_public_id": "alice",
               "memo": "ランチ代",
               "occurred_at": "2026-04-22T12:00:00Z"
             }
@@ -104,6 +105,7 @@ class TransactionDtoTest {
               "amount": 100,
               "artifact_id": null,
               "counterparty_user_id": "usr_other",
+              "counterparty_public_id": "alice",
               "memo": "$memo80",
               "occurred_at": "2026-04-22T13:00:00Z"
             }
@@ -128,6 +130,7 @@ class TransactionDtoTest {
               "amount": 200,
               "artifact_id": null,
               "counterparty_user_id": "usr_other",
+              "counterparty_public_id": "alice",
               "memo": "$memo90",
               "occurred_at": "2026-04-22T14:00:00Z"
             }
